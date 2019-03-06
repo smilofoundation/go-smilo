@@ -1,0 +1,10 @@
+{
+  "name": "generate-keys",
+  "version": "1.0.0",
+  "main": "generate_keys.js",
+  "license": "GNU",
+  "dependencies": {
+    "ethereumjs-util": "^6.0.0",
+    "ethereumjs-wallet": "^0.6.2"
+  }
+}

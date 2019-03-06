@@ -1,0 +1,5 @@
+smilo/keys
+smilo/nodekeys
+smilo/*.*
+node_modules
+blackbox.db

@@ -1,0 +1,8 @@
+.idea
+go-smilo
+go-smilo-*.db
+key.txt
+poc
+build/_workspace
+build/bin
+src/blockchain/smilobft/build/_workspace
