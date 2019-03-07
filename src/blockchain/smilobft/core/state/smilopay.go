@@ -35,13 +35,12 @@ func CalculateSmiloPay(prevBlock, newBlock, prevSmiloPay, balance *big.Int) *big
 
 	blockGap := new(big.Int).Sub(newBlock, prevBlock)
 
-	// (0,000001 + (√balance / 750000)) * Correction factor
-	// smiloSpeed := (0.000001 + (sqrt / 750000)) * 8 * 1000000000000000000 (To avoid overflow, its coded with big.Float)
+	// smiloSpeed := (0.000001 + (√balance / 750000)) * 0.5 * 1e+18 (To avoid overflow, its coded with big.Float)
 	sqrt := new(big.Float).Sqrt(balanceSmilo)
 	sqrtDiv := new(big.Float).Quo(sqrt, big.NewFloat(750000))
 	sqrtAdd := new(big.Float).Add(sqrtDiv, big.NewFloat(0.000001))
-	smiloSpeedMul := new(big.Float).Mul(sqrtAdd, big.NewFloat(8))
-	smiloSpeedBig := new(big.Float).Mul(smiloSpeedMul, big.NewFloat(1000000000000000000))
+	smiloSpeedMul := new(big.Float).Mul(sqrtAdd, big.NewFloat(0.5))
+	smiloSpeedBig := new(big.Float).Mul(smiloSpeedMul, big.NewFloat(1e+18))
 
 	blockGapFloat := new(big.Float).SetInt(blockGap)
 	smiloPayResult := new(big.Float).Mul(blockGapFloat, smiloSpeedBig)
@@ -57,17 +56,17 @@ func CalculateSmiloPay(prevBlock, newBlock, prevSmiloPay, balance *big.Int) *big
 }
 
 func MaxSmiloPay(balance *big.Int) (maxSmiloPayReturn *big.Int, balanceSmilo *big.Float) {
-	balanceDecimals := new(big.Int).Div(balance, big.NewInt(1e+15))
+	balanceDecimals := new(big.Int).Div(balance, big.NewInt(1e+18))
 	balanceSmilo = new(big.Float).SetInt(balanceDecimals)
 
 	//(0,001 + (√balance / 50000)) * Correction factor
-	// maxSmiloPay := (0.001 + (f / 50000)) * 5000 * 1000000000000000 (To avoid overflow, its coded with big.Float)
+	// maxSmiloPay := (0.001 + (f / 50000)) * 5 * 1e+18 (To avoid overflow, its coded with big.Float)
 	f := new(big.Float).Sqrt(balanceSmilo)
 	fDiv := new(big.Float).Quo(f, big.NewFloat(50000))
 	fAdd := new(big.Float).Add(fDiv, big.NewFloat(0.001))
 	maxSmiloPayMul := new(big.Float).Mul(fAdd, big.NewFloat(5))
 
-	maxSmiloPayInt := floatToBigInt(maxSmiloPayMul, big.NewInt(1000000000000000000))
+	maxSmiloPayInt := floatToBigInt(maxSmiloPayMul, big.NewInt(1e+18))
 
 	return maxSmiloPayInt, balanceSmilo
 }

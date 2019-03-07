@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-.PHONY: testnet1 testnet2 testnet3 testnet4
+.PHONY: geth android ios geth-cross swarm evm all test clean
+.PHONY: geth-linux geth-linux-386 geth-linux-amd64 geth-linux-mips64 geth-linux-mips64le
+.PHONY: geth-linux-arm geth-linux-arm-5 geth-linux-arm-6 geth-linux-arm-7 geth-linux-arm64
+.PHONY: geth-darwin geth-darwin-386 geth-darwin-amd64
+.PHONY: geth-windows geth-windows-386 geth-windows-amd64
+
 
 COMPANY=Smilo
 AUTHOR=go-smilo
@@ -8,6 +13,9 @@ AUTHOR=go-smilo
 DIR = $(shell pwd)
 PACKAGES = $(shell find ./src -type d -not -path '\./src')
 PACKAGES_ETH = $(shell find src/blockchain/smilobft -type d -not -path '\src/blockchain/smilobft')
+
+SRC_DIR = "src/blockchain/smilobft"
+
 
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
@@ -86,6 +94,9 @@ format:  # Formats the code. Must have goimports installed (use make install-lin
 
 # ********* BEGIN GETH BUILD TASKS *********
 
+all:
+	build/env.sh go run build/ci.go install
+
 eth: clean
 	src/blockchain/smilobft/build/env.sh go run ./src/blockchain/smilobft/build/ci.go install
 
@@ -126,10 +137,16 @@ clean:
 
 devtools:
 	env GOBIN= go get -u golang.org/x/tools/cmd/stringer
-	env GOBIN= go get -u github.com/jteeuwen/go-bindata/go-bindata
+	env GOBIN= go get -u github.com/kevinburke/go-bindata/go-bindata
 	env GOBIN= go get -u github.com/fjl/gencodec
-	env GOBIN= go install ./src/blockchain/smilobft/cmd/abigen
 	env GOBIN= go get -u github.com/golang/protobuf/protoc-gen-go
+	env GOBIN= go install ./src/blockchain/smilobft/cmd/abigen
+	@type "npm" 2> /dev/null || echo 'Please install node.js and npm'
+	@type "solc" 2> /dev/null || echo 'Please install solc'
+	@type "protoc" 2> /dev/null || echo 'Please install protoc'
+
+swarm-devtools:
+	env GOBIN= go install ./cmd/swarm/mimegen
 
 generate:
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft
@@ -148,12 +165,12 @@ geth-linux: geth-linux-386 geth-linux-amd64 geth-linux-arm geth-linux-mips64 get
 	@ls -ld $(GOBIN)/geth-linux-*
 
 geth-linux-386:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/386 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/386 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux 386 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep 386
 
 geth-linux-amd64:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux amd64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep amd64
 
@@ -162,42 +179,42 @@ geth-linux-arm: geth-linux-arm-5 geth-linux-arm-6 geth-linux-arm-7 geth-linux-ar
 	@ls -ld $(GOBIN)/geth-linux-* | grep arm
 
 geth-linux-arm-5:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-5 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-5 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux ARMv5 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep arm-5
 
 geth-linux-arm-6:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-6 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-6 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux ARMv6 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep arm-6
 
 geth-linux-arm-7:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-7 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/arm-7 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux ARMv7 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep arm-7
 
 geth-linux-arm64:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/arm64 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/arm64 -v $(SRC_DIR)/cmd/geth
 	@echo "Linux ARM64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep arm64
 
 geth-linux-mips:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/mips --ldflags '-extldflags "-static"' -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/mips --ldflags '-extldflags "-static"' -v $(SRC_DIR)/cmd/geth
 	@echo "Linux MIPS cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep mips
 
 geth-linux-mipsle:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/mipsle --ldflags '-extldflags "-static"' -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/mipsle --ldflags '-extldflags "-static"' -v $(SRC_DIR)/cmd/geth
 	@echo "Linux MIPSle cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep mipsle
 
 geth-linux-mips64:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/mips64 --ldflags '-extldflags "-static"' -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/mips64 --ldflags '-extldflags "-static"' -v $(SRC_DIR)/cmd/geth
 	@echo "Linux MIPS64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep mips64
 
 geth-linux-mips64le:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=linux/mips64le --ldflags '-extldflags "-static"' -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=linux/mips64le --ldflags '-extldflags "-static"' -v $(SRC_DIR)/cmd/geth
 	@echo "Linux MIPS64le cross compilation done:"
 	@ls -ld $(GOBIN)/geth-linux-* | grep mips64le
 
@@ -206,12 +223,12 @@ geth-darwin: geth-darwin-386 geth-darwin-amd64
 	@ls -ld $(GOBIN)/geth-darwin-*
 
 geth-darwin-386:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v $(SRC_DIR)/cmd/geth
 	@echo "Darwin 386 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-darwin-* | grep 386
 
 geth-darwin-amd64:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=darwin/amd64 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=darwin/amd64 -v $(SRC_DIR)/cmd/geth
 	@echo "Darwin amd64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-darwin-* | grep amd64
 
@@ -220,14 +237,15 @@ geth-windows: geth-windows-386 geth-windows-amd64
 	@ls -ld $(GOBIN)/geth-windows-*
 
 geth-windows-386:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=windows/386 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=windows/386 -v $(SRC_DIR)/cmd/geth
 	@echo "Windows 386 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-windows-* | grep 386
 
 geth-windows-amd64:
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xgo -- --go=$(GO) --targets=windows/amd64 -v ./cmd/geth
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=windows/amd64 -v $(SRC_DIR)/cmd/geth
 	@echo "Windows amd64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-windows-* | grep amd64
+
 
 
 
