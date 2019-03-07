@@ -28,15 +28,15 @@ import (
 func TestSmiloPay(t *testing.T) {
 	resultSmiloPay := []*big.Int{
 		big.NewInt(1079999999999999),
+		big.NewInt(11746666666666666),
 		big.NewInt(16164944665313013),
+		big.NewInt(19555208614068024),
 		big.NewInt(22413333333333333),
+		big.NewInt(24931391759997756),
 		big.NewInt(27207890589687233),
+		big.NewInt(29301347318022299),
 		big.NewInt(31249889330626027),
-		big.NewInt(34810961708462712),
-		big.NewInt(38030417228136048),
-		big.NewInt(40991012125588708),
-		big.NewInt(43746666666666666),
-		big.NewInt(46334833995939041),
+		big.NewInt(33079999999999999),
 	}
 	prevBlock := big.NewInt(100)
 	newBlock := big.NewInt(110)
@@ -84,8 +84,18 @@ func TestSmiloPaySpeedLarge(t *testing.T) {
 	prevsmiloPay := big.NewInt(0)
 	balance, _ := etherutils.StringToWei("100000000 ether")
 	smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
-	require.Equal(t, smiloPay, big.NewInt(35457331097124265))
+	require.Equal(t, big.NewInt(35457331097124265), smiloPay)
 }
+
+func TestSmiloPaySpeedVeryLarge(t *testing.T) {
+	prevBlock := big.NewInt(100)
+	newBlock := big.NewInt(110)
+	prevsmiloPay := big.NewInt(0)
+	balance, _ := etherutils.StringToWei("100000000 ether")
+	smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
+	require.Equal(t, big.NewInt(31627776601683), new(big.Int).Div(smiloPay,big.NewInt(1e6)))
+}
+
 
 func TestSmiloPayCalculations(t *testing.T) {
 
@@ -130,6 +140,7 @@ func TestSmiloPayCalculations(t *testing.T) {
 		newBlock := big.NewInt(101)
 		prevsmiloPay := big.NewInt(0)
 		smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, newbalance)
+
 		fmt.Println("SmiloPaySpeed: ", etherutils.WeiToString(smiloPay, true), "/ Block")
 		fmt.Println("MaxSmallTx/block : ", new(big.Int).Div(smiloPay, smallTxPrice)) // 1 Gwei * 21000 Gas
 		fmt.Println("MaxAverageTx/block : ", new(big.Int).Div(smiloPay, averageTxPrice)) // 4 Gwei * 21000 Gas
@@ -141,3 +152,4 @@ func TestSmiloPayCalculations(t *testing.T) {
 		fmt.Println()
 	}
 }
+
