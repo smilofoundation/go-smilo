@@ -150,8 +150,7 @@
     "sys/windows",
   ]
   pruneopts = "UT"
-  revision = "237dff72b4ba95da2cd985f96a9c0ede4aefc760"
-  version = "v0.9.0"
+  revision = "37f05ff46ffa7a825d1b24cf2b62d4a4c1a9d2e8"
 
 [[projects]]
   digest = "1:561e647410709739ba6a3f350aca3bee7117d17a26746793845493af15061b38"
