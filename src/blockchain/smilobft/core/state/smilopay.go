@@ -36,12 +36,12 @@ func CalculateSmiloPay(prevBlock, newBlock, prevSmiloPay, balance *big.Int) *big
 	blockGap := new(big.Int).Sub(newBlock, prevBlock)
 
 	// (0,000001 + (√balance / 750000)) * Correction factor
-	// smiloSpeed := (0.000001 + (sqrt / 750000)) * 8000 * 100000000000000 (To avoid overflow, its coded with big.Float)
+	// smiloSpeed := (0.000001 + (sqrt / 750000)) * 8 * 1000000000000000000 (To avoid overflow, its coded with big.Float)
 	sqrt := new(big.Float).Sqrt(balanceSmilo)
 	sqrtDiv := new(big.Float).Quo(sqrt, big.NewFloat(750000))
 	sqrtAdd := new(big.Float).Add(sqrtDiv, big.NewFloat(0.000001))
-	smiloSpeedMul := new(big.Float).Mul(sqrtAdd, big.NewFloat(8000))
-	smiloSpeedBig := new(big.Float).Mul(smiloSpeedMul, big.NewFloat(100000000000000))
+	smiloSpeedMul := new(big.Float).Mul(sqrtAdd, big.NewFloat(8))
+	smiloSpeedBig := new(big.Float).Mul(smiloSpeedMul, big.NewFloat(1000000000000000000))
 
 	blockGapFloat := new(big.Float).SetInt(blockGap)
 	smiloPayResult := new(big.Float).Mul(blockGapFloat, smiloSpeedBig)

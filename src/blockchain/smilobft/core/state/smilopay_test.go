@@ -21,30 +21,29 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/orinocopay/go-etherutils"
+	"fmt"
 )
 
 func TestSmiloPay(t *testing.T) {
 	resultSmiloPay := []*big.Int{
-		big.NewInt(1007999999999999),
-		big.NewInt(2516494466531301),
-		big.NewInt(3141333333333333),
-		big.NewInt(3620789058968723),
-		big.NewInt(4024988933062602),
-		big.NewInt(4381096170846271),
-		big.NewInt(4703041722813604),
-		big.NewInt(4999101212558870),
-		big.NewInt(5274666666666666),
-		big.NewInt(5533483399593904),
+		big.NewInt(1079999999999999),
+		big.NewInt(16164944665313013),
+		big.NewInt(22413333333333333),
+		big.NewInt(27207890589687233),
+		big.NewInt(31249889330626027),
+		big.NewInt(34810961708462712),
+		big.NewInt(38030417228136048),
+		big.NewInt(40991012125588708),
+		big.NewInt(43746666666666666),
+		big.NewInt(46334833995939041),
 	}
 	prevBlock := big.NewInt(100)
 	newBlock := big.NewInt(110)
 	prevsmiloPay := big.NewInt(1000000000000000)
 	for i := 0; i < 10; i++ {
-
-		balance := new(big.Int).Mul(big.NewInt(1e+15), big.NewInt(int64(i*20000)))
-		//fmt.Println("balance, ", new(big.Int).Div(balance,big.NewInt(1e+15)))
-		smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
-		//fmt.Println(resultSmiloPay[i], smiloPay)
+		newbalance, _ := etherutils.StringToWei(fmt.Sprintf("%d0 ether", i))
+		smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, newbalance)
 		require.Equal(t, resultSmiloPay[i], smiloPay)
 	}
 }
@@ -63,13 +62,27 @@ func TestSmiloPayMax(t *testing.T) {
 		big.NewInt(14486832980505138),
 	}
 	for i := 0; i < 10; i++ {
-		balance := new(big.Int).Mul(big.NewInt(1e+15), big.NewInt(int64(i*1000))) // 1000000000000000000000 Wei = 1000 Ether = 1000 Smilo
-		//fmt.Println("balance : ", balance)
-		maxSmiloPay, _ := MaxSmiloPay(balance)
+		newbalance, _ := etherutils.StringToWei(fmt.Sprintf("%d ether", i))
+
+		maxSmiloPay, _ := MaxSmiloPay(newbalance)
 		require.NotEmpty(t, maxSmiloPay)
 		require.Equal(t, resultSmiloPay[i], maxSmiloPay) // Result in WEI
-		//fmt.Println("Max SmiloPay in WEI : ", maxSmiloPay)
-		//fmt.Println("SmiloPay in WEI : ", smiloPay)
 
 	}
+}
+
+func TestSmiloPayMaxHundredTen(t *testing.T) {
+	balance, _ := etherutils.StringToWei("110 ether")
+	maxSmiloPay, _ := MaxSmiloPay(balance)
+	require.NotEmpty(t, maxSmiloPay)
+	require.Equal(t, maxSmiloPay, big.NewInt(38166247903553998))
+}
+
+func TestSmiloPaySpeedLarge(t *testing.T) {
+	prevBlock := big.NewInt(100)
+	newBlock := big.NewInt(110)
+	prevsmiloPay := big.NewInt(0)
+	balance, _ := etherutils.StringToWei("110 ether")
+	smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
+	require.Equal(t, smiloPay, big.NewInt(35457331097124265))
 }
