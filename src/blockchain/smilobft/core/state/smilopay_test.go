@@ -27,16 +27,16 @@ import (
 
 func TestSmiloPay(t *testing.T) {
 	resultSmiloPay := []*big.Int{
-		big.NewInt(1079999999999999),
-		big.NewInt(11746666666666666),
-		big.NewInt(16164944665313013),
-		big.NewInt(19555208614068024),
-		big.NewInt(22413333333333333),
-		big.NewInt(24931391759997756),
-		big.NewInt(27207890589687233),
-		big.NewInt(29301347318022299),
-		big.NewInt(31249889330626027),
-		big.NewInt(33079999999999999),
+		big.NewInt(1004999999999999),
+		big.NewInt(1026081851067789),
+		big.NewInt(1034814239699997),
+		big.NewInt(1041514837167011),
+		big.NewInt(1047163702135578),
+		big.NewInt(1052140452079103),
+		big.NewInt(1056639777949432),
+		big.NewInt(1060777335102271),
+		big.NewInt(1064628479399994),
+		big.NewInt(1068245553203367),
 	}
 	prevBlock := big.NewInt(100)
 	newBlock := big.NewInt(110)
@@ -44,22 +44,22 @@ func TestSmiloPay(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		newbalance, _ := etherutils.StringToWei(fmt.Sprintf("%d0 ether", i))
 		smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, newbalance)
-		fmt.Println("SmiloPayExp: ", resultSmiloPay[i], " SmiloPay", smiloPay) //require.Equal(t, resultSmiloPay[i], smiloPay)
+		require.Equal(t, resultSmiloPay[i], smiloPay)
 	}
 }
 
 func TestSmiloPayMax(t *testing.T) {
 	resultSmiloPay := []*big.Int{
 		big.NewInt(5000000000000000),
-		big.NewInt(8162277660168379),
-		big.NewInt(9472135954999579),
-		big.NewInt(10477225575051661),
-		big.NewInt(11324555320336758),
-		big.NewInt(12071067811865475),
-		big.NewInt(12745966692414833),
-		big.NewInt(13366600265340755),
-		big.NewInt(13944271909999158),
-		big.NewInt(14486832980505138),
+		big.NewInt(5100000000000000),
+		big.NewInt(5141421356237309),
+		big.NewInt(5173205080756887),
+		big.NewInt(5200000000000000),
+		big.NewInt(5223606797749979),
+		big.NewInt(5244948974278317),
+		big.NewInt(5264575131106459),
+		big.NewInt(5282842712474619),
+		big.NewInt(5300000000000000),
 	}
 	for i := 0; i < 10; i++ {
 		newbalance, _ := etherutils.StringToWei(fmt.Sprintf("%d ether", i))
@@ -75,16 +75,7 @@ func TestSmiloPayMaxHundredTen(t *testing.T) {
 	balance, _ := etherutils.StringToWei("110 ether")
 	maxSmiloPay, _ := MaxSmiloPay(balance)
 	require.NotEmpty(t, maxSmiloPay)
-	require.Equal(t, maxSmiloPay, big.NewInt(38166247903553998))
-}
-
-func TestSmiloPaySpeedLarge(t *testing.T) {
-	prevBlock := big.NewInt(100)
-	newBlock := big.NewInt(110)
-	prevsmiloPay := big.NewInt(0)
-	balance, _ := etherutils.StringToWei("100000000 ether")
-	smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
-	require.Equal(t, big.NewInt(35457331097124265), smiloPay)
+	require.Equal(t, big.NewInt(6048808848170151), maxSmiloPay)
 }
 
 func TestSmiloPaySpeedVeryLarge(t *testing.T) {
@@ -93,7 +84,7 @@ func TestSmiloPaySpeedVeryLarge(t *testing.T) {
 	prevsmiloPay := big.NewInt(0)
 	balance, _ := etherutils.StringToWei("100000000 ether")
 	smiloPay := CalculateSmiloPay(prevBlock, newBlock, prevsmiloPay, balance)
-	require.Equal(t, big.NewInt(31627776601683), new(big.Int).Div(smiloPay,big.NewInt(1e6)))
+	require.Equal(t, big.NewInt(66671666666), new(big.Int).Div(smiloPay,big.NewInt(1e6)))
 }
 
 
