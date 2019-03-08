@@ -76,10 +76,8 @@ var (
 	preimageCounter    = metrics.NewCounter()
 	preimageHitCounter = metrics.NewCounter()
 
-	vaultRootPrefix          = []byte("P")
-	vaultblockReceiptsPrefix = []byte("Pr") // blockReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
-	vaultReceiptPrefix       = []byte("Prs")
-	vaultBloomPrefix         = []byte("Pb")
+	vaultRootPrefix  = []byte("P")
+	vaultBloomPrefix = []byte("Pb")
 
 	smiloEIP155ActivatedPrefix = []byte("smilo155active")
 )
