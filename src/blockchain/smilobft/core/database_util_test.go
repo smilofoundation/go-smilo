@@ -24,10 +24,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"golang.org/x/crypto/sha3"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
-	"golang.org/x/crypto/sha3"
 )
 
 // Tests block header storage and retrieval operations.

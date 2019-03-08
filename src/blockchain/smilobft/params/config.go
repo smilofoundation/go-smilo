@@ -27,12 +27,12 @@ import (
 // Genesis hashes to enforce below configs on.
 var (
 	MainnetGenesisHash = common.HexToHash("0x60a23d7e3337a9e3694af178e629cbe07cf160af3eef711e7f1c9405f38c19ab")
-	TestnetGenesisHash = common.HexToHash("0xb8977d2c9fca665cebc0f5145026d3dce4890a05c4714750ea9a20e2a1e03dec")
+	TestnetGenesisHash = common.HexToHash("0x853e0fbdc73a57c3f74b5716ce778fe0dd45025d00c3f016b9cc33bac7b0d92e")
 	RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
 )
 
 var (
-	// MainnetChainConfig is the chain parameters to run a node on the main network.
+	// MainnetChainConfig is the chain parameters to run a node on the main network.  THIS IS VALID ONLY FOR ETH MAINNET
 	MainnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(1),
 		HomesteadBlock:      big.NewInt(1150000),
@@ -59,27 +59,35 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3),
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(0),
-		EIP150Hash:          common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d"),
-		EIP155Block:         big.NewInt(10),
-		EIP158Block:         big.NewInt(10),
-		ByzantiumBlock:      big.NewInt(1700000),
-		ConstantinopleBlock: big.NewInt(4230000),
-		PetersburgBlock:     big.NewInt(4939394),
-		Ethash:              new(EthashConfig),
+		ByzantiumBlock:      big.NewInt(1),
+		EIP150Block:         big.NewInt(2),
+		EIP150Hash:          common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(3),
+		PetersburgBlock:     big.NewInt(4),
+		ConstantinopleBlock: big.NewInt(5),
+
+		Sport: &SportConfig{
+			Epoch:         30000,
+			SpeakerPolicy: 0,
+		},
+
+		IsSmilo:       true,
+		IsGas:         true,
+		IsGasRefunded: true,
+
+		ChainID: big.NewInt(10),
+
+		RequiredMinFunds: 10000,
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
 	TestnetTrustedCheckpoint = &TrustedCheckpoint{
-		Name:         "testnet",
-		SectionIndex: 148,
-		SectionHead:  common.HexToHash("0x4d3181bedb6aa96a6f3efa866c71f7802400d0fb4a6906946c453630d850efc0"),
-		CHTRoot:      common.HexToHash("0x25df2f9d63a5f84b2852988f0f0f7af5a7877da061c11b85c812780b5a27a5ec"),
-		BloomRoot:    common.HexToHash("0x0584834e5222471a06c669d210e302ca602780eaaddd04634fd65471c2a91419"),
+		Name: "testnet",
+		//SectionIndex: 148,
+		//SectionHead:  common.HexToHash("0x4d3181bedb6aa96a6f3efa866c71f7802400d0fb4a6906946c453630d850efc0"),
+		//CHTRoot:      common.HexToHash("0x25df2f9d63a5f84b2852988f0f0f7af5a7877da061c11b85c812780b5a27a5ec"),
+		//BloomRoot:    common.HexToHash("0x0584834e5222471a06c669d210e302ca602780eaaddd04634fd65471c2a91419"),
 	}
 
 	// RinkebyChainConfig contains the chain parameters to run a node on the Rinkeby test network.
@@ -112,32 +120,37 @@ var (
 
 	// SportChainConfig contains the chain parameters to run a node on the Sport test network.
 	SportChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(5),
-		HomesteadBlock:      big.NewInt(1),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
+
+		ByzantiumBlock:      big.NewInt(1),
 		EIP150Block:         big.NewInt(2),
-		EIP150Hash:          common.HexToHash("0x9b095b36c15eaf13044373aef8ee0bd3a382a5abb92e402afa44b8249c3a90e9"),
-		EIP155Block:         big.NewInt(3),
+		EIP150Hash:          common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(3),
-		ByzantiumBlock:      big.NewInt(4),
-		ConstantinopleBlock: big.NewInt(4),
 		PetersburgBlock:     big.NewInt(4),
+		ConstantinopleBlock: big.NewInt(5),
 
 		Sport: &SportConfig{
 			Epoch:         30000,
 			SpeakerPolicy: 0,
 		},
+
+		IsSmilo:       true,
+		IsGas:         true,
+		IsGasRefunded: true,
+
+		ChainID: big.NewInt(20080914),
+
+		RequiredMinFunds: 20000,
 	}
 
-	// SportTrustedCheckpoint contains the light client trusted checkpoint for the Smilo test network.
-	SportTrustedCheckpoint = &TrustedCheckpoint{
-		Name:         "smilo",
-		SectionIndex: 0,
-		SectionHead:  common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-		CHTRoot:      common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-		BloomRoot:    common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-	}
+	//// SportTrustedCheckpoint contains the light client trusted checkpoint for the Smilo test network.
+	//SportTrustedCheckpoint = &TrustedCheckpoint{
+	//	Name:         "smilo",
+	//	SectionIndex: 0,
+	//	SectionHead:  common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+	//	CHTRoot:      common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+	//	BloomRoot:    common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+	//}
 
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Ethash consensus.
@@ -208,7 +221,7 @@ type ChainConfig struct {
 	IsGas         bool `json:"isGas"`         //true for when using gas, false when not using any
 	IsGasRefunded bool `json:"isGasRefunded"` //true for when using gas and refund is enabled, false when not refundable
 
-	RequiredMinFunds int64 `json:"required_min_funds"` //1e+16
+	RequiredMinFunds int64 `json:"required_min_funds"` //default: 20000 smilos
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -254,7 +267,7 @@ func (c *ChainConfig) String() string {
 	default:
 		engine = "unknown"
 	}
-	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v  ConstantinopleFix: %v IsSmilo: %v Engine: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v  ConstantinopleFix: %v IsSmilo: %v, IsGas: %v, IsGasRefunded: %v, MinFunds: %v, Engine: %v}",
 		c.ChainID,
 		c.HomesteadBlock,
 		c.DAOForkBlock,
@@ -266,6 +279,9 @@ func (c *ChainConfig) String() string {
 		c.ConstantinopleBlock,
 		c.PetersburgBlock,
 		c.IsSmilo,
+		c.IsGas,
+		c.IsGasRefunded,
+		c.RequiredMinFunds,
 		engine,
 	)
 }

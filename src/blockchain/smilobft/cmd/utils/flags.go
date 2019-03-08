@@ -143,13 +143,13 @@ var (
 		Name:  "rinkeby",
 		Usage: "Rinkeby network: pre-configured proof-of-authority test network",
 	}
+	SportFlag = cli.BoolFlag{
+		Name:  "sport",
+		Usage: "Sport network: pre-configured proof-of-authority Smilo mainnet network",
+	}
 	ConstantinopleOverrideFlag = cli.Uint64Flag{
 		Name:  "override.constantinople",
 		Usage: "Manually specify constantinople fork-block, overriding the bundled setting",
-	}
-	SportFlag = cli.BoolFlag{
-		Name:  "sport",
-		Usage: "Sport network: pre-configured sport bft test network",
 	}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
@@ -747,6 +747,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
 	}
+	log.Debug("Going to setup bootnodes, ", "len(urls)", len(urls))
 
 	cfg.BootstrapNodes = make([]*enode.Node, 0, len(urls))
 	for _, url := range urls {
@@ -1332,10 +1333,12 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		cfg.Genesis = core.DefaultRinkebyGenesisBlock()
 	case ctx.GlobalBool(SportFlag.Name):
+		log.Debug("&*&*&*&* Going to setup Default SPORT genesis block")
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 5
+			cfg.NetworkId = 20080914
 		}
 		cfg.Genesis = core.DefaultSportGenesisBlock()
+		log.Debug("&*&*&*&* Genesis block for SPoRT configuration: ", "cfg.Genesis", cfg.Genesis)
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 1337
