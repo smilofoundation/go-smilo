@@ -260,6 +260,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 			config.Sport.Epoch = chainConfig.Sport.Epoch
 		}
 		config.Sport.SpeakerPolicy = sport.SpeakerPolicy(chainConfig.Sport.SpeakerPolicy)
+
 		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
 	}
 

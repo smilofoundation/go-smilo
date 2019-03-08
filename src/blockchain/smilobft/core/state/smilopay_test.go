@@ -20,9 +20,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/orinocopay/go-etherutils"
 	"fmt"
+
+	"github.com/orinocopay/go-etherutils"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSmiloPay(t *testing.T) {
