@@ -70,6 +70,7 @@ var (
 		Sport: &SportConfig{
 			Epoch:         30000,
 			SpeakerPolicy: 0,
+			MinFunds:      10000,
 		},
 
 		IsSmilo:       true,
@@ -78,7 +79,7 @@ var (
 
 		ChainID: big.NewInt(10),
 
-		RequiredMinFunds: 10000,
+		RequiredMinFunds: 1,
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
@@ -132,6 +133,7 @@ var (
 		Sport: &SportConfig{
 			Epoch:         30000,
 			SpeakerPolicy: 0,
+			MinFunds:      20000,
 		},
 
 		IsSmilo:       true,
@@ -140,7 +142,7 @@ var (
 
 		ChainID: big.NewInt(20080914),
 
-		RequiredMinFunds: 20000,
+		RequiredMinFunds: 1,
 	}
 
 	//// SportTrustedCheckpoint contains the light client trusted checkpoint for the Smilo test network.
@@ -221,7 +223,7 @@ type ChainConfig struct {
 	IsGas         bool `json:"isGas"`         //true for when using gas, false when not using any
 	IsGasRefunded bool `json:"isGasRefunded"` //true for when using gas and refund is enabled, false when not refundable
 
-	RequiredMinFunds int64 `json:"required_min_funds"` //default: 20000 smilos
+	RequiredMinFunds int64 `json:"required_min_funds"` // 1e16 -> 1 -> 1e16
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -245,8 +247,9 @@ func (c *CliqueConfig) String() string {
 
 // SportConfig is the consensus engine configs for Sport based sealing.
 type SportConfig struct {
-	Epoch         uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
-	SpeakerPolicy uint64 `json:"policy"` // The policy for speaker selection
+	Epoch         uint64 `json:"epoch"`    // Epoch length to reset votes and checkpoint
+	SpeakerPolicy uint64 `json:"policy"`   // The policy for speaker selection
+	MinFunds      int64  `json:"minfunds"` // The policy for speaker selection
 }
 
 // String implements the stringer interface, returning the consensus engine details.

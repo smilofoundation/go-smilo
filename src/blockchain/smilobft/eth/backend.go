@@ -261,6 +261,10 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		}
 		config.Sport.SpeakerPolicy = sport.SpeakerPolicy(chainConfig.Sport.SpeakerPolicy)
 
+		if chainConfig.Sport.MinFunds != 0 {
+			config.Sport.MinFunds = chainConfig.Sport.MinFunds
+		}
+
 		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
 	}
 
