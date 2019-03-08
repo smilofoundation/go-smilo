@@ -38,5 +38,5 @@ var DefaultConfig = &Config{
 	BlockPeriod:    1,
 	SpeakerPolicy:  RoundRobin,
 	Epoch:          30000,
-	MinFunds:       20000,
+	MinFunds:       1,
 }

@@ -651,9 +651,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 
 	// BEGIN SMILO SPECIFICS
-	requireSmilos := new(big.Int).Mul(big.NewInt(pool.chainconfig.RequiredMinFunds), big.NewInt(1e18))
+	requireSmilos := new(big.Int).Mul(big.NewInt(pool.chainconfig.RequiredMinFunds), big.NewInt(1e16))
 
-	// default is 20k
 	if pool.currentState.GetBalance(from).Cmp(requireSmilos) < 0 {
 		log.Error("ErrInsufficientMinFunds", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "requiredMinFunds", pool.chainconfig.RequiredMinFunds, "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
 		return ErrInsufficientMinFunds
