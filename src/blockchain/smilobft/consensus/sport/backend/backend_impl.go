@@ -172,7 +172,7 @@ func (sb *backend) Verify(proposal sport.Proposal) (time.Duration, error) {
 
 // Sign implements sport.Backend.Sign
 func (sb *backend) Sign(data []byte) ([]byte, error) {
-	hashData := crypto.Keccak256([]byte(data))
+	hashData := crypto.Keccak256(data)
 	return crypto.Sign(hashData, sb.privateKey)
 }
 
