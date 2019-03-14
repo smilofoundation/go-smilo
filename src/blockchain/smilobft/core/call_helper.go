@@ -68,10 +68,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	context := NewEVMContext(msg, &cg.header, bc, &from)
 	vmenv := vm.NewEVM(context, publicState, vaultState, params.SmiloTestChainConfig, vm.Config{})
 	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // MakeCallHelper returns a new callHelper

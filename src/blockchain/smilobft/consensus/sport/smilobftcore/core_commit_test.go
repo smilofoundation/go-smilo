@@ -227,7 +227,7 @@ func TestHandleCommit(t *testing.T) {
 			committedSeals := v0.committedMsgs[0].committedSeals
 			for _, fullnode := range r0.fullnodeSet.List() {
 				for _, seal := range committedSeals {
-					if bytes.Compare(fullnode.Address().Bytes(), seal[:common.AddressLength]) == 0 {
+					if bytes.Equal(fullnode.Address().Bytes(), seal[:common.AddressLength]) {
 						signedCount++
 						break
 					}

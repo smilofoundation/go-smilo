@@ -1,6 +1,6 @@
 ## Go Smilo
 
-Official Golang implementation of the Smilo protocol.
+Official Golang implementation of the Smilo protocol. [![Build Status](https://travis-ci.org/Smilo-platform/go-smilo.svg?branch=master)](https://travis-ci.org/Smilo-platform/go-smilo)
 
 
 ## Building the source

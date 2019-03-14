@@ -48,7 +48,7 @@ func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, 
 		return common.Hash{}, err
 	}
 
-	data := []byte(tx.Data())
+	data := tx.Data()
 	isVault := args.SharedWith != nil
 
 	if isVault {

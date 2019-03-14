@@ -60,6 +60,11 @@ lint: clean ## Run linters. Use make install-linters first.
 		-E vet \
 		./src/...
 
+lint-eth: clean
+	src/blockchain/smilobft/build/env.sh go run ./src/blockchain/smilobft/build/ci.go lint
+
+imports:
+	./src/blockchain/smilobft/build/goimports.sh
 
 cover: ## Runs tests on ./src/ with HTML code coverage
 	@echo "mode: count" > coverage-all.out
@@ -95,7 +100,7 @@ format:  # Formats the code. Must have goimports installed (use make install-lin
 # ********* BEGIN GETH BUILD TASKS *********
 
 all:
-	build/env.sh go run build/ci.go install
+	src/blockchain/smilobft/build/env.sh go run ./src/blockchain/smilobft/build/ci.go install
 
 eth: clean
 	src/blockchain/smilobft/build/env.sh go run ./src/blockchain/smilobft/build/ci.go install

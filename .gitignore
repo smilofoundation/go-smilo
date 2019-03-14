@@ -6,7 +6,7 @@ poc
 build/_workspace
 build/bin
 src/blockchain/smilobft/build/_workspace
-
+temp
 
 
 # See http://help.github.com/ignore-files/ for more about ignoring files.
