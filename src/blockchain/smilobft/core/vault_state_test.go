@@ -8,6 +8,7 @@ import (
 	osExec "os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -189,6 +190,11 @@ func runBlackbox() (*osExec.Cmd, error) {
 //
 // Store then log
 func TestVaultTransaction(t *testing.T) {
+	//TODO: Add blackbox OSX/WIN compiled libs, detect os and run appropriate files
+	if runtime.GOOS != "linux" {
+		t.Skip()
+	}
+
 	var (
 		key, _      = crypto.GenerateKey()
 		helper      = MakeCallHelper()

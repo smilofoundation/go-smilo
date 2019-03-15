@@ -334,7 +334,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Mixhash:    common.HexToHash("0x636861696e20706c6174666f726d2077697468206120636f6e736369656e6365"),
 		Nonce:      0x0,
 		Timestamp:  0x00,
-		Alloc:      make(GenesisAlloc, 0),
+		Alloc:      make(GenesisAlloc),
 	}
 }
 
@@ -360,7 +360,7 @@ func DefaultSportGenesisBlock() *Genesis {
 		Mixhash:    common.HexToHash("0x636861696e20706c6174666f726d2077697468206120636f6e736369656e6365"),
 		Nonce:      0x0,
 		Timestamp:  0x00,
-		Alloc:      make(GenesisAlloc, 0),
+		Alloc:      make(GenesisAlloc),
 	}
 }
 

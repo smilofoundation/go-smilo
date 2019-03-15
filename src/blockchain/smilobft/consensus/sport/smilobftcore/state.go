@@ -29,7 +29,6 @@ const (
 	msgPrepare
 	msgCommit
 	msgRoundChange
-	msgAll
 )
 
 func (s State) String() string {
