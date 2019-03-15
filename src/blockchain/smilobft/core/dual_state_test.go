@@ -135,14 +135,17 @@ func TestDualState(t *testing.T) {
 
 			vaultState, _ := state.New(common.Hash{}, state.NewDatabase(db))
 			publicState, _ := state.New(common.Hash{}, state.NewDatabase(db))
+			var isVault bool
 
 			if test.firstState == "vault" {
+				isVault = true
 				vaultState.SetCode(common.Address{2}, common.Hex2Bytes(test.firstStateCode))
 			} else if test.firstState == "public" {
 				publicState.SetCode(common.Address{2}, common.Hex2Bytes(test.firstStateCode))
 			}
 
 			if test.secondState == "vault" {
+				isVault = true
 				vaultState.SetCode(*test.callMessage.to, common.Hex2Bytes(test.secondStateCode))
 			} else if test.secondState == "public" {
 				publicState.SetCode(*test.callMessage.to, common.Hex2Bytes(test.secondStateCode))
@@ -153,7 +156,7 @@ func TestDualState(t *testing.T) {
 
 			ctx := NewEVMContext(msg, &dualStateTestHeader, nil, &author)
 			env := vm.NewEVM(ctx, publicState, vaultState, &params.ChainConfig{}, vm.Config{})
-			env.Call(vm.AccountRef(author), callAddr, msg.data, msg.gas, new(big.Int), true)
+			env.Call(vm.AccountRef(author), callAddr, msg.data, msg.gas, new(big.Int), isVault)
 
 			if test.expectedState == "vault" {
 				value := vaultState.GetState(test.expectedStateAddr, common.Hash{})
