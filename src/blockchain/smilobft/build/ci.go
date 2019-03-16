@@ -361,7 +361,8 @@ func doLint(cmdline []string) {
 		"--tests",
 		"--deadline=2m",
 		"--disable-all",
-		"--enable=goimports",
+		//FIXME: goimports is coliding with gofmt - go version: 1.11.5; un-comment when upgrading
+		//"--enable=goimports",
 		"--enable=varcheck",
 		"--enable=vet",
 		"--enable=gofmt",

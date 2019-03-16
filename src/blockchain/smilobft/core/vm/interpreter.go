@@ -52,6 +52,8 @@ type Config struct {
 	EWASMInterpreter string
 	// Type of the EVM interpreter
 	EVMInterpreter string
+
+	EstimateGas bool
 }
 
 // Interpreter is used to run Ethereum based contracts and will utilise the
@@ -213,8 +215,8 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly, isVaul
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
 
-		if in.evm.smiloReadOnly && op.isMutating() && !in.readOnly {
-			log.Error("ERROR: interpreter, ErrReadOnlyMutateOpcode, ", "in.evm.smiloReadOnly", in.evm.smiloReadOnly, "op.isMutating", op.isMutating(), "isVault", isVault, "in.readOnly ", in.readOnly)
+		if !in.cfg.EstimateGas && in.evm.smiloReadOnly && op.isMutating() {
+			log.Error("ERROR: interpreter, ErrReadOnlyMutateOpcode, ", "in.evm.smiloReadOnly", in.evm.smiloReadOnly, "op.isMutating", op.isMutating(), "in.readOnly ", in.readOnly, "isVault", isVault, "env.readOnlyDepth", in.evm.readOnlyDepth, "currentStateDepth", in.evm.currentStateDepth)
 			return nil, ErrReadOnlyMutateOpcode
 		}
 
