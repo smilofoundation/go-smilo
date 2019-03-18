@@ -119,7 +119,7 @@ func gasReturnDataCopy(gt params.GasTable, evm *EVM, contract *Contract, stack *
 
 func gasSStore(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	var (
-		db      = getPrivateOrPublicStateDB(evm, contract.Address())
+		_, db   = getPrivateOrPublicStateDB(evm, contract.Address())
 		y, x    = stack.Back(1), stack.Back(0)
 		current = db.GetState(contract.Address(), common.BigToHash(x))
 	)
@@ -398,11 +398,13 @@ func gasCall(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, mem
 		address        = common.BigToAddress(stack.Back(1))
 		eip158         = evm.ChainConfig().IsEIP158(evm.BlockNumber)
 	)
+	_, thisState := getPrivateOrPublicStateDB(evm, address)
+
 	if eip158 {
-		if transfersValue && getPrivateOrPublicStateDB(evm, address).Empty(address) {
+		if transfersValue && thisState.Empty(address) {
 			gas += params.CallNewAccountGas
 		}
-	} else if !getPrivateOrPublicStateDB(evm, address).Exist(address) {
+	} else if !thisState.Exist(address) {
 		gas += params.CallNewAccountGas
 	}
 	if transfersValue {
@@ -469,7 +471,7 @@ func gasSuicide(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, 
 			address = common.BigToAddress(stack.Back(0))
 			eip158  = evm.ChainConfig().IsEIP158(evm.BlockNumber)
 		)
-		db = getPrivateOrPublicStateDB(evm, address)
+		_, db = getPrivateOrPublicStateDB(evm, address)
 
 		if eip158 {
 			// if empty and transfers value
@@ -481,7 +483,7 @@ func gasSuicide(gt params.GasTable, evm *EVM, contract *Contract, stack *Stack, 
 		}
 	}
 
-	db = getPrivateOrPublicStateDB(evm, contract.Address())
+	_, db = getPrivateOrPublicStateDB(evm, contract.Address())
 	if !db.HasSuicided(contract.Address()) {
 		db.AddRefund(params.SuicideRefundGas)
 	}

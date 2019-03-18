@@ -82,8 +82,10 @@ doc:
 
 install-linters: ## Install linters
 	go get -u github.com/FiloSottile/vendorcheck
-	go get -u github.com/alecthomas/gometalinter
-	go get -u github.com/davecheney/godoc2md
+	go get -u gopkg.in/alecthomas/gometalinter.v2
+	go get -u golang.org/x/tools/cmd/goimports
+	go get -u golang.org/x/tools/cmd/gofmt
+#	go get -u github.com/davecheney/godoc2md
 	gometalinter --vendored-linters --install
 
 
@@ -92,8 +94,8 @@ format:  # Formats the code. Must have goimports installed (use make install-lin
 	$(foreach pkg,$(PACKAGES),\
 		goimports -w -local go-smilo $(pkg);\
 		gofmt -s -w $(pkg);)
-	goimports -w -local go-smilo main.go
 	gofmt -s -w main.go
+	goimports -w -local go-smilo main.go
 
 
 
@@ -254,7 +256,6 @@ geth-windows-amd64:
 
 
 # ********* END GETH BUILD TASKS *********
-
 
 
 

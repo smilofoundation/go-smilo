@@ -1,7 +1,9 @@
 ## Go Smilo
 
-Official Golang implementation of the Smilo protocol. [![Build Status](https://travis-ci.org/Smilo-platform/go-smilo.svg?branch=master)](https://travis-ci.org/Smilo-platform/go-smilo)
-
+Official Golang implementation of the Smilo protocol. 
+[![Build Status](https://travis-ci.org/Smilo-platform/go-smilo.svg?branch=master)](https://travis-ci.org/Smilo-platform/go-smilo)
+[![GoDoc](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft?status.svg)](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Smilo-platform/go-smilo)](https://goreportcard.com/report/github.com/Smilo-platform/go-smilo)
 
 ## Building the source
 

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"go-smilo/src/blockchain/smilobft/swarm/log"
+
 	"github.com/ethereum/go-ethereum/common/math"
 
 	"hash"
@@ -50,6 +52,8 @@ type Config struct {
 	EWASMInterpreter string
 	// Type of the EVM interpreter
 	EVMInterpreter string
+
+	EstimateGas bool
 }
 
 // Interpreter is used to run Ethereum based contracts and will utilise the
@@ -59,7 +63,7 @@ type Config struct {
 type Interpreter interface {
 	// Run loops and evaluates the contract's code with the given input data and returns
 	// the return byte-slice and an error if one occurred.
-	Run(contract *Contract, input []byte, static bool) ([]byte, error)
+	Run(contract *Contract, input []byte, static, isVault bool) ([]byte, error)
 	// CanRun tells if the contract, passed as an argument, can be
 	// run by the current interpreter. This is meant so that the
 	// caller can do something like:
@@ -144,7 +148,7 @@ func (in *EVMInterpreter) enforceRestrictions(op OpCode, operation operation, st
 // It's important to note that any errors returned by the interpreter should be
 // considered a revert-and-consume-all-gas operation except for
 // errExecutionReverted which means revert-and-keep-gas-left.
-func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (ret []byte, err error) {
+func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly, isVault bool) (ret []byte, err error) {
 	if in.intPool == nil {
 		in.intPool = poolOfIntPools.get()
 		defer func() {
@@ -211,7 +215,8 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		// Get the memory location of pc
 		op = contract.GetOp(pc)
 
-		if in.evm.smiloReadOnly && op.isMutating() {
+		if !in.cfg.EstimateGas && in.evm.smiloReadOnly && op.isMutating() {
+			log.Error("ERROR: interpreter, ErrReadOnlyMutateOpcode, ", "in.evm.smiloReadOnly", in.evm.smiloReadOnly, "op.isMutating", op.isMutating(), "in.readOnly ", in.readOnly, "isVault", isVault, "env.readOnlyDepth", in.evm.readOnlyDepth, "currentStateDepth", in.evm.currentStateDepth)
 			return nil, ErrReadOnlyMutateOpcode
 		}
 
