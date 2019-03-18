@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"golang.org/x/crypto/sha3"
@@ -414,7 +416,11 @@ func opAddress(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 func opBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
 	slot := stack.peek()
 	addr := common.BigToAddress(slot)
-	balance := getPrivateOrPublicStateDB(interpreter.evm, addr).GetBalance(addr)
+	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if isVault != isVaultOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opBalance, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
+	balance := thisstate.GetBalance(addr)
 	slot.Set(balance)
 	return nil, nil
 }
@@ -482,7 +488,11 @@ func opReturnDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contrac
 func opExtCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
 	slot := stack.peek()
 	addr := common.BigToAddress(slot)
-	slot.SetUint64(uint64(getPrivateOrPublicStateDB(interpreter.evm, addr).GetCodeSize(addr)))
+	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if isVault != isVaultOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opExtCodeSize, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
+	slot.SetUint64(uint64(thisstate.GetCodeSize(addr)))
 
 	return nil, nil
 }
@@ -514,7 +524,12 @@ func opExtCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, 
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
-	codeCopy := getDataBig(getPrivateOrPublicStateDB(interpreter.evm, addr).GetCode(addr), codeOffset, length)
+	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if isVault != isVaultOnDB {
+		log.Error("ERROR: instructions.opExtCodeCopy, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
+
+	codeCopy := getDataBig(thisstate.GetCode(addr), codeOffset, length)
 	memory.Set(memOffset.Uint64(), length.Uint64(), codeCopy)
 
 	interpreter.intPool.put(memOffset, codeOffset, length)
@@ -633,7 +648,12 @@ func opMstore8(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 
 func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
 	loc := stack.peek()
-	val := getPrivateOrPublicStateDB(interpreter.evm, contract.Address()).GetState(contract.Address(), common.BigToHash(loc))
+	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if isVault != isVaultOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opSload, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
+
+	val := thisstate.GetState(contract.Address(), common.BigToHash(loc))
 	loc.SetBytes(val.Bytes())
 	return nil, nil
 }
@@ -641,7 +661,11 @@ func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 func opSstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
 	loc := common.BigToHash(stack.pop())
 	val := stack.pop()
-	getPrivateOrPublicStateDB(interpreter.evm, contract.Address()).SetState(contract.Address(), loc, common.BigToHash(val))
+	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if isVault != isVaultOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opSstore, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
+	thisstate.SetState(contract.Address(), loc, common.BigToHash(val))
 
 	interpreter.intPool.put(val)
 	return nil, nil
@@ -884,7 +908,10 @@ func opStop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 }
 
 func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
-	db := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	isVaultOnDB, db := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if isVault != isVaultOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opSuicide, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	}
 	balance := db.GetBalance(contract.Address())
 	db.AddBalance(common.BigToAddress(stack.pop()), balance, interpreter.evm.BlockNumber)
 

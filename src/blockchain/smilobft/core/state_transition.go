@@ -21,6 +21,8 @@ import (
 	"errors"
 	"math/big"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/log"
@@ -216,17 +218,23 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	isVault := false
 	publicState := st.state
 	if msg, ok := msg.(VaultMessage); ok && isSmilo && msg.IsVault() {
-		isVault = true
-		data, err = vault.VaultInstance.Get(st.data)
-		// Increment the public account nonce if:
-		// 1. Tx is vault and *not* a participant of the group and either call or create
-		// 2. Tx is vault we are part of the group and is a call
-		if err != nil || !contractCreation {
+		if vault.VaultInstance == nil {
+			log.Error("&*&*&*&*& state_transition TransitionDb, Got Vault message but Vault is offline. Please report to SystemAdmin. ", "st.data", cmn.Bytes2Hex(st.data), "contractCreation", contractCreation, "isVault", isVault, "len(ret)", len(ret), "st.gasUsed", st.gasUsed(), "st.gasPrice", st.gasPrice, "sender.Address", sender.Address())
 			publicState.SetNonce(sender.Address(), publicState.GetNonce(sender.Address())+1)
-		}
-
-		if err != nil {
 			return nil, 0, false, nil
+		} else {
+			isVault = true
+			data, err = vault.VaultInstance.Get(st.data)
+			// Increment the public account nonce if:
+			// 1. Tx is vault and *not* a participant of the group and either call or create
+			// 2. Tx is vault we are part of the group and is a call
+			if err != nil || !contractCreation {
+				publicState.SetNonce(sender.Address(), publicState.GetNonce(sender.Address())+1)
+			}
+
+			if err != nil {
+				return nil, 0, false, nil
+			}
 		}
 	} else {
 		data = st.data

@@ -101,7 +101,15 @@ func (c *core) IsSpeaker() bool {
 }
 
 func (c *core) IsCurrentProposal(blockHash common.Hash) bool {
-	return c.current.pendingRequest != nil && c.current.pendingRequest.Proposal.Hash() == blockHash
+	if c.current == nil || c.current.pendingRequest == nil || c.current.pendingRequest.Proposal == nil {
+		log.Error("&*&*&*&*&* IsCurrentProposal, could not evaluate complete object c.current.pendingRequest.Proposal, ", "c.current", c.current)
+		return false
+	}
+
+	isPending := c.current.pendingRequest != nil
+	isCurrentProposal := c.current.pendingRequest.Proposal.Hash() == blockHash
+
+	return isPending && isCurrentProposal
 }
 
 func (c *core) commit() {
