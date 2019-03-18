@@ -259,27 +259,3 @@ geth-windows-amd64:
 
 
 
-
-geth-local1: #geth
-	rm -rf /opt/gocode/src/smilo-testnet/aws5/sdata/ss10
-	./build/bin/geth --datadir /opt/gocode/src/smilo-testnet/aws5/sdata/ss10 init /opt/gocode/src/smilo-testnet/aws5/smilo-genesis-mainnet.json
-	./build/bin/geth --datadir /opt/gocode/src/smilo-testnet/aws5/sdata/ss10 --verbosity 5 \
-	--syncmode full --networkid 20080914 \
-	--rpc --rpcaddr 0.0.0.0 --rpcapi admin,db,eth,debug,miner,net,shh,txpool,personal,web3,smilo,sport \
-	--rpccorsdomain \"*\" --ws --wsaddr 0.0.0.0 --wsorigins '*' --wsapi personal,admin,db,eth,net,web3,miner,shh,txpool,debug \
-	--rpcport 22009 --wsport 23009 --port 21009
-
-#	--sport \
-#	./build/bin/geth --datadir /opt/gocode/src/smilo-testnet/aws5/sdata/ss9 init /opt/gocode/src/github.com/ethereum/smilo-examples/examples/7smilos/sport-genesis-v1-8.json
-geth-local: #geth
-#	rm -rf temp/sdata/ss9
-#	./build/bin/geth --datadir /opt/gocode/src/smilo-testnet/aws5/sdata/ss9 init /opt/gocode/src/smilo-testnet/aws5/smilo-genesis-mainnet.json
-	./build/bin/geth --datadir temp/sdata/ss9 --verbosity 2 \
-	--syncmode full --networkid 10 \
-	--rpc --rpcaddr 0.0.0.0 --rpcapi admin,db,eth,debug,miner,net,shh,txpool,personal,web3,smilo,sport \
-	--rpccorsdomain \"*\" --ws --wsaddr 0.0.0.0 --wsorigins '*' --wsapi personal,admin,db,eth,net,web3,miner,shh,txpool,debug \
-	--rpcport 22008 --wsport 23008 --port 21008 --testnet
-#	-bootnodes enode://8f9d91c3d9ee8f0676e5da062f2bc7a6ae00f962d65897e2b9c64f3338bcb7f76f7f802414f55f20e929cacc65f9ea466ddc05856bd22cfe975dad16ba235738@127.0.0.1:21009
-#	-bootnodes enode://b1ff9da9bd6f135a852625793235a24333ece79047a952ebcea8cf464768b506a4a4e0897af13e0641bfd5e2a120bce89d200e8e20c81d170533210e91907387@127.0.0.1:21000
-#	-bootnodes enode://35beee3c86cb3e4d25009779b25ed2f964f31b0f160766a5a53c2ca8c0d705d827a35dde71d479ac0c7a954f7cec8f1a501062bf132ae735aa9569ec98180cef@52.214.227.187:30301,enode://aa255d87e4f7586332b8a2cb2b39a4572029c34b109874cc4819ba19a7b7a3b50ad5ebb0e9af05f26594cd89c66e11f67e49e280ae2318125c9b298ff4d36f24@52.50.18.20:30301,enode://db485ce2629952c2d213930bacfdb8ab0f51b55a103dd9e6350d079ea26cf03b452613c74ac264c4652aa2df1c721f4dad0e9da0e556e416c022afd7c8526520@34.252.54.93:30301,enode://dcfb91c1d54eacee2e605f0deb6296d97faf2a5a4284f4e476e9c5dfd9c28db698eaeeddab07247a24f2483e9687865d6fae21b6c8127b5639b42f4ba36c4c93@34.252.54.93:30301,enode://06c06c0d7273e0886fe56f98e70686a8490e636190d2655fdc3da9838eb2eca3f7d760f2c19bb1c85c97727cf514a5b5ff0c7aa4f13529e2d5f7b69c726cb73d@52.212.79.188:30301
-#	-bootnodes enode://f5cce0c7413240ade5f0a37a052383427f54b285df63c41d19694a7be54b0ef5ea14dd1947b1b96c10f2324c6dd48bcfc3480c423aa3bc12e560e0005fddeb3e@18.202.153.27:21000
