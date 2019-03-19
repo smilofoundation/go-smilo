@@ -102,22 +102,36 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 	// If our round number is smaller than the certificate's round number, we would
 	// try to catch up the round number.
 	//2F+E
-	expectedConsensus := c.fullnodeSet.F() + c.fullnodeSet.E()
-	isRoundNumberSmallerThenCertificate := float64(messageCount) == expectedConsensus
+	expectedConsensus := int(c.fullnodeSet.F() + c.fullnodeSet.E())
+	isRoundNumberSmallerThenCertificate := int(messageCount) == expectedConsensus
 
 	logger.Trace("handleRoundChange, Validating variables, ",
 		"expectedConsensus", expectedConsensus,
 		"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
-		"c.fullnodeSet.F() + c.fullnodeSet.E()", c.fullnodeSet.F()+c.fullnodeSet.E(),
-		"float64(messageCount) == expectedConsensus", float64(messageCount) == expectedConsensus,
-		"float64(messageCount)", float64(messageCount),
+		"F+E", c.fullnodeSet.F()+c.fullnodeSet.E(),
+		"messageCount", float64(messageCount),
+		"waitingForRoundChange", c.waitingForRoundChange,
+		"2*F+E", 2*c.fullnodeSet.F()+c.fullnodeSet.E(),
+		"messageCount==2*F+E", int(messageCount) == int(2*c.fullnodeSet.F()+c.fullnodeSet.E()),
+
 	)
 
 	if c.waitingForRoundChange && isRoundNumberSmallerThenCertificate {
+		//cv < roundView
 		if cv.Round.Cmp(roundView.Round) < 0 {
+			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, Will send Round Change with current Round,",
+				"messageCount", messageCount,
+				"expectedConsensus", expectedConsensus,
+				"F", c.fullnodeSet.F(),
+				"E", c.fullnodeSet.E(),
+				"Round", roundView.Round,
+				"diff_rounds", cv.Round.Cmp(roundView.Round),
+				"Current Round", cv.Round,
+				"Round Change:", roundView.Round,
+			)
 			c.sendRoundChange(roundView.Round)
 		} else {
-			logger.Debug("handleRoundChange, f+1 ROUND CHANGE, waitingForRoundChange && isRoundNumberSmallerThenCertificate, but Still Waiting For Round Change, (same round number and sequence number)",
+			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, waitingForRoundChange && isRoundNumberSmallerThenCertificate, but Still Waiting For Round Change, (same round number and sequence number)",
 				"messageCount", messageCount,
 				"expectedConsensus", expectedConsensus,
 				"F", c.fullnodeSet.F(),
@@ -130,7 +144,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 		}
 		return nil
 		//2F+E
-	} else if float64(messageCount) == 2*c.fullnodeSet.F()+c.fullnodeSet.E() && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
+	} else if int(messageCount) == int(2*c.fullnodeSet.F()+c.fullnodeSet.E()) && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
 		// We've received 2F+E ROUND CHANGE messages, start a new round immediately. handlePrepare, before
 		logger.Debug("handleRoundChange, We've received 2F+E ROUND CHANGE messages, start a new round immediately.",
 			"messageCount", messageCount,
