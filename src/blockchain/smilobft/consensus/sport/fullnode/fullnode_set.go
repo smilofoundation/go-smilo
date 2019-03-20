@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
+	"math"
 )
 
 func (fullnodeSet *fullnodeSet) Size() int {
@@ -110,8 +111,10 @@ func (fullnodeSet *fullnodeSet) Copy() sport.FullnodeSet {
 	return NewFullnodeSet(addresses, fullnodeSet.policy)
 }
 
-func (fullnodeSet *fullnodeSet) F() float64 { return float64(fullnodeSet.Size()-1) / 3 }
+func (fullnodeSet *fullnodeSet) MaxFaulty() int { return int(math.Ceil(float64(fullnodeSet.Size()+1) / 3.0))-1 }
 
-func (fullnodeSet *fullnodeSet) E() float64 { return 1 }
+func (fullnodeSet *fullnodeSet) MinApprovers() int { return int(math.Ceil(float64(fullnodeSet.Size()) / 3.0)) }
+
+func (fullnodeSet *fullnodeSet) E() int { return 1 }
 
 func (fullnodeSet *fullnodeSet) Policy() sport.SpeakerPolicy { return fullnodeSet.policy }

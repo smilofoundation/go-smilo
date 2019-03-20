@@ -92,7 +92,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 			"from", src,
 			"msg", msg,
 			"err", err,
-			"F", c.fullnodeSet.F(),
+			"F", c.fullnodeSet.MaxFaulty(),
 			"E", c.fullnodeSet.E(),
 		)
 		return err
@@ -102,17 +102,17 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 	// If our round number is smaller than the certificate's round number, we would
 	// try to catch up the round number.
 	//2F+E
-	expectedConsensus := int(c.fullnodeSet.F() + c.fullnodeSet.E())
+	expectedConsensus := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
 	isRoundNumberSmallerThenCertificate := int(messageCount) == expectedConsensus
 
 	logger.Trace("handleRoundChange, Validating variables, ",
 		"expectedConsensus", expectedConsensus,
 		"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
-		"F+E", c.fullnodeSet.F()+c.fullnodeSet.E(),
-		"messageCount", float64(messageCount),
+		"F+E", c.fullnodeSet.MaxFaulty()+c.fullnodeSet.E(),
+		"messageCount", messageCount,
 		"waitingForRoundChange", c.waitingForRoundChange,
-		"2*F+E", 2*c.fullnodeSet.F()+c.fullnodeSet.E(),
-		"messageCount==2*F+E", int(messageCount) == int(2*c.fullnodeSet.F()+c.fullnodeSet.E()),
+		"2*F+E", c.fullnodeSet.MinApprovers(),
+		"messageCount==2*F+E", int(messageCount) == c.fullnodeSet.MinApprovers(),
 
 	)
 
@@ -122,7 +122,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, Will send Round Change with current Round,",
 				"messageCount", messageCount,
 				"expectedConsensus", expectedConsensus,
-				"F", c.fullnodeSet.F(),
+				"F", c.fullnodeSet.MaxFaulty(),
 				"E", c.fullnodeSet.E(),
 				"Round", roundView.Round,
 				"diff_rounds", cv.Round.Cmp(roundView.Round),
@@ -134,7 +134,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, waitingForRoundChange && isRoundNumberSmallerThenCertificate, but Still Waiting For Round Change, (same round number and sequence number)",
 				"messageCount", messageCount,
 				"expectedConsensus", expectedConsensus,
-				"F", c.fullnodeSet.F(),
+				"F", c.fullnodeSet.MaxFaulty(),
 				"E", c.fullnodeSet.E(),
 				"Round", roundView.Round,
 				"diff_rounds", cv.Round.Cmp(roundView.Round),
@@ -144,12 +144,12 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 		}
 		return nil
 		//2F+E
-	} else if int(messageCount) == int(2*c.fullnodeSet.F()+c.fullnodeSet.E()) && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
+	} else if int(messageCount) == c.fullnodeSet.MinApprovers() && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
 		// We've received 2F+E ROUND CHANGE messages, start a new round immediately. handlePrepare, before
 		logger.Debug("handleRoundChange, We've received 2F+E ROUND CHANGE messages, start a new round immediately.",
 			"messageCount", messageCount,
 			"expectedConsensus", expectedConsensus,
-			"F", c.fullnodeSet.F(),
+			"F", c.fullnodeSet.MaxFaulty(),
 			"E", c.fullnodeSet.E(),
 			"Round", roundView.Round,
 			"diff_rounds", cv.Round.Cmp(roundView.Round),
@@ -163,7 +163,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 		logger.Debug("handleRoundChange, Only gossip the message with current round to other fullnodes.",
 			"messageCount", messageCount,
 			"expectedConsensus", expectedConsensus,
-			"F", c.fullnodeSet.F(),
+			"F", c.fullnodeSet.MaxFaulty(),
 			"E", c.fullnodeSet.E(),
 			"Round", roundView.Round,
 			"diff_rounds", cv.Round.Cmp(roundView.Round),

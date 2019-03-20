@@ -74,8 +74,8 @@ func (c *core) handleCommit(msg *message, src sport.Fullnode) error {
 	//
 	// If we already have a proposal, we may have chance to speed up the consensus process
 	// by committing the proposal without PREPARE messages.
-	actualFloat := float64(c.current.Commits.Size())
-	requiredFloat := 2 * c.fullnodeSet.F()
+	actualFloat := c.current.Commits.Size()
+	requiredFloat := c.fullnodeSet.MinApprovers()
 
 	if actualFloat >= requiredFloat && c.state.Cmp(StateCommitted) < 0 {
 		// Still need to call LockHash here since state can skip Prepared state and jump directly to the Committed state.

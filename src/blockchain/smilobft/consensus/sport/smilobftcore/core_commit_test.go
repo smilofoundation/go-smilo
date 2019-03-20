@@ -25,8 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"math"
-
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
@@ -197,8 +195,7 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			//2F+E
-			f2 := 2 * r0.fullnodeSet.F()
-			intf2 := int(math.Ceil(f2))
+			intf2 := r0.fullnodeSet.MinApprovers()
 
 			// prepared is normal case
 			if r0.state != StateCommitted {
@@ -208,7 +205,7 @@ func TestHandleCommit(t *testing.T) {
 				}
 
 				if r0.current.Commits.Size() > intf2 {
-					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", 2*r0.fullnodeSet.F()+r0.fullnodeSet.E())
+					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", r0.fullnodeSet.MinApprovers())
 				}
 				if r0.current.IsHashLocked() {
 					t.Errorf("********* ERROR " + test.name + ", block should not be locked")
@@ -223,7 +220,7 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			// check signatures large than 2F+E
-			signedCount := 0.0
+			signedCount := 0
 			committedSeals := v0.committedMsgs[0].committedSeals
 			for _, fullnode := range r0.fullnodeSet.List() {
 				for _, seal := range committedSeals {
@@ -233,8 +230,8 @@ func TestHandleCommit(t *testing.T) {
 					}
 				}
 			}
-			if signedCount < 2*r0.fullnodeSet.F() {
-				t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", 2*r0.fullnodeSet.F(), signedCount)
+			if signedCount < r0.fullnodeSet.MinApprovers() {
+				t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", r0.fullnodeSet.MinApprovers(), signedCount)
 			}
 			if !r0.current.IsHashLocked() {
 				t.Errorf("********* ERROR " + test.name + ", block should be locked")

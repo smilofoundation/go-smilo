@@ -216,8 +216,7 @@ func TestHandlePrepare(t *testing.T) {
 
 			// core should have 2F+E PREPARE messages
 			//2F+E
-			f2 := 2 * r0.fullnodeSet.F()
-			intf2 := f2
+			intf2 := r0.fullnodeSet.MinApprovers()
 
 			// prepared is normal case
 			if r0.state != StatePrepared {
@@ -225,8 +224,8 @@ func TestHandlePrepare(t *testing.T) {
 				if r0.state != StatePreprepared {
 					t.Errorf("state mismatch: have %v, want %v", r0.state, StatePreprepared)
 				}
-				if float64(r0.current.Prepares.Size()) > intf2 {
-					t.Errorf("the size of PREPARE messages should be less than %v", intf2+r0.fullnodeSet.E())
+				if r0.current.Prepares.Size() >= intf2 {
+					t.Errorf("the size of PREPARE messages should be less than %v", intf2)
 				}
 				if r0.current.IsHashLocked() {
 					t.Errorf("block should not be locked")
@@ -235,7 +234,7 @@ func TestHandlePrepare(t *testing.T) {
 				return
 			}
 
-			if float64(r0.current.Prepares.Size()) <= intf2 {
+			if r0.current.Prepares.Size() < intf2 {
 				t.Errorf("the size of PREPARE messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 			}
 
