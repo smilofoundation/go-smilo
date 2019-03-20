@@ -47,7 +47,7 @@ type fullnodeSet struct {
 
 	speaker    sport.Fullnode
 	fullnodeMu sync.RWMutex
-	selector   sport.ProposalSelector
+	selector   sport.BlockProposalSelector
 }
 
 func NewFullnodeSet(addrs []common.Address, policy sport.SpeakerPolicy) sport.FullnodeSet {

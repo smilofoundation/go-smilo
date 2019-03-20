@@ -18,5 +18,5 @@
 package sport
 
 type Request struct {
-	Proposal Proposal
+	BlockProposal BlockProposal
 }

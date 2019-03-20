@@ -34,7 +34,7 @@ func TestPreprepare(t *testing.T) {
 			Round:    big.NewInt(1),
 			Sequence: big.NewInt(2),
 		},
-		Proposal: makeBlock(1),
+		BlockProposal: makeBlock(1),
 	}
 	prepreparePayload, _ := Encode(pp)
 
@@ -61,18 +61,18 @@ func TestPreprepare(t *testing.T) {
 		t.Errorf("error mismatch: have %v, want nil", err)
 	}
 
-	// if block is encoded/decoded by rlp, we cannot to compare interface data type using reflect.DeepEqual. (like sport.Proposal)
+	// if block is encoded/decoded by rlp, we cannot to compare interface data type using reflect.DeepEqual. (like sport.BlockProposal)
 	// so individual comparison here.
-	if !reflect.DeepEqual(pp.Proposal.Hash(), decodedPP.Proposal.Hash()) {
-		t.Errorf("proposal hash mismatch: have %v, want %v", decodedPP.Proposal.Hash(), pp.Proposal.Hash())
+	if !reflect.DeepEqual(pp.BlockProposal.Hash(), decodedPP.BlockProposal.Hash()) {
+		t.Errorf("proposal hash mismatch: have %v, want %v", decodedPP.BlockProposal.Hash(), pp.BlockProposal.Hash())
 	}
 
 	if !reflect.DeepEqual(pp.View, decodedPP.View) {
 		t.Errorf("view mismatch: have %v, want %v", decodedPP.View, pp.View)
 	}
 
-	if !reflect.DeepEqual(pp.Proposal.Number(), decodedPP.Proposal.Number()) {
-		t.Errorf("proposal number mismatch: have %v, want %v", decodedPP.Proposal.Number(), pp.Proposal.Number())
+	if !reflect.DeepEqual(pp.BlockProposal.Number(), decodedPP.BlockProposal.Number()) {
+		t.Errorf("proposal number mismatch: have %v, want %v", decodedPP.BlockProposal.Number(), pp.BlockProposal.Number())
 	}
 }
 

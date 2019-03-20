@@ -72,7 +72,7 @@ type FullnodeSet interface {
 	Copy() FullnodeSet
 	// Get the maximum number of faulty nodes
 	MaxFaulty() int
-    // Minimum nodes to approve on Consensus
+	// Minimum nodes to approve on Consensus
 	MinApprovers() int
 	// Get the extra number of faulty nodes
 	E() int
@@ -82,4 +82,4 @@ type FullnodeSet interface {
 
 // ----------------------------------------------------------------------------
 
-type ProposalSelector func(FullnodeSet, common.Address, uint64) Fullnode
+type BlockProposalSelector func(FullnodeSet, common.Address, uint64) Fullnode

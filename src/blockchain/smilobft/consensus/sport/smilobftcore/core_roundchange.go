@@ -106,69 +106,86 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 	isRoundNumberSmallerThenCertificate := int(messageCount) == expectedConsensus
 
 	logger.Trace("handleRoundChange, Validating variables, ",
-		"expectedConsensus", expectedConsensus,
 		"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
-		"F+E", c.fullnodeSet.MaxFaulty()+c.fullnodeSet.E(),
+		"expectedConsensus", expectedConsensus,
 		"messageCount", messageCount,
 		"waitingForRoundChange", c.waitingForRoundChange,
-		"2*F+E", c.fullnodeSet.MinApprovers(),
-		"messageCount==2*F+E", int(messageCount) == c.fullnodeSet.MinApprovers(),
-
+		"MaxFaulty", c.fullnodeSet.MaxFaulty(),
+		"MinApprovers", c.fullnodeSet.MinApprovers(),
+		"E", c.fullnodeSet.E(),
+		"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
 	)
 
 	if c.waitingForRoundChange && isRoundNumberSmallerThenCertificate {
 		//cv < roundView
 		if cv.Round.Cmp(roundView.Round) < 0 {
-			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, Will send Round Change with current Round,",
-				"messageCount", messageCount,
-				"expectedConsensus", expectedConsensus,
-				"F", c.fullnodeSet.MaxFaulty(),
-				"E", c.fullnodeSet.E(),
+			logger.Debug("handleRoundChange, sendRoundChange, F+1 ROUND CHANGE, Will send Round Change with current Round,",
 				"Round", roundView.Round,
 				"diff_rounds", cv.Round.Cmp(roundView.Round),
 				"Current Round", cv.Round,
 				"Round Change:", roundView.Round,
+				"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
+				"expectedConsensus", expectedConsensus,
+				"messageCount", messageCount,
+				"waitingForRoundChange", c.waitingForRoundChange,
+				"MaxFaulty", c.fullnodeSet.MaxFaulty(),
+				"MinApprovers", c.fullnodeSet.MinApprovers(),
+				"E", c.fullnodeSet.E(),
+				"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
 			)
 			c.sendRoundChange(roundView.Round)
 		} else {
 			logger.Debug("handleRoundChange, F+1 ROUND CHANGE, waitingForRoundChange && isRoundNumberSmallerThenCertificate, but Still Waiting For Round Change, (same round number and sequence number)",
 				"messageCount", messageCount,
-				"expectedConsensus", expectedConsensus,
-				"F", c.fullnodeSet.MaxFaulty(),
-				"E", c.fullnodeSet.E(),
 				"Round", roundView.Round,
 				"diff_rounds", cv.Round.Cmp(roundView.Round),
 				"Current Round", cv.Round,
 				"Round Change:", roundView.Round,
+				"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
+				"expectedConsensus", expectedConsensus,
+				"messageCount", messageCount,
+				"waitingForRoundChange", c.waitingForRoundChange,
+				"MaxFaulty", c.fullnodeSet.MaxFaulty(),
+				"MinApprovers", c.fullnodeSet.MinApprovers(),
+				"E", c.fullnodeSet.E(),
+				"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
 			)
 		}
 		return nil
 		//2F+E
 	} else if int(messageCount) == c.fullnodeSet.MinApprovers() && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
 		// We've received 2F+E ROUND CHANGE messages, start a new round immediately. handlePrepare, before
-		logger.Debug("handleRoundChange, We've received 2F+E ROUND CHANGE messages, start a new round immediately.",
-			"messageCount", messageCount,
-			"expectedConsensus", expectedConsensus,
-			"F", c.fullnodeSet.MaxFaulty(),
-			"E", c.fullnodeSet.E(),
+		logger.Debug("handleRoundChange, startNewRound, We've received 2F+E ROUND CHANGE messages, start a new round immediately.",
 			"Round", roundView.Round,
 			"diff_rounds", cv.Round.Cmp(roundView.Round),
 			"Current Round", cv.Round,
 			"Round Change:", roundView.Round,
+			"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
+			"expectedConsensus", expectedConsensus,
+			"messageCount", messageCount,
+			"waitingForRoundChange", c.waitingForRoundChange,
+			"MaxFaulty", c.fullnodeSet.MaxFaulty(),
+			"MinApprovers", c.fullnodeSet.MinApprovers(),
+			"E", c.fullnodeSet.E(),
+			"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
 		)
 		c.startNewRound(roundView.Round)
 		return nil
 	} else if cv.Round.Cmp(roundView.Round) < 0 {
 		// Only gossip the message with current round to other fullnodes.
 		logger.Debug("handleRoundChange, Only gossip the message with current round to other fullnodes.",
-			"messageCount", messageCount,
-			"expectedConsensus", expectedConsensus,
-			"F", c.fullnodeSet.MaxFaulty(),
-			"E", c.fullnodeSet.E(),
 			"Round", roundView.Round,
 			"diff_rounds", cv.Round.Cmp(roundView.Round),
 			"Current Round", cv.Round,
 			"Round Change:", roundView.Round,
+			"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
+			"expectedConsensus", expectedConsensus,
+			"messageCount", messageCount,
+			"waitingForRoundChange", c.waitingForRoundChange,
+			"MaxFaulty", c.fullnodeSet.MaxFaulty(),
+			"MinApprovers", c.fullnodeSet.MinApprovers(),
+			"E", c.fullnodeSet.E(),
+			"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
 		)
 		return errIgnored
 	}

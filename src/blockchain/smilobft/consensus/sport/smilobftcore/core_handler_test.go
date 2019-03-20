@@ -62,7 +62,7 @@ func TestHandleMsg(t *testing.T) {
 			Sequence: big.NewInt(0),
 			Round:    big.NewInt(0),
 		},
-		Proposal: makeBlock(1),
+		BlockProposal: makeBlock(1),
 	})
 	// with a unmatched payload. msgPrepare should match with *sport.Subject in normal case.
 	msg = &message{
@@ -83,7 +83,7 @@ func TestHandleMsg(t *testing.T) {
 			Sequence: big.NewInt(0),
 			Round:    big.NewInt(0),
 		},
-		Proposal: makeBlock(2),
+		BlockProposal: makeBlock(2),
 	})
 	// with a unmatched payload. sport.MsgCommit should match with *sport.Subject in normal case.
 	msg = &message{
@@ -104,7 +104,7 @@ func TestHandleMsg(t *testing.T) {
 			Sequence: big.NewInt(0),
 			Round:    big.NewInt(0),
 		},
-		Proposal: makeBlock(3),
+		BlockProposal: makeBlock(3),
 	})
 	// invalid message code. message code is not exists in list
 	msg = &message{

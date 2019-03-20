@@ -42,4 +42,6 @@ var (
 	errFailedDecodePrepare = errors.New("failed to decode PREPARE")
 	// errFailedDecodeCommit is returned when the COMMIT message is malformed.
 	errFailedDecodeCommit = errors.New("failed to decode COMMIT")
+	// errNotEnoughTransactions is returned when not enough transactions are in a block
+	errNotEnoughTransactions = errors.New("not enough transactions in this block")
 )

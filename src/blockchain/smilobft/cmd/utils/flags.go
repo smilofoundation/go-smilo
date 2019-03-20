@@ -672,6 +672,11 @@ var (
 		Usage: "path to smilo code analysis executable, if provided, enables eth.codeAnalysis web3",
 		Value: "",
 	}
+	MinBlocksEmptyMiningFlag = BigFlag{
+		Name:  "minblocksemptymining",
+		Usage: " Min Blocks to mine before Stop Mining Empty Blocks",
+		Value: big.NewInt(20000000),
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1165,6 +1170,9 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(DataDirFlag.Name) {
 		cfg.Sport.DataDir = ctx.GlobalString(DataDirFlag.Name)
+	}
+	if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
+		cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
 	}
 }
 

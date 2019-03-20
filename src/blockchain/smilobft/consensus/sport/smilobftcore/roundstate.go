@@ -57,7 +57,7 @@ func (s *roundState) Subject() *sport.Subject {
 			Round:    new(big.Int).Set(s.round),
 			Sequence: new(big.Int).Set(s.sequence),
 		},
-		Digest: s.Preprepare.Proposal.Hash(),
+		Digest: s.Preprepare.BlockProposal.Hash(),
 	}
 }
 
@@ -68,12 +68,12 @@ func (s *roundState) SetPreprepare(preprepare *sport.Preprepare) {
 	s.Preprepare = preprepare
 }
 
-func (s *roundState) Proposal() sport.Proposal {
+func (s *roundState) BlockProposal() sport.BlockProposal {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	if s.Preprepare != nil {
-		return s.Preprepare.Proposal
+		return s.Preprepare.BlockProposal
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (s *roundState) LockHash() {
 	defer s.mu.Unlock()
 
 	if s.Preprepare != nil {
-		s.lockedHash = s.Preprepare.Proposal.Hash()
+		s.lockedHash = s.Preprepare.BlockProposal.Hash()
 	}
 }
 
@@ -130,7 +130,7 @@ func (s *roundState) IsHashLocked() bool {
 	if cmn.EmptyHash(s.lockedHash) {
 		return false
 	}
-	return !s.hasBadProposal(s.GetLockedHash())
+	return !s.hasBadBlockProposal(s.GetLockedHash())
 }
 
 func (s *roundState) GetLockedHash() common.Hash {

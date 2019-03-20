@@ -150,6 +150,7 @@ var (
 		utils.SportBlockPeriodFlag,
 		utils.SolcPathFlag,
 		utils.SmiloCodeAnalysisPathFlag,
+		utils.MinBlocksEmptyMiningFlag,
 	}
 
 	rpcFlags = []cli.Flag{

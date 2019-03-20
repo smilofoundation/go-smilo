@@ -91,7 +91,7 @@ func (c *core) handleEvents() {
 			switch ev := event.Data.(type) {
 			case sport.RequestEvent:
 				r := &sport.Request{
-					Proposal: ev.Proposal,
+					BlockProposal: ev.BlockProposal,
 				}
 				err := c.handleRequest(r)
 				if err == errFutureMessage {
@@ -198,9 +198,9 @@ func (c *core) handleTimeoutMsg() {
 		}
 	}
 
-	lastProposal, _ := c.backend.LastProposal()
-	if lastProposal != nil && lastProposal.Number().Cmp(c.current.Sequence()) >= 0 {
-		c.logger.Warn("********** handleTimeoutMsg, round change timeout, catch up latest sequence", "number", lastProposal.Number().Uint64())
+	lastBlockProposal, _ := c.backend.LastBlockProposal()
+	if lastBlockProposal != nil && lastBlockProposal.Number().Cmp(c.current.Sequence()) >= 0 {
+		c.logger.Warn("********** handleTimeoutMsg, round change timeout, catch up latest sequence", "number", lastBlockProposal.Number().Uint64())
 		c.startNewRound(common.Big0)
 	} else {
 		c.sendNextRoundChange()

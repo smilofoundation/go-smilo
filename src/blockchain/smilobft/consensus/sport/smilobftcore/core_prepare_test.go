@@ -35,7 +35,7 @@ func TestHandlePrepare(t *testing.T) {
 	F := uint64(1)
 	E := uint64(1)
 
-	proposal := newTestProposal()
+	proposal := newTestBlockProposal()
 	expectedSubject := &sport.Subject{
 		View: &sport.View{
 			Round:    big.NewInt(0),
@@ -292,7 +292,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: nil,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -304,7 +304,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -328,7 +328,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: nil},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -340,7 +340,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(1), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -352,7 +352,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(1)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},

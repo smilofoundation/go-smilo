@@ -29,11 +29,11 @@ func (c *core) handleRequest(request *sport.Request) error {
 			logger.Warn("invalid request")
 			return err
 		}
-		logger.Warn("unexpected request", "err", err, "number", request.Proposal.Number(), "hash", request.Proposal.Hash())
+		logger.Warn("unexpected request", "err", err, "number", request.BlockProposal.Number(), "hash", request.BlockProposal.Hash())
 		return err
 	}
 
-	logger.Trace("handleRequest", "number", request.Proposal.Number(), "hash", request.Proposal.Hash())
+	logger.Trace("handleRequest", "number", request.BlockProposal.Number(), "hash", request.BlockProposal.Hash())
 
 	c.current.pendingRequest = request
 	if c.state == StateAcceptRequest {
@@ -47,11 +47,11 @@ func (c *core) handleRequest(request *sport.Request) error {
 // return errFutureMessage if the sequence of proposal is larger than current sequence
 // return errOldMessage if the sequence of proposal is smaller than current sequence
 func (c *core) checkRequestMsg(request *sport.Request) error {
-	if request == nil || request.Proposal == nil {
+	if request == nil || request.BlockProposal == nil {
 		return errInvalidMessage
 	}
 
-	if c := c.current.sequence.Cmp(request.Proposal.Number()); c > 0 {
+	if c := c.current.sequence.Cmp(request.BlockProposal.Number()); c > 0 {
 		return errOldMessage
 	} else if c < 0 {
 		return errFutureMessage
@@ -63,12 +63,12 @@ func (c *core) checkRequestMsg(request *sport.Request) error {
 func (c *core) storeRequestMsg(request *sport.Request) {
 	logger := c.logger.New("state", c.state)
 
-	logger.Trace("Store future request", "number", request.Proposal.Number(), "hash", request.Proposal.Hash())
+	logger.Trace("Store future request", "number", request.BlockProposal.Number(), "hash", request.BlockProposal.Hash())
 
 	c.pendingRequestsMu.Lock()
 	defer c.pendingRequestsMu.Unlock()
 
-	c.pendingRequests.Push(request, float32(-request.Proposal.Number().Int64()))
+	c.pendingRequests.Push(request, float32(-request.BlockProposal.Number().Int64()))
 }
 
 func (c *core) processPendingRequests() {
@@ -86,17 +86,17 @@ func (c *core) processPendingRequests() {
 		err := c.checkRequestMsg(r)
 		if err != nil {
 			if err == errFutureMessage {
-				c.logger.Trace("Stop processing request", "number", r.Proposal.Number(), "hash", r.Proposal.Hash())
+				c.logger.Trace("Stop processing request", "number", r.BlockProposal.Number(), "hash", r.BlockProposal.Hash())
 				c.pendingRequests.Push(m, prio)
 				break
 			}
-			c.logger.Trace("Skip the pending request", "number", r.Proposal.Number(), "hash", r.Proposal.Hash(), "err", err)
+			c.logger.Trace("Skip the pending request", "number", r.BlockProposal.Number(), "hash", r.BlockProposal.Hash(), "err", err)
 			continue
 		}
-		c.logger.Trace("Post pending request", "number", r.Proposal.Number(), "hash", r.Proposal.Hash())
+		c.logger.Trace("Post pending request", "number", r.BlockProposal.Number(), "hash", r.BlockProposal.Hash())
 
 		go c.sendEvent(sport.RequestEvent{
-			Proposal: r.Proposal,
+			BlockProposal: r.BlockProposal,
 		})
 	}
 }
