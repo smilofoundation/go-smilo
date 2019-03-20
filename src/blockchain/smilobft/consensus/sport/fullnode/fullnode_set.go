@@ -113,7 +113,7 @@ func (fullnodeSet *fullnodeSet) Copy() sport.FullnodeSet {
 
 func (fullnodeSet *fullnodeSet) MaxFaulty() int { return int(math.Ceil(float64(fullnodeSet.Size()+1) / 3.0))-1 }
 
-func (fullnodeSet *fullnodeSet) MinApprovers() int { return int(math.Ceil(float64(fullnodeSet.Size()) / 3.0)) }
+func (fullnodeSet *fullnodeSet) MinApprovers() int { return int(math.Ceil(float64(2*fullnodeSet.Size()) / 3.0)) }
 
 func (fullnodeSet *fullnodeSet) E() int { return 1 }
 
