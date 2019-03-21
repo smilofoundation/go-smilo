@@ -105,8 +105,11 @@ func (sb *backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 
 	// The length of validSeal should be larger than number of faulty node + 1
 	if validSeal < snap.FullnodeSet.MinApprovers() {
-		sb.logger.Error("The length of validSeal should be larger or eq than number of 2x faulty nodes", "validSeal", "2*snap.FullnodeSet.F()", snap.FullnodeSet.MinApprovers())
-		return errInvalidCommittedSeals
+		//if actual block is bigger than planned fork OR (old scenario) old expression that leads to less confirmation
+		if header.Number.Cmp(chain.Config().SixtySixPercentBlock) > 0 || validSeal < snap.FullnodeSet.MinApprovers()-1 {
+			sb.logger.Error("The length of validSeal should be larger or eq than number of 2x faulty nodes", "SixtySixPercentBlock", chain.Config().SixtySixPercentBlock, "validSeal", validSeal, "MinApprovers", snap.FullnodeSet.MinApprovers(), "original", 2*snap.FullnodeSet.Size(), "F", snap.FullnodeSet.Size())
+			return errInvalidCommittedSeals
+		}
 	}
 
 	return nil
