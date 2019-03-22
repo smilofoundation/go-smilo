@@ -66,7 +66,7 @@ var (
 		EIP158Block:          big.NewInt(3),
 		PetersburgBlock:      big.NewInt(4),
 		ConstantinopleBlock:  big.NewInt(5),
-		SixtySixPercentBlock: big.NewInt(300000),
+		SixtySixPercentBlock: big.NewInt(310000),
 
 		Sport: &SportConfig{
 			Epoch:         30000,
