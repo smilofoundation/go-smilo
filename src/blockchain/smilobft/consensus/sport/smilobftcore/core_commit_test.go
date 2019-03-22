@@ -195,7 +195,7 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			//2F+E
-			intf2 := r0.fullnodeSet.MinApprovers()
+			MinApprovers := r0.fullnodeSet.MinApprovers()
 
 			// prepared is normal case
 			if r0.state != StateCommitted {
@@ -204,7 +204,7 @@ func TestHandleCommit(t *testing.T) {
 					t.Errorf("********* ERROR "+test.name+", state mismatch: have %v, want %v", r0.state, StatePrepared)
 				}
 
-				if r0.current.Commits.Size() > intf2 {
+				if r0.current.Commits.Size() > MinApprovers {
 					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", r0.fullnodeSet.MinApprovers())
 				}
 				if r0.current.IsHashLocked() {
@@ -215,7 +215,7 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			// core should have 2F+E prepare messages
-			if r0.current.Commits.Size() <= intf2 {
+			if r0.current.Commits.Size() <= MinApprovers {
 				t.Errorf("********* ERROR "+test.name+", the size of commit messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 			}
 

@@ -18,6 +18,7 @@
 package smilobftcore
 
 import (
+	"go-smilo/src/blockchain/smilobft/swarm/log"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -68,22 +69,25 @@ func (c *core) handleCommit(msg *message, src sport.Fullnode) error {
 		return err
 	}
 
-	c.acceptCommit(msg, src)
+	err = c.acceptCommit(msg, src)
+	if err != nil {
+		log.Error("handleCommit, could not process acceptCommit, ", "error", err)
+	}
 
 	// Commit the proposal once we have enough COMMIT messages and we are not in the Committed state.
 	//
 	// If we already have a proposal, we may have chance to speed up the consensus process
 	// by committing the proposal without PREPARE messages.
-	actualFloat := c.current.Commits.Size()
-	requiredFloat := c.fullnodeSet.MinApprovers()
+	actualCommits := c.current.Commits.Size()
+	requiredMinApprovers := c.fullnodeSet.MinApprovers()
 
-	if actualFloat >= requiredFloat && c.state.Cmp(StateCommitted) < 0 {
+	if actualCommits >= requiredMinApprovers && c.state.Cmp(StateCommitted) < 0 {
 		// Still need to call LockHash here since state can skip Prepared state and jump directly to the Committed state.
 		c.current.LockHash()
 		c.commit()
 	} else {
 		logger := c.logger.New("state", c.state)
-		logger.Debug("******* Commit the proposal waiting consensus, ", "ACTUAL", actualFloat, "REQUIRED", requiredFloat, "StateCommitted", c.state.Cmp(StateCommitted))
+		logger.Debug("******* Commit the proposal waiting consensus, ", "actualCommits", actualCommits, "requiredMinApprovers", requiredMinApprovers, "StateCommitted", c.state.Cmp(StateCommitted))
 	}
 
 	return nil
