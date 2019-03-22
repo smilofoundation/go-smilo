@@ -187,14 +187,14 @@ func (c *core) handleTimeoutMsg() {
 	// the max round with F+1 round change message. We only need to catch up
 	// if the max round is larger than current round.
 	if !c.waitingForRoundChange {
-		fe := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
-		maxRound := c.roundChangeSet.MaxRound(int(fe))
+		FE := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
+		maxRound := c.roundChangeSet.MaxRound(FE)
 		if maxRound != nil && maxRound.Cmp(c.current.Round()) > 0 {
-			c.logger.Debug("handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "fe float64", fe, "fe int", int(fe))
+			c.logger.Debug("handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "FE", FE)
 			c.sendRoundChange(maxRound)
 			return
 		} else {
-			c.logger.Warn("********** handleTimeoutMsg, REACHED MAX ROUNDS ...", "maxRound", maxRound, "fe float64", fe, "fe int", int(fe))
+			c.logger.Warn("********** handleTimeoutMsg, REACHED MAX ROUNDS ...", "maxRound", maxRound, "FE", FE)
 		}
 	}
 

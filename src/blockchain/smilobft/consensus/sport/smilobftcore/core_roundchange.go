@@ -103,7 +103,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 	// try to catch up the round number.
 	//2F+E
 	expectedConsensus := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
-	isRoundNumberSmallerThenCertificate := int(messageCount) == expectedConsensus
+	isRoundNumberSmallerThenCertificate := messageCount == expectedConsensus
 
 	logger.Trace("handleRoundChange, Validating variables, ",
 		"isRoundNumberSmallerThenCertificate", isRoundNumberSmallerThenCertificate,
@@ -113,7 +113,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 		"MaxFaulty", c.fullnodeSet.MaxFaulty(),
 		"MinApprovers", c.fullnodeSet.MinApprovers(),
 		"E", c.fullnodeSet.E(),
-		"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
+		"messageCount==MinApprovers", messageCount == c.fullnodeSet.MinApprovers(),
 	)
 
 	if c.waitingForRoundChange && isRoundNumberSmallerThenCertificate {
@@ -131,7 +131,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 				"MaxFaulty", c.fullnodeSet.MaxFaulty(),
 				"MinApprovers", c.fullnodeSet.MinApprovers(),
 				"E", c.fullnodeSet.E(),
-				"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
+				"messageCount==MinApprovers", messageCount == c.fullnodeSet.MinApprovers(),
 			)
 			c.sendRoundChange(roundView.Round)
 		} else {
@@ -148,12 +148,12 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 				"MaxFaulty", c.fullnodeSet.MaxFaulty(),
 				"MinApprovers", c.fullnodeSet.MinApprovers(),
 				"E", c.fullnodeSet.E(),
-				"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
+				"messageCount==MinApprovers", messageCount == c.fullnodeSet.MinApprovers(),
 			)
 		}
 		return nil
 		//2F+E
-	} else if int(messageCount) == c.fullnodeSet.MinApprovers() && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
+	} else if messageCount == c.fullnodeSet.MinApprovers() && (c.waitingForRoundChange || cv.Round.Cmp(roundView.Round) < 0) {
 		// We've received 2F+E ROUND CHANGE messages, start a new round immediately. handlePrepare, before
 		logger.Debug("handleRoundChange, startNewRound, We've received 2F+E ROUND CHANGE messages, start a new round immediately.",
 			"Round", roundView.Round,
@@ -167,7 +167,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 			"MaxFaulty", c.fullnodeSet.MaxFaulty(),
 			"MinApprovers", c.fullnodeSet.MinApprovers(),
 			"E", c.fullnodeSet.E(),
-			"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
+			"messageCount==MinApprovers", messageCount == c.fullnodeSet.MinApprovers(),
 		)
 		c.startNewRound(roundView.Round)
 		return nil
@@ -185,7 +185,7 @@ func (c *core) handleRoundChange(msg *message, src sport.Fullnode) error {
 			"MaxFaulty", c.fullnodeSet.MaxFaulty(),
 			"MinApprovers", c.fullnodeSet.MinApprovers(),
 			"E", c.fullnodeSet.E(),
-			"messageCount==MinApprovers", int(messageCount) == c.fullnodeSet.MinApprovers(),
+			"messageCount==MinApprovers", messageCount == c.fullnodeSet.MinApprovers(),
 		)
 		return errIgnored
 	}
