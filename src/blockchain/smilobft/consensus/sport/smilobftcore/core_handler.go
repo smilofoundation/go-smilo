@@ -91,7 +91,7 @@ func (c *core) handleEvents() {
 			switch ev := event.Data.(type) {
 			case sport.RequestEvent:
 				r := &sport.Request{
-					Proposal: ev.Proposal,
+					BlockProposal: ev.BlockProposal,
 				}
 				err := c.handleRequest(r)
 				if err == errFutureMessage {
@@ -187,20 +187,20 @@ func (c *core) handleTimeoutMsg() {
 	// the max round with F+1 round change message. We only need to catch up
 	// if the max round is larger than current round.
 	if !c.waitingForRoundChange {
-		fe := c.fullnodeSet.F() + c.fullnodeSet.E()
-		maxRound := c.roundChangeSet.MaxRound(int(fe))
+		FE := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
+		maxRound := c.roundChangeSet.MaxRound(FE)
 		if maxRound != nil && maxRound.Cmp(c.current.Round()) > 0 {
-			c.logger.Debug("handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "fe float64", fe, "fe int", int(fe))
+			c.logger.Debug("handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "FE", FE)
 			c.sendRoundChange(maxRound)
 			return
 		} else {
-			c.logger.Warn("********** handleTimeoutMsg, REACHED MAX ROUNDS ...", "maxRound", maxRound, "fe float64", fe, "fe int", int(fe))
+			c.logger.Warn("********** handleTimeoutMsg, REACHED MAX ROUNDS ...", "maxRound", maxRound, "FE", FE)
 		}
 	}
 
-	lastProposal, _ := c.backend.LastProposal()
-	if lastProposal != nil && lastProposal.Number().Cmp(c.current.Sequence()) >= 0 {
-		c.logger.Warn("********** handleTimeoutMsg, round change timeout, catch up latest sequence", "number", lastProposal.Number().Uint64())
+	lastBlockProposal, _ := c.backend.LastBlockProposal()
+	if lastBlockProposal != nil && lastBlockProposal.Number().Cmp(c.current.Sequence()) >= 0 {
+		c.logger.Warn("********** handleTimeoutMsg, round change timeout, catch up latest sequence", "number", lastBlockProposal.Number().Uint64())
 		c.startNewRound(common.Big0)
 	} else {
 		c.sendNextRoundChange()

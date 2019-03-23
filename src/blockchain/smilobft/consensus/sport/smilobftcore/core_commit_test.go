@@ -25,8 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"math"
-
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
@@ -35,7 +33,7 @@ import (
 func TestHandleCommit(t *testing.T) {
 	N := uint64(4)
 
-	proposal := newTestProposal()
+	proposal := newTestBlockProposal()
 	expectedSubject := &sport.Subject{
 		View: &sport.View{
 			Round:    big.NewInt(0),
@@ -197,8 +195,7 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			//2F+E
-			f2 := 2 * r0.fullnodeSet.F()
-			intf2 := int(math.Ceil(f2))
+			MinApprovers := r0.fullnodeSet.MinApprovers()
 
 			// prepared is normal case
 			if r0.state != StateCommitted {
@@ -207,8 +204,8 @@ func TestHandleCommit(t *testing.T) {
 					t.Errorf("********* ERROR "+test.name+", state mismatch: have %v, want %v", r0.state, StatePrepared)
 				}
 
-				if r0.current.Commits.Size() > intf2 {
-					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", 2*r0.fullnodeSet.F()+r0.fullnodeSet.E())
+				if r0.current.Commits.Size() > MinApprovers {
+					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", r0.fullnodeSet.MinApprovers())
 				}
 				if r0.current.IsHashLocked() {
 					t.Errorf("********* ERROR " + test.name + ", block should not be locked")
@@ -218,12 +215,12 @@ func TestHandleCommit(t *testing.T) {
 			}
 
 			// core should have 2F+E prepare messages
-			if r0.current.Commits.Size() <= intf2 {
+			if r0.current.Commits.Size() <= MinApprovers {
 				t.Errorf("********* ERROR "+test.name+", the size of commit messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 			}
 
 			// check signatures large than 2F+E
-			signedCount := 0.0
+			signedCount := 0
 			committedSeals := v0.committedMsgs[0].committedSeals
 			for _, fullnode := range r0.fullnodeSet.List() {
 				for _, seal := range committedSeals {
@@ -233,8 +230,8 @@ func TestHandleCommit(t *testing.T) {
 					}
 				}
 			}
-			if signedCount < 2*r0.fullnodeSet.F() {
-				t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", 2*r0.fullnodeSet.F(), signedCount)
+			if signedCount < r0.fullnodeSet.MinApprovers() {
+				t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", r0.fullnodeSet.MinApprovers(), signedCount)
 			}
 			if !r0.current.IsHashLocked() {
 				t.Errorf("********* ERROR " + test.name + ", block should be locked")
@@ -265,7 +262,7 @@ func TestVerifyCommit(t *testing.T) {
 			expected: nil,
 			commit: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -278,7 +275,7 @@ func TestVerifyCommit(t *testing.T) {
 			expected: errInconsistentSubject,
 			commit: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -304,7 +301,7 @@ func TestVerifyCommit(t *testing.T) {
 			expected: errInconsistentSubject,
 			commit: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: nil},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -317,7 +314,7 @@ func TestVerifyCommit(t *testing.T) {
 			expected: errInconsistentSubject,
 			commit: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(1), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -330,7 +327,7 @@ func TestVerifyCommit(t *testing.T) {
 			expected: errInconsistentSubject,
 			commit: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(1)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},

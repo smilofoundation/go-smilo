@@ -53,8 +53,8 @@ const (
 )
 
 var (
-	// errInvalidProposal is returned when a proposal is malformed.
-	errInvalidProposal = errors.New("invalid proposal")
+	// errInvalidBlockProposal is returned when a proposal is malformed.
+	errInvalidBlockProposal = errors.New("invalid block proposal")
 	// errInvalidSignature is returned when given signature is not signed by given
 	// address.
 	errInvalidSignature = errors.New("invalid signature")
@@ -88,6 +88,11 @@ var (
 	// errMismatchTxhashes is returned if the TxHash in header is mismatch.
 
 	errMismatchTxhashes = errors.New("mismatch transaction hashes")
+
+	// errWaitTransactions is returned if an empty block is attempted to be sealed
+	// on an instant chain (0 second period). It's important to refuse these as the
+	// block reward is zero, so an empty block just bloats the chain... fast.
+	errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -409,6 +414,11 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		return nil, nil
 	}
 
+	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
+	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
+		return nil, errWaitTransactions
+	}
+
 	// get the proposed block hash and clear it if the seal() is completed.
 	sb.sealMu.Lock()
 	sb.proposedBlockHash = block.Hash()
@@ -420,12 +430,12 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 
 	// post block into Sport engine
 	go sb.EventMux().Post(sport.RequestEvent{
-		Proposal: block,
+		BlockProposal: block,
 	})
 
 	for {
 		select {
-		case result := <-sb.commitCh:
+		case result := <-sb.commitChBlock:
 			// if the block hash and the hash from channel are the same,
 			// return the result. Otherwise, keep waiting the next hash.
 			if block.Hash() == result.Hash() {

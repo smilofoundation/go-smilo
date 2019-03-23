@@ -37,8 +37,8 @@ func TestMessageSetWithPreprepare(t *testing.T) {
 		Sequence: new(big.Int),
 	}
 	pp := &sport.Preprepare{
-		View:     view,
-		Proposal: makeBlock(1),
+		View:          view,
+		BlockProposal: makeBlock(1),
 	}
 
 	rawPP, err := rlp.EncodeToBytes(pp)

@@ -32,7 +32,7 @@ type Backend interface {
 	Address() common.Address
 
 	// Fullnodes returns the fullnode set
-	Fullnodes(proposal Proposal) FullnodeSet
+	Fullnodes(blockproposal BlockProposal) FullnodeSet
 
 	// EventMux returns the event mux in backend
 	EventMux() *event.TypeMux
@@ -45,11 +45,11 @@ type Backend interface {
 
 	// Commit delivers an approved proposal to backend.
 	// The delivered proposal will be put into blockchain.
-	Commit(proposal Proposal, seals [][]byte) error
+	Commit(blockproposal BlockProposal, seals [][]byte) error
 
 	// Verify verifies the proposal. If a consensus.ErrFutureBlock error is returned,
 	// the time difference of the proposal and current time is also returned.
-	Verify(Proposal) (time.Duration, error)
+	Verify(BlockProposal) (time.Duration, error)
 
 	// Sign signs input data with the backend's private key
 	Sign([]byte) ([]byte, error)
@@ -58,20 +58,20 @@ type Backend interface {
 	// the given fullnode
 	CheckSignature(data []byte, addr common.Address, sig []byte) error
 
-	// LastProposal retrieves latest committed proposal and the address of speaker
-	LastProposal() (Proposal, common.Address)
+	// LastBlockProposal retrieves latest committed proposal and the address of speaker
+	LastBlockProposal() (BlockProposal, common.Address)
 
-	// HasProposal checks if the combination of the given hash and height matches any existing blocks
-	HasProposal(hash common.Hash, number *big.Int) bool
+	// HasBlockProposal checks if the combination of the given hash and height matches any existing blocks
+	HasBlockProposal(hash common.Hash, number *big.Int) bool
 
 	// GetSpeaker returns the speaker of the given block height
 	GetSpeaker(number uint64) common.Address
 
 	// ParentFullnodes returns the fullnode set of the given proposal's parent block
-	ParentFullnodes(proposal Proposal) FullnodeSet
+	ParentFullnodes(proposal BlockProposal) FullnodeSet
 
 	// HasBadBlock returns whether the block with the hash is a bad block
-	HasBadProposal(hash common.Hash) bool
+	HasBadBlockProposal(hash common.Hash) bool
 
 	Close() error
 }

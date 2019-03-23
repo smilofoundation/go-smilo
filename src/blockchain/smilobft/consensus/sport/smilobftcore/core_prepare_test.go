@@ -35,7 +35,7 @@ func TestHandlePrepare(t *testing.T) {
 	F := uint64(1)
 	E := uint64(1)
 
-	proposal := newTestProposal()
+	proposal := newTestBlockProposal()
 	expectedSubject := &sport.Subject{
 		View: &sport.View{
 			Round:    big.NewInt(0),
@@ -216,8 +216,7 @@ func TestHandlePrepare(t *testing.T) {
 
 			// core should have 2F+E PREPARE messages
 			//2F+E
-			f2 := 2 * r0.fullnodeSet.F()
-			intf2 := f2
+			MinApprovers := r0.fullnodeSet.MinApprovers()
 
 			// prepared is normal case
 			if r0.state != StatePrepared {
@@ -225,8 +224,8 @@ func TestHandlePrepare(t *testing.T) {
 				if r0.state != StatePreprepared {
 					t.Errorf("state mismatch: have %v, want %v", r0.state, StatePreprepared)
 				}
-				if float64(r0.current.Prepares.Size()) > intf2 {
-					t.Errorf("the size of PREPARE messages should be less than %v", intf2+r0.fullnodeSet.E())
+				if r0.current.Prepares.Size() >= MinApprovers {
+					t.Errorf("the size of PREPARE messages should be less than %v", MinApprovers)
 				}
 				if r0.current.IsHashLocked() {
 					t.Errorf("block should not be locked")
@@ -235,7 +234,7 @@ func TestHandlePrepare(t *testing.T) {
 				return
 			}
 
-			if float64(r0.current.Prepares.Size()) <= intf2 {
+			if r0.current.Prepares.Size() < MinApprovers {
 				t.Errorf("the size of PREPARE messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 			}
 
@@ -293,7 +292,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: nil,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -305,7 +304,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -329,7 +328,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: nil},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(1), Sequence: big.NewInt(1)},
@@ -341,7 +340,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(1), Sequence: big.NewInt(0)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},
@@ -353,7 +352,7 @@ func TestVerifyPrepare(t *testing.T) {
 			expected: errInconsistentSubject,
 			prepare: &sport.Subject{
 				View:   &sport.View{Round: big.NewInt(0), Sequence: big.NewInt(1)},
-				Digest: newTestProposal().Hash(),
+				Digest: newTestBlockProposal().Hash(),
 			},
 			roundState: newTestRoundState(
 				&sport.View{Round: big.NewInt(0), Sequence: big.NewInt(0)},

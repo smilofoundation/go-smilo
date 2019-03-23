@@ -205,7 +205,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		return nil, err
 	}
 
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine)
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.Sport.MinBlocksEmptyMining)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData, eth.chainConfig.IsSmilo))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}

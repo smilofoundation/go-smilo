@@ -29,11 +29,11 @@ func (c *core) sendPreprepare(request *sport.Request) {
 	logger := c.logger.New("state", c.state)
 
 	// If I'm the speaker and I have the same sequence with the proposal
-	if c.current.Sequence().Cmp(request.Proposal.Number()) == 0 && c.IsSpeaker() {
+	if c.current.Sequence().Cmp(request.BlockProposal.Number()) == 0 && c.IsSpeaker() {
 		curView := c.currentView()
 		preprepare, err := Encode(&sport.Preprepare{
-			View:     curView,
-			Proposal: request.Proposal,
+			View:          curView,
+			BlockProposal: request.BlockProposal,
 		})
 		if err != nil {
 			logger.Error("Failed to encode", "view", curView)
@@ -62,14 +62,14 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	if err := c.checkMessage(msgPreprepare, preprepare.View); err != nil {
 		if err == errOldMessage {
 			// Get fullnode set for the given proposal
-			fullnodeSet := c.backend.ParentFullnodes(preprepare.Proposal).Copy()
-			previousSpeaker := c.backend.GetSpeaker(preprepare.Proposal.Number().Uint64() - 1)
+			fullnodeSet := c.backend.ParentFullnodes(preprepare.BlockProposal).Copy()
+			previousSpeaker := c.backend.GetSpeaker(preprepare.BlockProposal.Number().Uint64() - 1)
 			fullnodeSet.CalcSpeaker(previousSpeaker, preprepare.View.Round.Uint64())
 			// Broadcast COMMIT if it is an existing block
 			// 1. The speaker needs to be a speaker matches the given (Sequence + Round)
 			// 2. The given block must exist
-			if fullnodeSet.IsSpeaker(src.Address()) && c.backend.HasProposal(preprepare.Proposal.Hash(), preprepare.Proposal.Number()) {
-				c.sendCommitForOldBlock(preprepare.View, preprepare.Proposal.Hash())
+			if fullnodeSet.IsSpeaker(src.Address()) && c.backend.HasBlockProposal(preprepare.BlockProposal.Hash(), preprepare.BlockProposal.Number()) {
+				c.sendCommitForOldBlock(preprepare.View, preprepare.BlockProposal.Hash())
 				return nil
 			}
 		}
@@ -83,7 +83,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	}
 
 	// Verify the proposal we received
-	if duration, err := c.backend.Verify(preprepare.Proposal); err != nil {
+	if duration, err := c.backend.Verify(preprepare.BlockProposal); err != nil {
 		logger.Warn("Failed to verify proposal", "err", err, "duration", duration)
 		// if it's a future block, we will handle it again after the duration
 		if err == consensus.ErrFutureBlock {
@@ -104,7 +104,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	if c.state == StateAcceptRequest {
 		// Send ROUND CHANGE if the locked proposal and the received proposal are different
 		if c.current.IsHashLocked() {
-			if preprepare.Proposal.Hash() == c.current.GetLockedHash() {
+			if preprepare.BlockProposal.Hash() == c.current.GetLockedHash() {
 				// Broadcast COMMIT and enters Prepared state directly
 				c.acceptPreprepare(preprepare)
 				c.setState(StatePrepared)

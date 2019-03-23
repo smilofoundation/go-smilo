@@ -25,8 +25,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-// Proposal supports retrieving height and serialized block to be used during Sport consensus.
-type Proposal interface {
+// BlockProposal supports retrieving height and serialized block to be used during Sport consensus.
+type BlockProposal interface {
 	// Number retrieves the sequence number of this proposal.
 	Number() *big.Int
 

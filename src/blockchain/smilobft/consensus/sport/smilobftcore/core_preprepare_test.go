@@ -27,8 +27,8 @@ import (
 
 func newTestPreprepare(v *sport.View) *sport.Preprepare {
 	return &sport.Preprepare{
-		View:     v,
-		Proposal: newTestProposal(),
+		View:          v,
+		BlockProposal: newTestBlockProposal(),
 	}
 }
 
@@ -38,7 +38,7 @@ func TestHandlePreprepare(t *testing.T) {
 	testCases := []struct {
 		name            string
 		system          *testSystem
-		expectedRequest sport.Proposal
+		expectedRequest sport.BlockProposal
 		expectedErr     error
 		existingBlock   bool
 	}{
@@ -56,7 +56,7 @@ func TestHandlePreprepare(t *testing.T) {
 				}
 				return sys
 			}(),
-			newTestProposal(),
+			newTestBlockProposal(),
 			nil,
 			false,
 		},
@@ -144,8 +144,8 @@ func TestHandlePreprepare(t *testing.T) {
 			curView := r0.currentView()
 
 			preprepare := &sport.Preprepare{
-				View:     curView,
-				Proposal: test.expectedRequest,
+				View:          curView,
+				BlockProposal: test.expectedRequest,
 			}
 
 			for i, v := range test.system.backends {
@@ -209,8 +209,8 @@ func TestHandlePreprepare(t *testing.T) {
 
 func TestHandlePreprepareWithLock(t *testing.T) {
 	N := uint64(4) // replica 0 is the speaker, it will send messages to others
-	proposal := newTestProposal()
-	mismatchProposal := makeBlock(10)
+	proposal := newTestBlockProposal()
+	mismatchBlockProposal := makeBlock(10)
 	newSystem := func() *testSystem {
 		sys := NewTestSystemWithBackend(N)
 
@@ -226,10 +226,10 @@ func TestHandlePreprepareWithLock(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name         string
-		system       *testSystem
-		proposal     sport.Proposal
-		lockProposal sport.Proposal
+		name              string
+		system            *testSystem
+		proposal          sport.BlockProposal
+		lockBlockProposal sport.BlockProposal
 	}{
 		{
 			"normal proposal",
@@ -241,7 +241,7 @@ func TestHandlePreprepareWithLock(t *testing.T) {
 			"mismatch proposal",
 			newSystem(),
 			proposal,
-			mismatchProposal,
+			mismatchBlockProposal,
 		},
 	}
 
@@ -252,12 +252,12 @@ func TestHandlePreprepareWithLock(t *testing.T) {
 			r0 := v0.engine.(*core)
 			curView := r0.currentView()
 			preprepare := &sport.Preprepare{
-				View:     curView,
-				Proposal: test.proposal,
+				View:          curView,
+				BlockProposal: test.proposal,
 			}
 			lockPreprepare := &sport.Preprepare{
-				View:     curView,
-				Proposal: test.lockProposal,
+				View:          curView,
+				BlockProposal: test.lockBlockProposal,
 			}
 
 			for i, v := range test.system.backends {
@@ -278,7 +278,7 @@ func TestHandlePreprepareWithLock(t *testing.T) {
 				}, val); err != nil {
 					t.Errorf("test %s, error mismatch: have %v, want nil", test.name, err)
 				}
-				if test.proposal == test.lockProposal {
+				if test.proposal == test.lockBlockProposal {
 					if c.state != StatePrepared {
 						t.Errorf("test %s, state mismatch: have %v, want %v", test.name, c.state, StatePreprepared)
 					}

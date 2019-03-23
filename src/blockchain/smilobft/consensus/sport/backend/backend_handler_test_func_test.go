@@ -23,7 +23,7 @@ func postAndWait(backend *backend, block *types.Block, t *testing.T) {
 	}
 	go eventLoop()
 	if err := backend.EventMux().Post(sport.RequestEvent{
-		Proposal: block,
+		BlockProposal: block,
 	}); err != nil {
 		t.Fatalf("%s", err)
 	}
