@@ -49,7 +49,7 @@ type backend struct {
 	hasBadBlock      func(hash common.Hash) bool
 
 	// the channels for smilobft engine notifications
-	commitCh          chan *types.Block
+	commitChBlock     chan *types.Block
 	proposedBlockHash common.Hash
 	sealMu            sync.Mutex
 	coreStarted       bool
@@ -75,7 +75,7 @@ type backend struct {
 // list of authorizations.
 type Vote struct {
 	Fullnode  common.Address `json:"fullnode"`  // Authorized fullnode that cast this vote
-	Block     uint64         `json:"block"`     // Block number the vote was cast in (expire old votes)
+	BlockNum  uint64         `json:"block"`     // Block number the vote was cast in (expire old votes)
 	Address   common.Address `json:"address"`   // Account being voted on to change its authorization
 	Authorize bool           `json:"authorize"` // Whether to authorize or deauthorize the voted account
 }

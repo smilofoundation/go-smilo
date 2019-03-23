@@ -53,6 +53,8 @@ var (
 	// Test transactions
 	pendingTxs []*types.Transaction
 	newTxs     []*types.Transaction
+
+	minBlocksEmptyMining *big.Int
 )
 
 func init() {
@@ -68,6 +70,8 @@ func init() {
 	pendingTxs = append(pendingTxs, tx1)
 	tx2, _ := types.SignTx(types.NewTransaction(1, testUserAddress, big.NewInt(1000), params.TxGas, nil, nil), types.HomesteadSigner{}, testBankKey)
 	newTxs = append(newTxs, tx2)
+
+	minBlocksEmptyMining = big.NewInt(20000000)
 }
 
 // testWorkerBackend implements worker.Backend interfaces and wraps all information needed during the testing.
@@ -138,7 +142,7 @@ func (b *testWorkerBackend) AccountManager() *accounts.Manager { return b.accoun
 func newTestWorker(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, blocks int) (*worker, *testWorkerBackend) {
 	backend := newTestWorkerBackend(t, chainConfig, engine, blocks)
 	backend.txPool.AddLocals(pendingTxs)
-	w := newWorker(chainConfig, engine, common.Address{}, backend, new(event.TypeMux))
+	w := newWorker(chainConfig, engine, common.Address{}, backend, new(event.TypeMux), minBlocksEmptyMining)
 	w.setEtherbase(testBankAddress)
 	return w, backend
 }

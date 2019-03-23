@@ -51,7 +51,7 @@ func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database) 
 		address:          crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:           log.New(),
 		db:               db,
-		commitCh:         make(chan *types.Block, 1),
+		commitChBlock:    make(chan *types.Block, 1),
 		recents:          recents,
 		candidates:       make(map[common.Address]bool),
 		coreStarted:      false,

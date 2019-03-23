@@ -35,7 +35,7 @@ import (
 )
 
 // Fullnodes implements sport.Backend.Fullnodes
-func (sb *backend) Fullnodes(proposal sport.Proposal) sport.FullnodeSet {
+func (sb *backend) Fullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
 	return sb.getFullnodes(proposal.Number().Uint64(), proposal.Hash())
 }
 
@@ -88,13 +88,13 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 }
 
 // Commit implements sport.Backend.Commit
-func (sb *backend) Commit(proposal sport.Proposal, seals [][]byte) error {
+func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	// Check if the proposal is a valid block
 	block := &types.Block{}
 	block, ok := proposal.(*types.Block)
 	if !ok {
 		sb.logger.Error("Invalid proposal, %v", proposal)
-		return errInvalidProposal
+		return errInvalidBlockProposal
 	}
 
 	h := block.Header()
@@ -115,7 +115,7 @@ func (sb *backend) Commit(proposal sport.Proposal, seals [][]byte) error {
 	// -- otherwise, a error will be returned and a round change event will be fired.
 	if sb.proposedBlockHash == block.Hash() {
 		// feed block hash to Seal() and wait the Seal() result
-		sb.commitCh <- block
+		sb.commitChBlock <- block
 		return nil
 	}
 
@@ -131,17 +131,17 @@ func (sb *backend) EventMux() *event.TypeMux {
 }
 
 // Verify implements sport.Backend.Verify
-func (sb *backend) Verify(proposal sport.Proposal) (time.Duration, error) {
+func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 	// Check if the proposal is a valid block
 	block := &types.Block{}
 	block, ok := proposal.(*types.Block)
 	if !ok {
 		sb.logger.Error("Invalid proposal, %v", proposal)
-		return 0, errInvalidProposal
+		return 0, errInvalidBlockProposal
 	}
 
 	// check bad block
-	if sb.HasBadProposal(block.Hash()) {
+	if sb.HasBadBlockProposal(block.Hash()) {
 		sb.logger.Error("Invalid proposal, core.ErrBlacklistedHash %v", proposal)
 		return 0, core.ErrBlacklistedHash
 	}
@@ -190,8 +190,8 @@ func (sb *backend) CheckSignature(data []byte, address common.Address, sig []byt
 	return nil
 }
 
-// HasProposal implements sport.Backend.HashBlock
-func (sb *backend) HasProposal(hash common.Hash, number *big.Int) bool {
+// HasBlockProposal implements sport.Backend.HashBlock
+func (sb *backend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
 	return sb.chain.GetHeader(hash, number.Uint64()) != nil
 }
 
@@ -205,7 +205,7 @@ func (sb *backend) GetSpeaker(number uint64) common.Address {
 }
 
 // ParentFullnodes implements sport.Backend.GetParentFullnodes
-func (sb *backend) ParentFullnodes(proposal sport.Proposal) sport.FullnodeSet {
+func (sb *backend) ParentFullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
 	if block, ok := proposal.(*types.Block); ok {
 		return sb.getFullnodes(block.Number().Uint64()-1, block.ParentHash())
 	}
@@ -221,8 +221,8 @@ func (sb *backend) getFullnodes(number uint64, hash common.Hash) sport.FullnodeS
 	return snap.FullnodeSet
 }
 
-// LastProposal returns the last block header and speaker
-func (sb *backend) LastProposal() (sport.Proposal, common.Address) {
+// LastBlockProposal returns the last block header and speaker
+func (sb *backend) LastBlockProposal() (sport.BlockProposal, common.Address) {
 	block := sb.currentBlock()
 
 	var speaker common.Address
@@ -239,8 +239,8 @@ func (sb *backend) LastProposal() (sport.Proposal, common.Address) {
 	return block, speaker
 }
 
-// HasBadProposal check if the hash has a bad block associated to it
-func (sb *backend) HasBadProposal(hash common.Hash) bool {
+// HasBadBlockProposal check if the hash has a bad block associated to it
+func (sb *backend) HasBadBlockProposal(hash common.Hash) bool {
 	if sb.hasBadBlock == nil {
 		return false
 	}

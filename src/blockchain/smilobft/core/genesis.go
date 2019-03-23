@@ -215,7 +215,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, constant
 		return newcfg, stored, compatErr
 	}
 
-	log.Info("&*&*&*&*& GENESIS, ", newcfg)
+	log.Info("&*&*&*&*& GENESIS, ", "newcfg", newcfg)
 	rawdb.WriteChainConfig(db, stored, newcfg)
 	return newcfg, stored, nil
 }
@@ -324,7 +324,7 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-// DefaultTestnetGenesisBlock returns the Ropsten network genesis block.
+// DefaultTestnetGenesisBlock returns the Smilo Test network genesis block.
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,

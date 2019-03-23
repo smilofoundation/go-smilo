@@ -93,7 +93,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 				return false, nil
 			}
 			newRequestedBlock := request.Block
-			if newRequestedBlock.Header().MixDigest == types.SportDigest && sb.core.IsCurrentProposal(newRequestedBlock.Hash()) {
+			if newRequestedBlock.Header().MixDigest == types.SportDigest && sb.core.IsCurrentBlockProposal(newRequestedBlock.Hash()) {
 				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr)
 				return true, nil
 			}

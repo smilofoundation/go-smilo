@@ -672,6 +672,11 @@ var (
 		Usage: "path to smilo code analysis executable, if provided, enables eth.codeAnalysis web3",
 		Value: "",
 	}
+	MinBlocksEmptyMiningFlag = BigFlag{
+		Name:  "minblocksemptymining",
+		Usage: " Min Blocks to mine before Stop Mining Empty Blocks",
+		Value: big.NewInt(20000000),
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1166,6 +1171,9 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(DataDirFlag.Name) {
 		cfg.Sport.DataDir = ctx.GlobalString(DataDirFlag.Name)
 	}
+	if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
+		cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
+	}
 }
 
 func setCodeQuality(ctx *cli.Context, cfg *eth.Config) {
@@ -1324,9 +1332,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	switch {
 	case ctx.GlobalBool(TestnetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 3
+			cfg.NetworkId = 10
 		}
 		cfg.Genesis = core.DefaultTestnetGenesisBlock()
+		log.Debug("&*&*&*&* Going to setup Default Testnet genesis block", "DefaultTestnetGenesisBlock", core.DefaultTestnetGenesisBlock())
 	case ctx.GlobalBool(RinkebyFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 4

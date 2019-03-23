@@ -156,7 +156,7 @@ func TestCommit(t *testing.T) {
 
 			expBlock := test.expectedBlock()
 			go func() {
-				result := <-backend.commitCh
+				result := <-backend.commitChBlock
 				commitCh <- result
 			}()
 

@@ -36,7 +36,7 @@ func newTestRoundState(view *sport.View, fullnodeSet sport.FullnodeSet) *roundSt
 		Prepares:   newMessageSet(fullnodeSet),
 		Commits:    newMessageSet(fullnodeSet),
 		mu:         new(sync.RWMutex),
-		hasBadProposal: func(hash common.Hash) bool {
+		hasBadBlockProposal: func(hash common.Hash) bool {
 			return false
 		},
 	}
@@ -59,7 +59,7 @@ func TestLockHash(t *testing.T) {
 	}
 
 	// Lock
-	expected := rs.Proposal().Hash()
+	expected := rs.BlockProposal().Hash()
 	rs.LockHash()
 	if expected != rs.GetLockedHash() {
 		t.Errorf("error mismatch: have %v, want %v", rs.GetLockedHash(), expected)

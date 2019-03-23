@@ -189,7 +189,7 @@ func (s *Snapshot) apply(headers []*types.Header) (*Snapshot, error) {
 		if snap.cast(header.Coinbase, authorize) {
 			snap.Votes = append(snap.Votes, &Vote{
 				Fullnode:  fullnode,
-				Block:     number,
+				BlockNum:  number,
 				Address:   header.Coinbase,
 				Authorize: authorize,
 			})

@@ -71,13 +71,15 @@ type FullnodeSet interface {
 	// Copy fullnode set
 	Copy() FullnodeSet
 	// Get the maximum number of faulty nodes
-	F() float64
+	MaxFaulty() int
+	// Minimum nodes to approve on Consensus
+	MinApprovers() int
 	// Get the extra number of faulty nodes
-	E() float64
+	E() int
 	// Get speaker policy
 	Policy() SpeakerPolicy
 }
 
 // ----------------------------------------------------------------------------
 
-type ProposalSelector func(FullnodeSet, common.Address, uint64) Fullnode
+type BlockProposalSelector func(FullnodeSet, common.Address, uint64) Fullnode

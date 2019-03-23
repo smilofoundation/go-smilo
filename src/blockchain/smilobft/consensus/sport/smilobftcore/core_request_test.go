@@ -47,7 +47,7 @@ func TestCheckRequestMsg(t *testing.T) {
 		t.Errorf("error mismatch: have %v, want %v", err, errInvalidMessage)
 	}
 	r := &sport.Request{
-		Proposal: nil,
+		BlockProposal: nil,
 	}
 	err = c.checkRequestMsg(r)
 	if err != errInvalidMessage {
@@ -56,7 +56,7 @@ func TestCheckRequestMsg(t *testing.T) {
 
 	// old request
 	r = &sport.Request{
-		Proposal: makeBlock(0),
+		BlockProposal: makeBlock(0),
 	}
 	err = c.checkRequestMsg(r)
 	if err != errOldMessage {
@@ -65,7 +65,7 @@ func TestCheckRequestMsg(t *testing.T) {
 
 	// future request
 	r = &sport.Request{
-		Proposal: makeBlock(2),
+		BlockProposal: makeBlock(2),
 	}
 	err = c.checkRequestMsg(r)
 	if err != errFutureMessage {
@@ -74,7 +74,7 @@ func TestCheckRequestMsg(t *testing.T) {
 
 	// current request
 	r = &sport.Request{
-		Proposal: makeBlock(1),
+		BlockProposal: makeBlock(1),
 	}
 	err = c.checkRequestMsg(r)
 	if err != nil {
@@ -99,13 +99,13 @@ func TestStoreRequestMsg(t *testing.T) {
 	}
 	requests := []sport.Request{
 		{
-			Proposal: makeBlock(1),
+			BlockProposal: makeBlock(1),
 		},
 		{
-			Proposal: makeBlock(2),
+			BlockProposal: makeBlock(2),
 		},
 		{
-			Proposal: makeBlock(3),
+			BlockProposal: makeBlock(3),
 		},
 	}
 
@@ -131,8 +131,8 @@ func TestStoreRequestMsg(t *testing.T) {
 		if !ok {
 			t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
 		}
-		if e.Proposal.Number().Cmp(requests[2].Proposal.Number()) != 0 {
-			t.Errorf("the number of proposal mismatch: have %v, want %v", e.Proposal.Number(), requests[2].Proposal.Number())
+		if e.BlockProposal.Number().Cmp(requests[2].BlockProposal.Number()) != 0 {
+			t.Errorf("the number of proposal mismatch: have %v, want %v", e.BlockProposal.Number(), requests[2].BlockProposal.Number())
 		}
 	case <-timeout.C:
 		t.Error("unexpected timeout occurs")
