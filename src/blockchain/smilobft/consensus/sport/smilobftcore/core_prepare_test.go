@@ -28,245 +28,263 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
+	"strconv"
 )
 
 func TestHandlePrepare(t *testing.T) {
-	N := uint64(4)
-	F := uint64(1)
-	E := uint64(1)
 
-	proposal := newTestBlockProposal()
-	expectedSubject := &sport.Subject{
-		View: &sport.View{
-			Round:    big.NewInt(0),
-			Sequence: proposal.Number(),
-		},
-		Digest: proposal.Hash(),
-	}
+	expectedConsensus := map[uint64]int{7: 5, 8: 6, 9: 6, 10: 7}
+	for N := range expectedConsensus {
 
-	testCases := []struct {
-		name        string
-		system      *testSystem
-		expectedErr error
-	}{
-		{
-			"normal case",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+		proposal := newTestBlockProposal()
+		expectedSubject := &sport.Subject{
+			View: &sport.View{
+				Round:    big.NewInt(0),
+				Sequence: proposal.Number(),
+			},
+			Digest: proposal.Hash(),
+		}
 
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					c.current = newTestRoundState(
-						&sport.View{
-							Round:    big.NewInt(0),
-							Sequence: big.NewInt(1),
-						},
-						c.fullnodeSet,
-					)
+		testCases := []struct {
+			name        string
+			system      *testSystem
+			expectedErr error
+		}{
+			{
+				"normal case "+strconv.FormatUint(N, 10),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(N)
 
-					if i == 0 {
-						// replica 0 is the speaker
-						c.state = StatePreprepared
-					}
-				}
-				return sys
-			}(),
-			nil,
-		},
-		{
-			"future message",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
-
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					if i == 0 {
-						// replica 0 is the speaker
-						c.current = newTestRoundState(
-							expectedSubject.View,
-							c.fullnodeSet,
-						)
-						c.state = StatePreprepared
-					} else {
-						c.current = newTestRoundState(
-							&sport.View{
-								Round:    big.NewInt(2),
-								Sequence: big.NewInt(3),
-							},
-							c.fullnodeSet,
-						)
-					}
-				}
-				return sys
-			}(),
-			errFutureMessage,
-		},
-		{
-			"subject not match",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
-
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					if i == 0 {
-						// replica 0 is the speaker
-						c.current = newTestRoundState(
-							expectedSubject.View,
-							c.fullnodeSet,
-						)
-						c.state = StatePreprepared
-					} else {
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
 						c.current = newTestRoundState(
 							&sport.View{
 								Round:    big.NewInt(0),
-								Sequence: big.NewInt(0),
+								Sequence: big.NewInt(1),
 							},
 							c.fullnodeSet,
 						)
-					}
-				}
-				return sys
-			}(),
-			errOldMessage,
-		},
-		{
-			"subject not match",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
 
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					if i == 0 {
-						// replica 0 is the speaker
+						if i == 0 {
+							// replica 0 is the speaker
+							c.state = StatePreprepared
+						}
+					}
+					return sys
+				}(),
+				nil,
+			},
+			{
+				"future message "+strconv.FormatUint(N, 10),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(N)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						if i == 0 {
+							// replica 0 is the speaker
+							c.current = newTestRoundState(
+								expectedSubject.View,
+								c.fullnodeSet,
+							)
+							c.state = StatePreprepared
+						} else {
+							c.current = newTestRoundState(
+								&sport.View{
+									Round:    big.NewInt(2),
+									Sequence: big.NewInt(3),
+								},
+								c.fullnodeSet,
+							)
+						}
+					}
+					return sys
+				}(),
+				errFutureMessage,
+			},
+			{
+				"old message "+strconv.FormatUint(N, 10),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(N)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						if i == 0 {
+							// replica 0 is the speaker
+							c.current = newTestRoundState(
+								expectedSubject.View,
+								c.fullnodeSet,
+							)
+							c.state = StatePreprepared
+						} else {
+							c.current = newTestRoundState(
+								&sport.View{
+									Round:    big.NewInt(0),
+									Sequence: big.NewInt(0),
+								},
+								c.fullnodeSet,
+							)
+						}
+					}
+					return sys
+				}(),
+				errOldMessage,
+			},
+			{
+				"subject not match "+strconv.FormatUint(N, 10),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(N)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						if i == 0 {
+							// replica 0 is the speaker
+							c.current = newTestRoundState(
+								expectedSubject.View,
+								c.fullnodeSet,
+							)
+							c.state = StatePreprepared
+						} else {
+							c.current = newTestRoundState(
+								&sport.View{
+									Round:    big.NewInt(0),
+									Sequence: big.NewInt(1)},
+								c.fullnodeSet,
+							)
+						}
+					}
+					return sys
+				}(),
+				errInconsistentSubject,
+			},
+			{
+				"less than 66% "+strconv.FormatUint(N, 10),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(N)
+
+					// save less than 2*F+E replica
+					sys.backends = sys.backends[expectedConsensus[N]:]
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
 						c.current = newTestRoundState(
 							expectedSubject.View,
 							c.fullnodeSet,
 						)
-						c.state = StatePreprepared
-					} else {
-						c.current = newTestRoundState(
-							&sport.View{
-								Round:    big.NewInt(0),
-								Sequence: big.NewInt(1)},
-							c.fullnodeSet,
-						)
+
+						if i == 0 {
+							// replica 0 is the speaker
+							c.state = StatePreprepared
+						}
+					}
+					return sys
+				}(),
+				nil,
+			},
+		}
+
+		for _, test := range testCases {
+			test.system.Run(false)
+
+			t.Run(test.name, func(t *testing.T) {
+
+				v0 := test.system.backends[0]
+				r0 := v0.engine.(*core)
+
+				numMessages := expectedConsensus[N]
+				if len(test.system.backends) < expectedConsensus[N] {
+					numMessages=len(test.system.backends)
+				}
+
+				for i := 0; i < numMessages-1; i++ {
+					err := sendPrepareMessage(r0, i, test.system.backends[i])
+					if err != nil {
+						if err != test.expectedErr {
+							t.Errorf("error mismatch: have %v, want %v", err, test.expectedErr)
+						}
+						if r0.current.IsHashLocked() {
+							t.Errorf("block should not be locked")
+						}
+						return
 					}
 				}
-				return sys
-			}(),
-			errInconsistentSubject,
-		},
-		{
-			"less than 2F+E",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
 
-				// save less than 2*F+E replica
-				sys.backends = sys.backends[2*int(F)+int(E):]
+				// core should have 66% PREPARE messages
+				MinApprovers := expectedConsensus[N]
 
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					c.current = newTestRoundState(
-						expectedSubject.View,
-						c.fullnodeSet,
-					)
+				sendPrepareMessage(r0, numMessages-2, test.system.backends[numMessages-2])
 
-					if i == 0 {
-						// replica 0 is the speaker
-						c.state = StatePreprepared
-					}
+				if r0.state == StatePrepared {
+					t.Errorf("Reached consensus before 66% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size() , MinApprovers)
 				}
-				return sys
-			}(),
-			nil,
-		},
-		// TODO: double send message
-	}
 
-	for _, test := range testCases {
-		test.system.Run(false)
+				sendPrepareMessage(r0, numMessages-1, test.system.backends[numMessages-1])
 
-		t.Run(test.name, func(t *testing.T) {
-
-			v0 := test.system.backends[0]
-			r0 := v0.engine.(*core)
-
-			for i, v := range test.system.backends {
-				thisfullnode := r0.fullnodeSet.GetByIndex(uint64(i))
-				m, _ := Encode(v.engine.(*core).current.Subject())
-				if err := r0.handlePrepare(&message{
-					Code:    msgPrepare,
-					Msg:     m,
-					Address: thisfullnode.Address(),
-				}, thisfullnode); err != nil {
-					if err != test.expectedErr {
-						t.Errorf("error mismatch: have %v, want %v", err, test.expectedErr)
+				// prepared is normal case
+				if r0.state != StatePrepared {
+					// There are not enough PREPARE messages in core
+					if r0.state != StatePreprepared {
+						t.Errorf("state mismatch: have %v, want %v", r0.state, StatePreprepared)
+					}
+					if r0.current.Prepares.Size() >= MinApprovers {
+						t.Errorf("the size of PREPARE messages should be less than %v", MinApprovers)
 					}
 					if r0.current.IsHashLocked() {
 						t.Errorf("block should not be locked")
 					}
+
 					return
 				}
-			}
 
-			// core should have 2F+E PREPARE messages
-			//2F+E
-			MinApprovers := r0.fullnodeSet.MinApprovers()
-
-			// prepared is normal case
-			if r0.state != StatePrepared {
-				// There are not enough PREPARE messages in core
-				if r0.state != StatePreprepared {
-					t.Errorf("state mismatch: have %v, want %v", r0.state, StatePreprepared)
-				}
-				if r0.current.Prepares.Size() >= MinApprovers {
-					t.Errorf("the size of PREPARE messages should be less than %v", MinApprovers)
-				}
-				if r0.current.IsHashLocked() {
-					t.Errorf("block should not be locked")
+				if r0.current.Prepares.Size() < MinApprovers {
+					t.Errorf("the size of PREPARE messages should be equal or larger than %v(66%): size %v", MinApprovers, r0.current.Commits.Size())
 				}
 
-				return
-			}
+				// a message will be delivered to backend if 66% reached
+				if int64(len(v0.sentMsgs)) != 1 {
+					t.Errorf("the Send() should be called once: times %v", len(test.system.backends[0].sentMsgs))
+				}
 
-			if r0.current.Prepares.Size() < MinApprovers {
-				t.Errorf("the size of PREPARE messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
-			}
+				// verify COMMIT messages
+				decodedMsg := new(message)
+				err := decodedMsg.FromPayload(v0.sentMsgs[0], nil)
+				if err != nil {
+					t.Errorf("error mismatch: have %v, want nil", err)
+				}
 
-			// a message will be delivered to backend if 2F+E
-			if int64(len(v0.sentMsgs)) != 1 {
-				t.Errorf("the Send() should be called once: times %v", len(test.system.backends[0].sentMsgs))
-			}
-
-			// verify COMMIT messages
-			decodedMsg := new(message)
-			err := decodedMsg.FromPayload(v0.sentMsgs[0], nil)
-			if err != nil {
-				t.Errorf("error mismatch: have %v, want nil", err)
-			}
-
-			if decodedMsg.Code != msgCommit {
-				t.Errorf("message code mismatch: have %v, want %v", decodedMsg.Code, msgCommit)
-			}
-			var m *sport.Subject
-			err = decodedMsg.Decode(&m)
-			if err != nil {
-				t.Errorf("error mismatch: have %v, want nil", err)
-			}
-			if !reflect.DeepEqual(m, expectedSubject) {
-				t.Errorf("subject mismatch: have %v, want %v", m, expectedSubject)
-			}
-			if !r0.current.IsHashLocked() {
-				t.Errorf("block should be locked")
-			}
-		})
+				if decodedMsg.Code != msgCommit {
+					t.Errorf("message code mismatch: have %v, want %v", decodedMsg.Code, msgCommit)
+				}
+				var m *sport.Subject
+				err = decodedMsg.Decode(&m)
+				if err != nil {
+					t.Errorf("error mismatch: have %v, want nil", err)
+				}
+				if !reflect.DeepEqual(m, expectedSubject) {
+					t.Errorf("subject mismatch: have %v, want %v", m, expectedSubject)
+				}
+				if !r0.current.IsHashLocked() {
+					t.Errorf("block should be locked")
+				}
+			})
+		}
 	}
+}
 
+func sendPrepareMessage(r0 *core, i int, v *testSystemBackend) error {
+	thisfullnode := r0.fullnodeSet.GetByIndex(uint64(i))
+	m, _ := Encode(v.engine.(*core).current.Subject())
+	err := r0.handlePrepare(&message{
+		Code:    msgPrepare,
+		Msg:     m,
+		Address: thisfullnode.Address(),
+	}, thisfullnode)
+	return err
 }
 
 // round is not checked for now
