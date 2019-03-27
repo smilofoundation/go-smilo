@@ -1379,6 +1379,9 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
 	}
+	if cfg.Genesis.Config.SixtySixPercentBlock == nil {
+		Fatalf("Failed to start consensus. SixtySixPercentBlock on genesis cfg is nil")
+	}
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.
