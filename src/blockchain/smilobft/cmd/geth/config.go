@@ -146,7 +146,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	}
 
 	if !ctx.GlobalBool(utils.SportFlag.Name) && !ctx.GlobalBool(utils.TestnetFlag.Name) {
-		utils.Fatalf("Failed to start Smilo network. Please use --sport (mainnet) or --testnet (testnet)")
+		log.Error("Failed to start Smilo network. Please use --sport (mainnet) or --testnet (testnet)")
 	} else {
 		log.Info("Starting Smilo network, ", "sport", ctx.GlobalString(utils.SportFlag.Name), "testnet", ctx.GlobalString(utils.TestnetFlag.Name))
 	}
