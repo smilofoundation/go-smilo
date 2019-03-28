@@ -25,10 +25,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"strconv"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
-	"strconv"
 )
 
 func TestHandleCommit(t *testing.T) {
@@ -52,7 +53,7 @@ func TestHandleCommit(t *testing.T) {
 		}{
 			{
 				// normal case
-				"normal case "+strconv.FormatUint(N, 10),
+				"normal case " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -78,7 +79,7 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				// future message
-				"future message "+strconv.FormatUint(N, 10),
+				"future message " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -108,7 +109,7 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				//
-				"subject not match "+strconv.FormatUint(N, 10),
+				"subject not match " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -138,7 +139,7 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				// jump state
-				"jump state "+strconv.FormatUint(N, 10),
+				"jump state " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -165,7 +166,6 @@ func TestHandleCommit(t *testing.T) {
 				}(),
 				nil,
 			},
-
 		}
 
 		for _, test := range testCases {
@@ -177,7 +177,7 @@ func TestHandleCommit(t *testing.T) {
 				v0 := test.system.backends[0]
 				r0 := v0.engine.(*core)
 
-				for i:=0; i<expectedConsensus[N]-1; i++ { // v := range test.system.backends {
+				for i := 0; i < expectedConsensus[N]-1; i++ { // v := range test.system.backends {
 					err := sendCommitMessage(r0, uint64(i), test.system.backends[i].engine.(*core).current.Subject())
 					if err != nil {
 						if err != test.expectedErr {
@@ -195,18 +195,18 @@ func TestHandleCommit(t *testing.T) {
 
 				if r0.state == StateCommitted {
 					t.Errorf("********* ERROR "+test.name+", committed with %v commit messages and must be at least %v", r0.current.Commits.Size(), MinApprovers)
-                    return
-				}
-
-				//Send duplicate message
-				sendCommitMessage(r0, uint64(expectedConsensus[N] - 2), test.system.backends[uint64(expectedConsensus[N] - 2)].engine.(*core).current.Subject())
-
-				if r0.state == StateCommitted {
-					t.Errorf("********* ERROR "+test.name+", double committed message was counted twice at index %v", expectedConsensus[N] - 2)
 					return
 				}
 
-				sendCommitMessage(r0, uint64(expectedConsensus[N] - 1), test.system.backends[uint64(expectedConsensus[N] - 1)].engine.(*core).current.Subject())
+				//Send duplicate message
+				sendCommitMessage(r0, uint64(expectedConsensus[N]-2), test.system.backends[uint64(expectedConsensus[N]-2)].engine.(*core).current.Subject())
+
+				if r0.state == StateCommitted {
+					t.Errorf("********* ERROR "+test.name+", double committed message was counted twice at index %v", expectedConsensus[N]-2)
+					return
+				}
+
+				sendCommitMessage(r0, uint64(expectedConsensus[N]-1), test.system.backends[uint64(expectedConsensus[N]-1)].engine.(*core).current.Subject())
 
 				// prepared is normal case
 				if r0.state != StateCommitted {
@@ -252,8 +252,8 @@ func TestHandleCommit(t *testing.T) {
 	}
 }
 
-func sendCommitMessage(r0 *core, N uint64, subject *sport.Subject) (error) {
-    node := r0.fullnodeSet.GetByIndex(N)
+func sendCommitMessage(r0 *core, N uint64, subject *sport.Subject) error {
+	node := r0.fullnodeSet.GetByIndex(N)
 	m, _ := Encode(subject)
 	return r0.handleCommit(&message{
 		Code:          msgCommit,

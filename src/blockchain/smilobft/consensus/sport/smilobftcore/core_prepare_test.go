@@ -25,10 +25,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"strconv"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
-	"strconv"
 )
 
 func TestHandlePrepare(t *testing.T) {
@@ -51,7 +52,7 @@ func TestHandlePrepare(t *testing.T) {
 			expectedErr error
 		}{
 			{
-				"normal case "+strconv.FormatUint(N, 10),
+				"normal case " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -76,7 +77,7 @@ func TestHandlePrepare(t *testing.T) {
 				nil,
 			},
 			{
-				"future message "+strconv.FormatUint(N, 10),
+				"future message " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -105,7 +106,7 @@ func TestHandlePrepare(t *testing.T) {
 				errFutureMessage,
 			},
 			{
-				"old message "+strconv.FormatUint(N, 10),
+				"old message " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -134,7 +135,7 @@ func TestHandlePrepare(t *testing.T) {
 				errOldMessage,
 			},
 			{
-				"subject not match "+strconv.FormatUint(N, 10),
+				"subject not match " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -162,7 +163,7 @@ func TestHandlePrepare(t *testing.T) {
 				errInconsistentSubject,
 			},
 			{
-				"less than 66% "+strconv.FormatUint(N, 10),
+				"less than 66% " + strconv.FormatUint(N, 10),
 				func() *testSystem {
 					sys := NewTestSystemWithBackend(N)
 
@@ -198,7 +199,7 @@ func TestHandlePrepare(t *testing.T) {
 
 				numMessages := expectedConsensus[N]
 				if len(test.system.backends) < expectedConsensus[N] {
-					numMessages=len(test.system.backends)
+					numMessages = len(test.system.backends)
 				}
 
 				for i := 0; i < numMessages-1; i++ {
@@ -220,7 +221,7 @@ func TestHandlePrepare(t *testing.T) {
 				sendPrepareMessage(r0, numMessages-2, test.system.backends[numMessages-2])
 
 				if r0.state == StatePrepared {
-					t.Errorf("Reached consensus before 66%% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size() , MinApprovers)
+					t.Errorf("Reached consensus before 66%% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size(), MinApprovers)
 				}
 
 				sendPrepareMessage(r0, numMessages-1, test.system.backends[numMessages-1])

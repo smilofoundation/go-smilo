@@ -20,10 +20,10 @@ package backend
 import (
 	"testing"
 
-	"github.com/hashicorp/golang-lru"
-
 	"io/ioutil"
 	"math/big"
+
+	lru "github.com/hashicorp/golang-lru"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
