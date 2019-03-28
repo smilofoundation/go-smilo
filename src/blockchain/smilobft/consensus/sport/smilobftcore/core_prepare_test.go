@@ -220,7 +220,7 @@ func TestHandlePrepare(t *testing.T) {
 				sendPrepareMessage(r0, numMessages-2, test.system.backends[numMessages-2])
 
 				if r0.state == StatePrepared {
-					t.Errorf("Reached consensus before 66% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size() , MinApprovers)
+					t.Errorf("Reached consensus before 66%% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size() , MinApprovers)
 				}
 
 				sendPrepareMessage(r0, numMessages-1, test.system.backends[numMessages-1])
@@ -242,7 +242,7 @@ func TestHandlePrepare(t *testing.T) {
 				}
 
 				if r0.current.Prepares.Size() < MinApprovers {
-					t.Errorf("the size of PREPARE messages should be equal or larger than %v(66%): size %v", MinApprovers, r0.current.Commits.Size())
+					t.Errorf("the size of PREPARE messages should be equal or larger than %v(66%%): size %v", MinApprovers, r0.current.Commits.Size())
 				}
 
 				// a message will be delivered to backend if 66% reached
