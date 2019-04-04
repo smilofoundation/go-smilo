@@ -19,8 +19,11 @@ package smilobftcore
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,213 +34,237 @@ import (
 )
 
 func TestHandleCommit(t *testing.T) {
-	N := uint64(4)
 
-	proposal := newTestBlockProposal()
-	expectedSubject := &sport.Subject{
-		View: &sport.View{
-			Round:    big.NewInt(0),
-			Sequence: proposal.Number(),
-		},
-		Digest: proposal.Hash(),
-	}
+	expectedConsensus := map[int]int{7: 5, 8: 6, 9: 6, 10: 7}
+	for availableNodes := range expectedConsensus {
 
-	testCases := []struct {
-		name        string
-		system      *testSystem
-		expectedErr error
-	}{
-		{
-			// normal case
-			"normal case",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+		proposal := newTestBlockProposal()
+		expectedSubject := &sport.Subject{
+			View: &sport.View{
+				Round:    big.NewInt(0),
+				Sequence: proposal.Number(),
+			},
+			Digest: proposal.Hash(),
+		}
 
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					c.current = newTestRoundState(
-						&sport.View{
-							Round:    big.NewInt(0),
-							Sequence: big.NewInt(1),
-						},
-						c.fullnodeSet,
-					)
+		testCases := []struct {
+			name        string
+			system      *testSystem
+			expectedErr error
+		}{
+			{
+				// normal case
+				fmt.Sprintf("normal case %d", availableNodes),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(availableNodes)
 
-					if i == 0 {
-						// replica 0 is the speaker
-						c.state = StatePrepared
-					}
-				}
-				return sys
-			}(),
-			nil,
-		},
-		{
-			// future message
-			"future message",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
-
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					if i == 0 {
-						// replica 0 is the speaker
-						c.current = newTestRoundState(
-							expectedSubject.View,
-							c.fullnodeSet,
-						)
-						c.state = StatePreprepared
-					} else {
-						c.current = newTestRoundState(
-							&sport.View{
-								Round:    big.NewInt(2),
-								Sequence: big.NewInt(3),
-							},
-							c.fullnodeSet,
-						)
-					}
-				}
-				return sys
-			}(),
-			errFutureMessage,
-		},
-		{
-			//
-			"subject not match",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
-
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					if i == 0 {
-						// replica 0 is the speaker
-						c.current = newTestRoundState(
-							expectedSubject.View,
-							c.fullnodeSet,
-						)
-						c.state = StatePreprepared
-					} else {
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
 						c.current = newTestRoundState(
 							&sport.View{
 								Round:    big.NewInt(0),
-								Sequence: big.NewInt(0),
+								Sequence: big.NewInt(1),
 							},
 							c.fullnodeSet,
 						)
+
+						if i == 0 {
+							// replica 0 is the speaker
+							c.state = StatePrepared
+						}
+					}
+					return sys
+				}(),
+				nil,
+			},
+			{
+				// future message
+				fmt.Sprintf("future message %d", availableNodes),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(availableNodes)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						if i == 0 {
+							// replica 0 is the speaker
+							c.current = newTestRoundState(
+								expectedSubject.View,
+								c.fullnodeSet,
+							)
+							c.state = StatePreprepared
+						} else {
+							c.current = newTestRoundState(
+								&sport.View{
+									Round:    big.NewInt(2),
+									Sequence: big.NewInt(3),
+								},
+								c.fullnodeSet,
+							)
+						}
+					}
+					return sys
+				}(),
+				errFutureMessage,
+			},
+			{
+				//
+				fmt.Sprintf("subject not match %d", availableNodes),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(availableNodes)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						if i == 0 {
+							// replica 0 is the speaker
+							c.current = newTestRoundState(
+								expectedSubject.View,
+								c.fullnodeSet,
+							)
+							c.state = StatePreprepared
+						} else {
+							c.current = newTestRoundState(
+								&sport.View{
+									Round:    big.NewInt(0),
+									Sequence: big.NewInt(0),
+								},
+								c.fullnodeSet,
+							)
+						}
+					}
+					return sys
+				}(),
+				errOldMessage,
+			},
+			{
+				// jump state
+				fmt.Sprintf("jump state %d", availableNodes),
+				func() *testSystem {
+					sys := NewTestSystemWithBackend(availableNodes)
+
+					for i, backend := range sys.backends {
+						c := backend.engine.(*core)
+						c.fullnodeSet = backend.peers
+						c.current = newTestRoundState(
+							&sport.View{
+								Round:    big.NewInt(0),
+								Sequence: proposal.Number(),
+							},
+							c.fullnodeSet,
+						)
+
+						// only replica0 stays at StatePreprepared
+						// other replicas are at StatePrepared
+						if i != 0 {
+							c.state = StatePrepared
+						} else {
+							c.state = StatePreprepared
+						}
+					}
+					return sys
+				}(),
+				nil,
+			},
+		}
+
+		for _, test := range testCases {
+
+			t.Run(test.name, func(t *testing.T) {
+
+				test.system.Run(false)
+
+				v0 := test.system.backends[0]
+				r0 := v0.engine.(*core)
+
+				//66% or more to approve
+				minApprovers := expectedConsensus[availableNodes]
+
+				for i := 0; i < minApprovers-1; i++ { // v := range test.system.backends {
+					err := sendCommitMessage(r0, uint64(i), test.system.backends[i].engine.(*core).current.Subject())
+					if err != nil {
+						if err != test.expectedErr {
+							t.Errorf("********* ERROR "+test.name+", error mismatch: have %v, want %v", err, test.expectedErr)
+						}
+						if r0.current.IsHashLocked() {
+							t.Errorf("********* ERROR " + test.name + ", block should not be locked")
+						}
+						return
 					}
 				}
-				return sys
-			}(),
-			errOldMessage,
-		},
-		{
-			// jump state
-			"jump state",
-			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
 
-				for i, backend := range sys.backends {
-					c := backend.engine.(*core)
-					c.fullnodeSet = backend.peers
-					c.current = newTestRoundState(
-						&sport.View{
-							Round:    big.NewInt(0),
-							Sequence: proposal.Number(),
-						},
-						c.fullnodeSet,
-					)
-
-					// only replica0 stays at StatePreprepared
-					// other replicas are at StatePrepared
-					if i != 0 {
-						c.state = StatePrepared
-					} else {
-						c.state = StatePreprepared
-					}
+				if r0.state == StateCommitted {
+					t.Errorf("********* ERROR "+test.name+", committed with %v commit messages and must be at least %v", r0.current.Commits.Size(), minApprovers)
+					return
 				}
-				return sys
-			}(),
-			nil,
-		},
-		// TODO: double send message
-	}
 
-	for _, test := range testCases {
+				//Send duplicate message
+				err := sendCommitMessage(r0, uint64(minApprovers-2), test.system.backends[uint64(minApprovers-2)].engine.(*core).current.Subject())
+				require.NoError(t, err)
 
-		t.Run(test.name, func(t *testing.T) {
+				if r0.state == StateCommitted {
+					t.Errorf("********* ERROR "+test.name+", double committed message was counted twice at index %v", minApprovers-2)
+					return
+				}
 
-			test.system.Run(false)
+				err = sendCommitMessage(r0, uint64(minApprovers-1), test.system.backends[uint64(minApprovers-1)].engine.(*core).current.Subject())
+				require.NoError(t, err)
 
-			v0 := test.system.backends[0]
-			r0 := v0.engine.(*core)
+				// prepared is normal case
+				if r0.state != StateCommitted {
+					// There are not enough commit messages in core
+					if r0.state != StatePrepared {
+						t.Errorf("********* ERROR "+test.name+", state mismatch: have %v, want %v", r0.state, StatePrepared)
+					}
 
-			for i, v := range test.system.backends {
-				fullnode := r0.fullnodeSet.GetByIndex(uint64(i))
-				m, _ := Encode(v.engine.(*core).current.Subject())
-				if err := r0.handleCommit(&message{
-					Code:          msgCommit,
-					Msg:           m,
-					Address:       fullnode.Address(),
-					Signature:     []byte{},
-					CommittedSeal: fullnode.Address().Bytes(), // small hack
-				}, fullnode); err != nil {
-					if err != test.expectedErr {
-						t.Errorf("********* ERROR "+test.name+", error mismatch: have %v, want %v", err, test.expectedErr)
+					if r0.current.Commits.Size() > minApprovers {
+						t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", minApprovers)
 					}
 					if r0.current.IsHashLocked() {
 						t.Errorf("********* ERROR " + test.name + ", block should not be locked")
 					}
+					//continue
 					return
 				}
-			}
 
-			//2F+E
-			MinApprovers := r0.fullnodeSet.MinApprovers()
-
-			// prepared is normal case
-			if r0.state != StateCommitted {
-				// There are not enough commit messages in core
-				if r0.state != StatePrepared {
-					t.Errorf("********* ERROR "+test.name+", state mismatch: have %v, want %v", r0.state, StatePrepared)
+				// core should have 2F+E prepare messages
+				if r0.current.Commits.Size() < minApprovers {
+					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 				}
 
-				if r0.current.Commits.Size() > MinApprovers {
-					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", r0.fullnodeSet.MinApprovers())
-				}
-				if r0.current.IsHashLocked() {
-					t.Errorf("********* ERROR " + test.name + ", block should not be locked")
-				}
-				//continue
-				return
-			}
-
-			// core should have 2F+E prepare messages
-			if r0.current.Commits.Size() <= MinApprovers {
-				t.Errorf("********* ERROR "+test.name+", the size of commit messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
-			}
-
-			// check signatures large than 2F+E
-			signedCount := 0
-			committedSeals := v0.committedMsgs[0].committedSeals
-			for _, fullnode := range r0.fullnodeSet.List() {
-				for _, seal := range committedSeals {
-					if bytes.Equal(fullnode.Address().Bytes(), seal[:common.AddressLength]) {
-						signedCount++
-						break
+				// check signatures large than 2F+E
+				signedCount := 0
+				committedSeals := v0.committedMsgs[0].committedSeals
+				for _, node := range r0.fullnodeSet.List() {
+					for _, seal := range committedSeals {
+						if bytes.Equal(node.Address().Bytes(), seal[:common.AddressLength]) {
+							signedCount++
+							break
+						}
 					}
 				}
-			}
-			if signedCount < r0.fullnodeSet.MinApprovers() {
-				t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", r0.fullnodeSet.MinApprovers(), signedCount)
-			}
-			if !r0.current.IsHashLocked() {
-				t.Errorf("********* ERROR " + test.name + ", block should be locked")
-			}
-		})
+				if signedCount < minApprovers {
+					t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", minApprovers, signedCount)
+				}
+				if !r0.current.IsHashLocked() {
+					t.Errorf("********* ERROR " + test.name + ", block should be locked")
+				}
+			})
+		}
 	}
+}
+
+func sendCommitMessage(r0 *core, N uint64, subject *sport.Subject) error {
+	node := r0.fullnodeSet.GetByIndex(N)
+	m, _ := Encode(subject)
+	return r0.handleCommit(&message{
+		Code:          msgCommit,
+		Msg:           m,
+		Address:       node.Address(),
+		Signature:     []byte{},
+		CommittedSeal: node.Address().Bytes(),
+	}, node)
 }
 
 // round is not checked for now
@@ -247,7 +274,7 @@ func TestVerifyCommit(t *testing.T) {
 	peer := fullnode.NewFullNode(getPublicKeyAddress(privateKey))
 	fullnodeSet := fullnode.NewFullnodeSet([]common.Address{peer.Address()}, sport.RoundRobin)
 
-	N := uint64(1)
+	N := 1
 	sys := NewTestSystemWithBackend(N)
 
 	testCases := []struct {

@@ -28,7 +28,7 @@ import (
 func TestNewRequest(t *testing.T) {
 	testLogger.SetHandler(elog.StdoutHandler)
 
-	N := uint64(4)
+	N := 4
 
 	sys := NewTestSystemWithBackend(N)
 
