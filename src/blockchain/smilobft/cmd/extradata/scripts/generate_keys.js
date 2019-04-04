@@ -25,14 +25,11 @@
 const {execSync} = require("child_process");
 const fs = require('fs');
 const Wallet = require('ethereumjs-wallet');
-const EthUtil = require('ethereumjs-util');
 
+const GOPATH = process.env.GOPATH || "/opt/gocode";
 
-// const smiloPATH = "/opt/go-code/src/go-smilo/src/blockchain/smilobft";
-// const blackboxPATH = "/opt/go-code/src/Smilo-blackbox";
-
-const smiloPATH = "../../../";
-const blackboxPATH = "../../../../../../../Smilo-blackbox";
+const smiloPATH = `${GOPATH}/src/go-smilo/src/blockchain/smilobft`;
+const blackboxPATH = `${GOPATH}/src/Smilo-blackbox`;
 
 
 if (process.argv.length < 4) {
@@ -74,7 +71,6 @@ const addressListStriped = [];
 
 for (let i = 1; i <= totalNodes; i++) {
 
-    // const privateKey = (privateKeyPrefix + i).slice(-32);
     const wallet = Wallet.generate();
     const publicKey = wallet.getPublicKeyString();
     const privateKey = wallet.getPrivateKeyString().slice(-64);
