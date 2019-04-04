@@ -25,10 +25,11 @@
 const {execSync} = require("child_process");
 const fs = require('fs');
 const Wallet = require('ethereumjs-wallet');
-const EthUtil = require('ethereumjs-util');
 
-const smiloPATH = "/opt/gocode/src/go-smilo/src/blockchain/smilobft";
-const blackboxPATH = "/opt/gocode/src/Smilo-blackbox";
+const GOPATH = process.env.GOPATH || "/opt/gocode";
+
+const smiloPATH = `${GOPATH}/src/go-smilo/src/blockchain/smilobft`;
+const blackboxPATH = `${GOPATH}/src/Smilo-blackbox`;
 
 
 if (process.argv.length < 4) {
@@ -70,9 +71,9 @@ const addressListStriped = [];
 
 for (let i = 1; i <= totalNodes; i++) {
 
-    const privateKey = (privateKeyPrefix + i).slice(-32);
-    const wallet = Wallet.fromPrivateKey(EthUtil.toBuffer(privateKey));
+    const wallet = Wallet.generate();
     const publicKey = wallet.getPublicKeyString();
+    const privateKey = wallet.getPrivateKeyString().slice(-64);
 
     const address = wallet.getAddressString();
     addressList.push(address);
@@ -88,11 +89,9 @@ for (let i = 1; i <= totalNodes; i++) {
 
     fs.writeFileSync(key1, JSON.stringify(keystore, null, 2));
 
-    fs.writeFileSync(nodekey1, Buffer.from(privateKey, 'utf8').toString('hex'));
+    fs.writeFileSync(nodekey1, privateKey);
 
-    const bufferHex = Buffer.from(privateKey, 'utf8').toString('hex');
-
-    const enode = execSync(`go run ${smiloPATH}/cmd/bootnode/main.go -v5 -nodekeyhex ${bufferHex} -writeaddress`).toString('utf8').replace('\n', '');
+    const enode = execSync(`go run ${smiloPATH}/cmd/bootnode/main.go -v5 -nodekeyhex ${privateKey} -writeaddress`).toString('utf8').replace('\n', '');
 
     enodeURLs.push(`enode://${enode}@127.0.0.1:${20999 + i}?discport=0`);
 
