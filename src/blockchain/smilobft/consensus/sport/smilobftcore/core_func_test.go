@@ -37,7 +37,7 @@ import (
 var testLogger = elog.New()
 
 type testSystemBackend struct {
-	id  uint64
+	id  int
 	sys *testSystem
 
 	engine Engine
@@ -175,19 +175,19 @@ type testSystem struct {
 	quit          chan struct{}
 }
 
-func newTestSystem(n uint64) *testSystem {
+func newTestSystem(availableNodes int) *testSystem {
 	testLogger.SetHandler(elog.StdoutHandler)
 	return &testSystem{
-		backends: make([]*testSystemBackend, n),
+		backends: make([]*testSystemBackend, availableNodes),
 
 		queuedMessage: make(chan sport.MessageEvent),
 		quit:          make(chan struct{}),
 	}
 }
 
-func generateFullnodes(n int) []common.Address {
+func generateFullnodes(availableNodes int) []common.Address {
 	vals := make([]common.Address, 0)
-	for i := 0; i < n; i++ {
+	for i := 0; i < availableNodes; i++ {
 		privateKey, _ := crypto.GenerateKey()
 		vals = append(vals, crypto.PubkeyToAddress(privateKey.PublicKey))
 	}
@@ -198,19 +198,18 @@ func newTestFullnodeSet(n int) sport.FullnodeSet {
 	return fullnode.NewFullnodeSet(generateFullnodes(n), sport.RoundRobin)
 }
 
-// FIXME: int64 is needed for N and F
-func NewTestSystemWithBackend(n uint64) *testSystem {
+func NewTestSystemWithBackend(availableNodes int) *testSystem {
 	testLogger.SetHandler(elog.StdoutHandler)
 
-	addrs := generateFullnodes(int(n))
-	sys := newTestSystem(n)
+	addrs := generateFullnodes(availableNodes)
+	sys := newTestSystem(availableNodes)
 	config := sport.DefaultConfig
 
-	for i := uint64(0); i < n; i++ {
+	for i := 0; i < availableNodes; i++ {
 		vset := fullnode.NewFullnodeSet(addrs, sport.RoundRobin)
 		backend := sys.NewBackend(i)
 		backend.peers = vset
-		backend.address = vset.GetByIndex(i).Address()
+		backend.address = vset.GetByIndex(uint64(i)).Address()
 
 		core := New(backend, config).(*core)
 		core.state = StateAcceptRequest
@@ -271,7 +270,7 @@ func (t *testSystem) stop(core bool) {
 	}
 }
 
-func (t *testSystem) NewBackend(id uint64) *testSystemBackend {
+func (t *testSystem) NewBackend(id int) *testSystemBackend {
 	// assume always success
 	ethDB := ethdb.NewMemDatabase()
 	backend := &testSystemBackend{

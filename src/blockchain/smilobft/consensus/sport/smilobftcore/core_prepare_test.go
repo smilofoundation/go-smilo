@@ -18,14 +18,15 @@
 package smilobftcore
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
-	"strconv"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
@@ -34,8 +35,8 @@ import (
 
 func TestHandlePrepare(t *testing.T) {
 
-	expectedConsensus := map[uint64]int{7: 5, 8: 6, 9: 6, 10: 7}
-	for N := range expectedConsensus {
+	expectedConsensus := map[int]int{7: 5, 8: 6, 9: 6, 10: 7}
+	for availableNodes := range expectedConsensus {
 
 		proposal := newTestBlockProposal()
 		expectedSubject := &sport.Subject{
@@ -52,9 +53,9 @@ func TestHandlePrepare(t *testing.T) {
 			expectedErr error
 		}{
 			{
-				"normal case " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("normal case %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -77,9 +78,9 @@ func TestHandlePrepare(t *testing.T) {
 				nil,
 			},
 			{
-				"future message " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("future message %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -106,9 +107,9 @@ func TestHandlePrepare(t *testing.T) {
 				errFutureMessage,
 			},
 			{
-				"old message " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("old message %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -135,9 +136,9 @@ func TestHandlePrepare(t *testing.T) {
 				errOldMessage,
 			},
 			{
-				"subject not match " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("subject not match  %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -163,12 +164,12 @@ func TestHandlePrepare(t *testing.T) {
 				errInconsistentSubject,
 			},
 			{
-				"less than 66% " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("less than 66 percent %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					// save less than 2*F+E replica
-					sys.backends = sys.backends[expectedConsensus[N]:]
+					sys.backends = sys.backends[expectedConsensus[availableNodes]:]
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -197,8 +198,11 @@ func TestHandlePrepare(t *testing.T) {
 				v0 := test.system.backends[0]
 				r0 := v0.engine.(*core)
 
-				numMessages := expectedConsensus[N]
-				if len(test.system.backends) < expectedConsensus[N] {
+				//66% or more to approve
+				minApprovers := expectedConsensus[availableNodes]
+
+				numMessages := minApprovers
+				if len(test.system.backends) < minApprovers {
 					numMessages = len(test.system.backends)
 				}
 
@@ -216,15 +220,15 @@ func TestHandlePrepare(t *testing.T) {
 				}
 
 				// core should have 66% PREPARE messages
-				MinApprovers := expectedConsensus[N]
-
-				sendPrepareMessage(r0, numMessages-2, test.system.backends[numMessages-2])
+				err := sendPrepareMessage(r0, numMessages-2, test.system.backends[numMessages-2])
+				require.NoError(t, err)
 
 				if r0.state == StatePrepared {
-					t.Errorf("Reached consensus before 66%% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size(), MinApprovers)
+					t.Errorf("Reached consensus before 66%% nodes agreed, %v nodes prepared and %v nodes required", r0.current.Prepares.Size(), minApprovers)
 				}
 
-				sendPrepareMessage(r0, numMessages-1, test.system.backends[numMessages-1])
+				err = sendPrepareMessage(r0, numMessages-1, test.system.backends[numMessages-1])
+				require.NoError(t, err)
 
 				// prepared is normal case
 				if r0.state != StatePrepared {
@@ -232,8 +236,8 @@ func TestHandlePrepare(t *testing.T) {
 					if r0.state != StatePreprepared {
 						t.Errorf("state mismatch: have %v, want %v", r0.state, StatePreprepared)
 					}
-					if r0.current.Prepares.Size() >= MinApprovers {
-						t.Errorf("the size of PREPARE messages should be less than %v", MinApprovers)
+					if r0.current.Prepares.Size() >= minApprovers {
+						t.Errorf("the size of PREPARE messages should be less than %v", minApprovers)
 					}
 					if r0.current.IsHashLocked() {
 						t.Errorf("block should not be locked")
@@ -242,8 +246,8 @@ func TestHandlePrepare(t *testing.T) {
 					return
 				}
 
-				if r0.current.Prepares.Size() < MinApprovers {
-					t.Errorf("the size of PREPARE messages should be equal or larger than %v(66%%): size %v", MinApprovers, r0.current.Commits.Size())
+				if r0.current.Prepares.Size() < minApprovers {
+					t.Errorf("the size of PREPARE messages should be equal or larger than %v(66%%): size %v", minApprovers, r0.current.Commits.Size())
 				}
 
 				// a message will be delivered to backend if 66% reached
@@ -253,7 +257,7 @@ func TestHandlePrepare(t *testing.T) {
 
 				// verify COMMIT messages
 				decodedMsg := new(message)
-				err := decodedMsg.FromPayload(v0.sentMsgs[0], nil)
+				err = decodedMsg.FromPayload(v0.sentMsgs[0], nil)
 				if err != nil {
 					t.Errorf("error mismatch: have %v, want nil", err)
 				}
@@ -295,9 +299,9 @@ func TestVerifyPrepare(t *testing.T) {
 	peer := fullnode.NewFullNode(getPublicKeyAddress(privateKey))
 	fullnodeSet := fullnode.NewFullnodeSet([]common.Address{peer.Address()}, sport.RoundRobin)
 
-	N := uint64(1)
+	availableNodes := 1
 
-	sys := NewTestSystemWithBackend(N)
+	sys := NewTestSystemWithBackend(availableNodes)
 
 	testCases := []struct {
 		name     string

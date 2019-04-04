@@ -19,13 +19,14 @@ package smilobftcore
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
-	"strconv"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
@@ -34,8 +35,8 @@ import (
 
 func TestHandleCommit(t *testing.T) {
 
-	expectedConsensus := map[uint64]int{7: 5, 8: 6, 9: 6, 10: 7}
-	for N := range expectedConsensus {
+	expectedConsensus := map[int]int{7: 5, 8: 6, 9: 6, 10: 7}
+	for availableNodes := range expectedConsensus {
 
 		proposal := newTestBlockProposal()
 		expectedSubject := &sport.Subject{
@@ -53,9 +54,9 @@ func TestHandleCommit(t *testing.T) {
 		}{
 			{
 				// normal case
-				"normal case " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("normal case %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -79,9 +80,9 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				// future message
-				"future message " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("future message %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -109,9 +110,9 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				//
-				"subject not match " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("subject not match %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -139,9 +140,9 @@ func TestHandleCommit(t *testing.T) {
 			},
 			{
 				// jump state
-				"jump state " + strconv.FormatUint(N, 10),
+				fmt.Sprintf("jump state %d", availableNodes),
 				func() *testSystem {
-					sys := NewTestSystemWithBackend(N)
+					sys := NewTestSystemWithBackend(availableNodes)
 
 					for i, backend := range sys.backends {
 						c := backend.engine.(*core)
@@ -177,7 +178,10 @@ func TestHandleCommit(t *testing.T) {
 				v0 := test.system.backends[0]
 				r0 := v0.engine.(*core)
 
-				for i := 0; i < expectedConsensus[N]-1; i++ { // v := range test.system.backends {
+				//66% or more to approve
+				minApprovers := expectedConsensus[availableNodes]
+
+				for i := 0; i < minApprovers-1; i++ { // v := range test.system.backends {
 					err := sendCommitMessage(r0, uint64(i), test.system.backends[i].engine.(*core).current.Subject())
 					if err != nil {
 						if err != test.expectedErr {
@@ -190,23 +194,22 @@ func TestHandleCommit(t *testing.T) {
 					}
 				}
 
-				//66% or more to approve
-				MinApprovers := expectedConsensus[N]
-
 				if r0.state == StateCommitted {
-					t.Errorf("********* ERROR "+test.name+", committed with %v commit messages and must be at least %v", r0.current.Commits.Size(), MinApprovers)
+					t.Errorf("********* ERROR "+test.name+", committed with %v commit messages and must be at least %v", r0.current.Commits.Size(), minApprovers)
 					return
 				}
 
 				//Send duplicate message
-				sendCommitMessage(r0, uint64(expectedConsensus[N]-2), test.system.backends[uint64(expectedConsensus[N]-2)].engine.(*core).current.Subject())
+				err := sendCommitMessage(r0, uint64(minApprovers-2), test.system.backends[uint64(minApprovers-2)].engine.(*core).current.Subject())
+				require.NoError(t, err)
 
 				if r0.state == StateCommitted {
-					t.Errorf("********* ERROR "+test.name+", double committed message was counted twice at index %v", expectedConsensus[N]-2)
+					t.Errorf("********* ERROR "+test.name+", double committed message was counted twice at index %v", minApprovers-2)
 					return
 				}
 
-				sendCommitMessage(r0, uint64(expectedConsensus[N]-1), test.system.backends[uint64(expectedConsensus[N]-1)].engine.(*core).current.Subject())
+				err = sendCommitMessage(r0, uint64(minApprovers-1), test.system.backends[uint64(minApprovers-1)].engine.(*core).current.Subject())
+				require.NoError(t, err)
 
 				// prepared is normal case
 				if r0.state != StateCommitted {
@@ -215,8 +218,8 @@ func TestHandleCommit(t *testing.T) {
 						t.Errorf("********* ERROR "+test.name+", state mismatch: have %v, want %v", r0.state, StatePrepared)
 					}
 
-					if r0.current.Commits.Size() > MinApprovers {
-						t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", MinApprovers)
+					if r0.current.Commits.Size() > minApprovers {
+						t.Errorf("********* ERROR "+test.name+", the size of commit messages should be less than %v", minApprovers)
 					}
 					if r0.current.IsHashLocked() {
 						t.Errorf("********* ERROR " + test.name + ", block should not be locked")
@@ -226,7 +229,7 @@ func TestHandleCommit(t *testing.T) {
 				}
 
 				// core should have 2F+E prepare messages
-				if r0.current.Commits.Size() < MinApprovers {
+				if r0.current.Commits.Size() < minApprovers {
 					t.Errorf("********* ERROR "+test.name+", the size of commit messages should be larger than 2F+E: size %v", r0.current.Commits.Size())
 				}
 
@@ -241,8 +244,8 @@ func TestHandleCommit(t *testing.T) {
 						}
 					}
 				}
-				if signedCount < MinApprovers {
-					t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", MinApprovers, signedCount)
+				if signedCount < minApprovers {
+					t.Errorf("********* ERROR "+test.name+", the expected signed count should be larger or eq than %v, but got %v", minApprovers, signedCount)
 				}
 				if !r0.current.IsHashLocked() {
 					t.Errorf("********* ERROR " + test.name + ", block should be locked")
@@ -271,7 +274,7 @@ func TestVerifyCommit(t *testing.T) {
 	peer := fullnode.NewFullNode(getPublicKeyAddress(privateKey))
 	fullnodeSet := fullnode.NewFullnodeSet([]common.Address{peer.Address()}, sport.RoundRobin)
 
-	N := uint64(1)
+	N := 1
 	sys := NewTestSystemWithBackend(N)
 
 	testCases := []struct {

@@ -33,7 +33,7 @@ func newTestPreprepare(v *sport.View) *sport.Preprepare {
 }
 
 func TestHandlePreprepare(t *testing.T) {
-	N := uint64(4) // replica 0 is the speaker, it will send messages to others
+	availableNodes := 4 // replica 0 is the speaker, it will send messages to others
 
 	testCases := []struct {
 		name            string
@@ -45,7 +45,7 @@ func TestHandlePreprepare(t *testing.T) {
 		{
 			"normal case",
 			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+				sys := NewTestSystemWithBackend(availableNodes)
 
 				for i, backend := range sys.backends {
 					c := backend.engine.(*core)
@@ -63,7 +63,7 @@ func TestHandlePreprepare(t *testing.T) {
 		{
 			"future message",
 			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+				sys := NewTestSystemWithBackend(availableNodes)
 
 				for i, backend := range sys.backends {
 					c := backend.engine.(*core)
@@ -92,7 +92,7 @@ func TestHandlePreprepare(t *testing.T) {
 		{
 			"non-speaker",
 			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+				sys := NewTestSystemWithBackend(availableNodes)
 
 				// force remove replica 0, let replica 1 be the speaker
 				sys.backends = sys.backends[1:]
@@ -114,7 +114,7 @@ func TestHandlePreprepare(t *testing.T) {
 		{
 			"errOldMessage",
 			func() *testSystem {
-				sys := NewTestSystemWithBackend(N)
+				sys := NewTestSystemWithBackend(availableNodes)
 
 				for i, backend := range sys.backends {
 					c := backend.engine.(*core)
@@ -208,11 +208,11 @@ func TestHandlePreprepare(t *testing.T) {
 }
 
 func TestHandlePreprepareWithLock(t *testing.T) {
-	N := uint64(4) // replica 0 is the speaker, it will send messages to others
+	availableNodes := 4 // replica 0 is the speaker, it will send messages to others
 	proposal := newTestBlockProposal()
 	mismatchBlockProposal := makeBlock(10)
 	newSystem := func() *testSystem {
-		sys := NewTestSystemWithBackend(N)
+		sys := NewTestSystemWithBackend(availableNodes)
 
 		for i, backend := range sys.backends {
 			c := backend.engine.(*core)
