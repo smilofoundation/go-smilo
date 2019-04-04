@@ -18,14 +18,12 @@ func postAndWait(backend *backend, block *types.Block, t *testing.T) {
 	defer eventSub.Unsubscribe()
 	stop := make(chan struct{}, 1)
 	eventLoop := func() {
-		select {
-		case <-eventSub.Chan():
-			stop <- struct{}{}
-		}
+		<-eventSub.Chan()
+		stop <- struct{}{}
 	}
 	go eventLoop()
 	if err := backend.EventMux().Post(sport.RequestEvent{
-		Proposal: block,
+		BlockProposal: block,
 	}); err != nil {
 		t.Fatalf("%s", err)
 	}

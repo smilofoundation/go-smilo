@@ -205,7 +205,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		return nil, err
 	}
 
-	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine)
+	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine, config.Sport.MinBlocksEmptyMining)
 	eth.miner.SetExtra(makeExtraData(config.MinerExtraData, eth.chainConfig.IsSmilo))
 
 	eth.APIBackend = &EthAPIBackend{eth, nil}
@@ -260,6 +260,10 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 			config.Sport.Epoch = chainConfig.Sport.Epoch
 		}
 		config.Sport.SpeakerPolicy = sport.SpeakerPolicy(chainConfig.Sport.SpeakerPolicy)
+
+		if chainConfig.Sport.MinFunds != 0 {
+			config.Sport.MinFunds = chainConfig.Sport.MinFunds
+		}
 
 		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
 	}

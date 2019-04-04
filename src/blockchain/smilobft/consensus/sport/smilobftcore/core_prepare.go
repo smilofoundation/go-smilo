@@ -61,18 +61,18 @@ func (c *core) handlePrepare(msg *message, src sport.Fullnode) error {
 	// Change to Prepared state if we've received enough PREPARE messages or it is locked
 	// and we are in earlier state before Prepared state.
 	// 2F+E
-	f2 := 2 * c.fullnodeSet.F()
+	minApprovers := c.fullnodeSet.MinApprovers()
 
-	if ((c.current.IsHashLocked() && prepare.Digest == c.current.GetLockedHash()) || float64(c.current.GetPrepareOrCommitSize()) >= f2) &&
+	if ((c.current.IsHashLocked() && prepare.Digest == c.current.GetLockedHash()) || c.current.GetPrepareOrCommitSize() >= minApprovers) &&
 		c.state.Cmp(StatePrepared) < 0 {
-		c.logger.Debug("66% CONSENSUS REACHED!!!", "Required Votes:", 2*c.fullnodeSet.F(), "Total Votes:", float64(c.current.GetPrepareOrCommitSize()))
+		c.logger.Debug("66% CONSENSUS REACHED!!!", "Required Votes:", c.fullnodeSet.MinApprovers(), "Total Votes:", c.current.GetPrepareOrCommitSize())
 		c.current.LockHash()
 		c.setState(StatePrepared)
 		c.sendCommit()
 	} else {
 		c.logger.Debug("66% CONSENSUS NOT REACHED YET!!!",
-			"Required Votes: ", 2*c.fullnodeSet.F(),
-			"Total Votes:", float64(c.current.GetPrepareOrCommitSize()),
+			"Required Votes: ", minApprovers,
+			"Total Votes:", c.current.GetPrepareOrCommitSize(),
 			"IsHashLocked", c.current.IsHashLocked(),
 			"prepare.Digest", prepare.Digest,
 			"LockedHash", c.current.GetLockedHash(),

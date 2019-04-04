@@ -215,7 +215,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, constant
 		return newcfg, stored, compatErr
 	}
 
-	log.Info("&*&*&*&*& GENESIS, ", newcfg)
+	log.Info("&*&*&*&*& GENESIS, ", "newcfg", newcfg)
 	rawdb.WriteChainConfig(db, stored, newcfg)
 	return newcfg, stored, nil
 }
@@ -324,7 +324,7 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-// DefaultTestnetGenesisBlock returns the Ropsten network genesis block.
+// DefaultTestnetGenesisBlock returns the Smilo Test network genesis block.
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
@@ -334,7 +334,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Mixhash:    common.HexToHash("0x636861696e20706c6174666f726d2077697468206120636f6e736369656e6365"),
 		Nonce:      0x0,
 		Timestamp:  0x00,
-		Alloc:      make(GenesisAlloc, 0),
+		Alloc:      make(GenesisAlloc),
 	}
 }
 
@@ -360,7 +360,7 @@ func DefaultSportGenesisBlock() *Genesis {
 		Mixhash:    common.HexToHash("0x636861696e20706c6174666f726d2077697468206120636f6e736369656e6365"),
 		Nonce:      0x0,
 		Timestamp:  0x00,
-		Alloc:      make(GenesisAlloc, 0),
+		Alloc:      make(GenesisAlloc),
 	}
 }
 
@@ -386,7 +386,7 @@ func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
 			common.BytesToAddress([]byte{6}): {Balance: big.NewInt(1)}, // ECAdd
 			common.BytesToAddress([]byte{7}): {Balance: big.NewInt(1)}, // ECScalarMul
 			common.BytesToAddress([]byte{8}): {Balance: big.NewInt(1)}, // ECPairing
-			faucet: {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+			faucet:                           {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
 		},
 	}
 }

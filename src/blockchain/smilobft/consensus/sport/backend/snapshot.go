@@ -179,9 +179,9 @@ func (s *Snapshot) apply(headers []*types.Header) (*Snapshot, error) {
 		// Tally up the new vote from the fullnode
 		var authorize bool
 		switch {
-		case bytes.Compare(header.Nonce[:], nonceAuthVote) == 0:
+		case bytes.Equal(header.Nonce[:], nonceAuthVote):
 			authorize = true
-		case bytes.Compare(header.Nonce[:], nonceDropVote) == 0:
+		case bytes.Equal(header.Nonce[:], nonceDropVote):
 			authorize = false
 		default:
 			return nil, errInvalidVote
@@ -189,7 +189,7 @@ func (s *Snapshot) apply(headers []*types.Header) (*Snapshot, error) {
 		if snap.cast(header.Coinbase, authorize) {
 			snap.Votes = append(snap.Votes, &Vote{
 				Fullnode:  fullnode,
-				Block:     number,
+				BlockNum:  number,
 				Address:   header.Coinbase,
 				Authorize: authorize,
 			})

@@ -19,7 +19,7 @@ package sport
 
 // RequestEvent is posted to propose a proposal
 type RequestEvent struct {
-	Proposal Proposal
+	BlockProposal BlockProposal
 }
 
 // MessageEvent is posted for Sport engine communication

@@ -138,25 +138,28 @@ type worker struct {
 	// atomic status counters
 	mining int32
 	atWork int32
+
+	minBlocksEmptyMining *big.Int // Min Blocks to mine before Stop Mining Empty Blocks
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux) *worker {
+func newWorker(config *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux, minBlocksEmptyMining *big.Int) *worker {
 	worker := &worker{
-		config:         config,
-		engine:         engine,
-		eth:            eth,
-		mux:            mux,
-		txsCh:          make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:    make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:    make(chan core.ChainSideEvent, chainSideChanSize),
-		chainDb:        eth.ChainDb(),
-		recv:           make(chan *Result, resultQueueSize),
-		chain:          eth.BlockChain(),
-		proc:           eth.BlockChain().Validator(),
-		possibleUncles: make(map[common.Hash]*types.Block),
-		coinbase:       coinbase,
-		agents:         make(map[Agent]struct{}),
-		unconfirmed:    newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
+		config:               config,
+		engine:               engine,
+		eth:                  eth,
+		mux:                  mux,
+		txsCh:                make(chan core.NewTxsEvent, txChanSize),
+		chainHeadCh:          make(chan core.ChainHeadEvent, chainHeadChanSize),
+		chainSideCh:          make(chan core.ChainSideEvent, chainSideChanSize),
+		chainDb:              eth.ChainDb(),
+		recv:                 make(chan *Result, resultQueueSize),
+		chain:                eth.BlockChain(),
+		proc:                 eth.BlockChain().Validator(),
+		possibleUncles:       make(map[common.Hash]*types.Block),
+		coinbase:             coinbase,
+		agents:               make(map[Agent]struct{}),
+		unconfirmed:          newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
+		minBlocksEmptyMining: minBlocksEmptyMining,
 	}
 
 	if _, ok := engine.(consensus.SmiloBFT); ok || !config.IsSmilo || config.Clique != nil {
@@ -300,7 +303,8 @@ func (self *worker) update() {
 				self.currentMu.Unlock()
 			} else {
 				// If we're mining, but nothing is being processed, wake on new transactions
-				if self.config.Clique != nil && self.config.Clique.Period == 0 {
+				log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksMining", self.minBlocksEmptyMining, "IsSport", self.config.Sport != nil, "BlockNum Cmp MinBlocksMining", self.current.Block.Number().Cmp(self.minBlocksEmptyMining))
+				if self.config.Sport != nil && self.current.Block.Number().Cmp(self.minBlocksEmptyMining) >= 0 {
 					self.commitNewWork()
 				}
 			}

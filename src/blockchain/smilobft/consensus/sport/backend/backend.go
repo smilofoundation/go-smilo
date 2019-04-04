@@ -24,7 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
@@ -51,7 +51,7 @@ func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database) 
 		address:          crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:           log.New(),
 		db:               db,
-		commitCh:         make(chan *types.Block, 1),
+		commitChBlock:    make(chan *types.Block, 1),
 		recents:          recents,
 		candidates:       make(map[common.Address]bool),
 		coreStarted:      false,

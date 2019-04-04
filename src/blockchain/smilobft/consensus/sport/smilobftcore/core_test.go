@@ -28,7 +28,7 @@ import (
 func TestNewRequest(t *testing.T) {
 	testLogger.SetHandler(elog.StdoutHandler)
 
-	N := uint64(4)
+	N := 4
 
 	sys := NewTestSystemWithBackend(N)
 
@@ -38,26 +38,22 @@ func TestNewRequest(t *testing.T) {
 	request1 := makeBlock(1)
 	sys.backends[0].NewRequest(request1)
 
-	select {
-	case <-time.After(1 * time.Second):
-	}
+	<-time.After(1 * time.Second)
 
 	request2 := makeBlock(2)
 	sys.backends[0].NewRequest(request2)
 
-	select {
-	case <-time.After(1 * time.Second):
-	}
+	<-time.After(1 * time.Second)
 
 	for _, backend := range sys.backends {
 		if len(backend.committedMsgs) != 2 {
 			t.Errorf("the number of executed requests mismatch: have %v, want 2", len(backend.committedMsgs))
 		}
-		if !reflect.DeepEqual(request1.Number(), backend.committedMsgs[0].commitProposal.Number()) {
-			t.Errorf("the number of requests mismatch: have %v, want %v", request1.Number(), backend.committedMsgs[0].commitProposal.Number())
+		if !reflect.DeepEqual(request1.Number(), backend.committedMsgs[0].commitBlockProposal.Number()) {
+			t.Errorf("the number of requests mismatch: have %v, want %v", request1.Number(), backend.committedMsgs[0].commitBlockProposal.Number())
 		}
-		if !reflect.DeepEqual(request2.Number(), backend.committedMsgs[1].commitProposal.Number()) {
-			t.Errorf("the number of requests mismatch: have %v, want %v", request2.Number(), backend.committedMsgs[1].commitProposal.Number())
+		if !reflect.DeepEqual(request2.Number(), backend.committedMsgs[1].commitBlockProposal.Number()) {
+			t.Errorf("the number of requests mismatch: have %v, want %v", request2.Number(), backend.committedMsgs[1].commitBlockProposal.Number())
 		}
 	}
 }

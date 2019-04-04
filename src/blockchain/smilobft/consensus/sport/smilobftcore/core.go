@@ -30,8 +30,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
-var maxTimeout = 1 * time.Minute
-
 // ----------------------------------------------------------------------------
 
 func (c *core) finalizeMessage(msg *message) ([]byte, error) {
@@ -42,8 +40,8 @@ func (c *core) finalizeMessage(msg *message) ([]byte, error) {
 	// Add proof of consensus
 	msg.CommittedSeal = []byte{}
 	// Assign the CommittedSeal if it's a COMMIT message and proposal is not nil
-	if msg.Code == msgCommit && c.current.Proposal() != nil {
-		seal := PrepareCommittedSeal(c.current.Proposal().Hash())
+	if msg.Code == msgCommit && c.current.BlockProposal() != nil {
+		seal := PrepareCommittedSeal(c.current.BlockProposal().Hash())
 		msg.CommittedSeal, err = c.backend.Sign(seal)
 		if err != nil {
 			return nil, err
@@ -100,14 +98,22 @@ func (c *core) IsSpeaker() bool {
 	return v.IsSpeaker(c.backend.Address())
 }
 
-func (c *core) IsCurrentProposal(blockHash common.Hash) bool {
-	return c.current.pendingRequest != nil && c.current.pendingRequest.Proposal.Hash() == blockHash
+func (c *core) IsCurrentBlockProposal(blockHash common.Hash) bool {
+	if c.current == nil || c.current.pendingRequest == nil || c.current.pendingRequest.BlockProposal == nil {
+		log.Error("&*&*&*&*&* IsCurrentBlockProposal, could not evaluate complete object c.current.pendingRequest.BlockProposal, ", "c.current", c.current)
+		return false
+	}
+
+	isPending := c.current.pendingRequest != nil
+	isCurrentBlockProposal := c.current.pendingRequest.BlockProposal.Hash() == blockHash
+
+	return isPending && isCurrentBlockProposal
 }
 
 func (c *core) commit() {
 	c.setState(StateCommitted)
 
-	proposal := c.current.Proposal()
+	proposal := c.current.BlockProposal()
 	if proposal != nil {
 		committedSeals := make([][]byte, c.current.Commits.Size())
 		for i, v := range c.current.Commits.Values() {
@@ -134,29 +140,29 @@ func (c *core) startNewRound(round *big.Int) {
 
 	roundChange := false
 	// Try to get last proposal
-	lastProposal, lastSpeaker := c.backend.LastProposal()
+	lastBlockProposal, lastSpeaker := c.backend.LastBlockProposal()
 	if c.current == nil {
-		logger.Trace("Start to the initial round")
-	} else if lastProposal.Number().Cmp(c.current.Sequence()) >= 0 {
-		diff := new(big.Int).Sub(lastProposal.Number(), c.current.Sequence())
+		logger.Debug("Start to the initial round")
+	} else if lastBlockProposal.Number().Cmp(c.current.Sequence()) >= 0 {
+		diff := new(big.Int).Sub(lastBlockProposal.Number(), c.current.Sequence())
 		c.sequenceMeter.Mark(new(big.Int).Add(diff, common.Big1).Int64())
 
 		if !c.consensusTimestamp.IsZero() {
 			c.consensusTimer.UpdateSince(c.consensusTimestamp)
 			c.consensusTimestamp = time.Time{}
 		}
-		logger.Trace("Catch up latest proposal", "number", lastProposal.Number().Uint64(), "hash", lastProposal.Hash())
-	} else if lastProposal.Number().Cmp(big.NewInt(c.current.Sequence().Int64()-1)) == 0 {
+		logger.Trace("Catch up latest proposal", "number", lastBlockProposal.Number().Uint64(), "hash", lastBlockProposal.Hash())
+	} else if lastBlockProposal.Number().Cmp(big.NewInt(c.current.Sequence().Int64()-1)) == 0 {
 		if round.Cmp(common.Big0) == 0 {
 			// same seq and round, don't need to start new round
 			return
 		} else if round.Cmp(c.current.Round()) < 0 {
-			logger.Warn("New round should not be smaller than current round", "seq", lastProposal.Number().Int64(), "new_round", round, "old_round", c.current.Round())
+			logger.Warn("New round should not be smaller than current round", "seq", lastBlockProposal.Number().Int64(), "new_round", round, "old_round", c.current.Round())
 			return
 		}
 		roundChange = true
 	} else {
-		logger.Warn("New sequence should be larger than current sequence", "new_seq", lastProposal.Number().Int64())
+		logger.Warn("New sequence should be larger than current sequence", "new_seq", lastBlockProposal.Number().Int64())
 		return
 	}
 
@@ -168,10 +174,10 @@ func (c *core) startNewRound(round *big.Int) {
 		}
 	} else {
 		newView = &sport.View{
-			Sequence: new(big.Int).Add(lastProposal.Number(), common.Big1),
+			Sequence: new(big.Int).Add(lastBlockProposal.Number(), common.Big1),
 			Round:    new(big.Int),
 		}
-		c.fullnodeSet = c.backend.Fullnodes(lastProposal)
+		c.fullnodeSet = c.backend.Fullnodes(lastBlockProposal)
 	}
 
 	// Update logger
@@ -189,7 +195,7 @@ func (c *core) startNewRound(round *big.Int) {
 		// If we have pending request, propose pending request
 		if c.current.IsHashLocked() {
 			r := &sport.Request{
-				Proposal: c.current.Proposal(), //c.current.Proposal would be the locked proposal by previous speaker, see updateRoundState
+				BlockProposal: c.current.BlockProposal(), //c.current.BlockProposal would be the locked proposal by previous speaker, see updateRoundState
 			}
 			c.sendPreprepare(r)
 		} else if c.current.pendingRequest != nil {
@@ -198,11 +204,11 @@ func (c *core) startNewRound(round *big.Int) {
 	}
 	c.newRoundChangeTimer()
 
-	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "new_speaker", c.fullnodeSet.GetSpeaker(), "fullnodeSet", c.fullnodeSet.List(), "size", c.fullnodeSet.Size(), "IsSpeaker", c.IsSpeaker())
+	logger.Debug("New round", "new_round", newView.Round, "new_seq", newView.Sequence, "speaker", c.fullnodeSet.GetSpeaker(), "fullnodeSet", c.fullnodeSet.List(), "size", c.fullnodeSet.Size(), "IsSpeaker", c.IsSpeaker())
 }
 
 func (c *core) catchUpRound(view *sport.View) {
-	logger := c.logger.New("old_round", c.current.Round(), "old_seq", c.current.Sequence(), "old_speaker", c.fullnodeSet.GetSpeaker())
+	logger := c.logger.New("old_round", c.current.Round(), "old_seq", c.current.Sequence(), "speaker", c.fullnodeSet.GetSpeaker())
 
 	if view.Round.Cmp(c.current.Round()) > 0 {
 		c.roundMeter.Mark(new(big.Int).Sub(view.Round, c.current.Round()).Int64())
@@ -214,7 +220,7 @@ func (c *core) catchUpRound(view *sport.View) {
 	c.roundChangeSet.Clear(view.Round)
 	c.newRoundChangeTimer()
 
-	logger.Debug("Catch up round", "new_round", view.Round, "new_seq", view.Sequence, "new_speaker", c.fullnodeSet)
+	logger.Debug("Catch up round", "new_round", view.Round, "new_seq", view.Sequence, "fullnodeSet", c.fullnodeSet)
 }
 
 // updateRoundState updates round state by checking if locking block is necessary
@@ -222,12 +228,12 @@ func (c *core) updateRoundState(view *sport.View, fullnodeSet sport.FullnodeSet,
 	// Lock only if both roundChange is true and it is locked
 	if roundChange && c.current != nil {
 		if c.current.IsHashLocked() {
-			c.current = newRoundState(view, fullnodeSet, c.current.GetLockedHash(), c.current.Preprepare, c.current.pendingRequest, c.backend.HasBadProposal)
+			c.current = newRoundState(view, fullnodeSet, c.current.GetLockedHash(), c.current.Preprepare, c.current.pendingRequest, c.backend.HasBadBlockProposal)
 		} else {
-			c.current = newRoundState(view, fullnodeSet, common.Hash{}, nil, c.current.pendingRequest, c.backend.HasBadProposal)
+			c.current = newRoundState(view, fullnodeSet, common.Hash{}, nil, c.current.pendingRequest, c.backend.HasBadBlockProposal)
 		}
 	} else {
-		c.current = newRoundState(view, fullnodeSet, common.Hash{}, nil, nil, c.backend.HasBadProposal)
+		c.current = newRoundState(view, fullnodeSet, common.Hash{}, nil, nil, c.backend.HasBadBlockProposal)
 	}
 }
 
@@ -266,9 +272,10 @@ func (c *core) newRoundChangeTimer() {
 	round := c.current.Round().Uint64()
 	if round > 0 {
 		timeout += time.Duration(math.Pow(2, float64(round))) * time.Second
-		if timeout > maxTimeout {
-			timeout = maxTimeout
-			c.logger.Debug("************* Round Timeout increased to maxTimeout", "maxTimeout", maxTimeout, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
+		thisTimeout := time.Duration(c.config.MaxTimeout) * time.Second
+		if timeout > thisTimeout {
+			timeout = thisTimeout
+			c.logger.Debug("************* Round Timeout increased to maxTimeout", "maxTimeout", c.config.MaxTimeout, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		} else {
 			c.logger.Debug("************* Round Timeout increased", "increase", time.Duration(math.Pow(2, float64(round)))*time.Second, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		}

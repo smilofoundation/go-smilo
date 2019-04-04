@@ -421,7 +421,7 @@ func TestSaveAndLoad(t *testing.T) {
 		Votes: []*Vote{
 			{
 				Fullnode:  cmn.StringToAddress("1234567891"),
-				Block:     15,
+				BlockNum:  15,
 				Address:   cmn.StringToAddress("1234567892"),
 				Authorize: false,
 			},

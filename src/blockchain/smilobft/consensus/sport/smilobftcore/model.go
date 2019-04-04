@@ -162,8 +162,8 @@ type roundState struct {
 	lockedHash     common.Hash
 	pendingRequest *sport.Request
 
-	mu             *sync.RWMutex
-	hasBadProposal func(hash common.Hash) bool
+	mu                  *sync.RWMutex
+	hasBadBlockProposal func(hash common.Hash) bool
 }
 
 // newRoundState creates a new roundState instance with the given view and FullnodeSet
@@ -171,15 +171,15 @@ type roundState struct {
 // we need to keep a reference of preprepare in order to propose locked proposal when there is a lock and itself is the speaker
 func newRoundState(view *sport.View, fullnodeSet sport.FullnodeSet, lockedHash common.Hash, preprepare *sport.Preprepare, pendingRequest *sport.Request, hasBadProposal func(hash common.Hash) bool) *roundState {
 	return &roundState{
-		round:          view.Round,
-		sequence:       view.Sequence,
-		Preprepare:     preprepare,
-		Prepares:       newMessageSet(fullnodeSet),
-		Commits:        newMessageSet(fullnodeSet),
-		lockedHash:     lockedHash,
-		mu:             new(sync.RWMutex),
-		pendingRequest: pendingRequest,
-		hasBadProposal: hasBadProposal,
+		round:               view.Round,
+		sequence:            view.Sequence,
+		Preprepare:          preprepare,
+		Prepares:            newMessageSet(fullnodeSet),
+		Commits:             newMessageSet(fullnodeSet),
+		lockedHash:          lockedHash,
+		mu:                  new(sync.RWMutex),
+		pendingRequest:      pendingRequest,
+		hasBadBlockProposal: hasBadProposal,
 	}
 }
 
@@ -192,7 +192,7 @@ type Engine interface {
 
 	IsSpeaker() bool
 
-	IsCurrentProposal(blockHash common.Hash) bool
+	IsCurrentBlockProposal(blockHash common.Hash) bool
 }
 
 // ----------------------------------------------------------------------------

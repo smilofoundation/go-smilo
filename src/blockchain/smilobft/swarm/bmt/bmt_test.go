@@ -26,8 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"go-smilo/src/blockchain/smilobft/swarm/testutil"
 	"golang.org/x/crypto/sha3"
+
+	"go-smilo/src/blockchain/smilobft/swarm/testutil"
 )
 
 // the actual data length generated (could be longer than max datalength of the BMT)
@@ -375,10 +376,10 @@ func BenchmarkBMT(t *testing.B) {
 	}
 }
 
-type whenHash = int
+type whenHash int
 
 const (
-	first whenHash = iota
+	first = iota
 	last
 	random
 )

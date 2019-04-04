@@ -59,17 +59,19 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
 	TestnetChainConfig = &ChainConfig{
-		ByzantiumBlock:      big.NewInt(1),
-		EIP150Block:         big.NewInt(2),
-		EIP150Hash:          common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(3),
-		PetersburgBlock:     big.NewInt(4),
-		ConstantinopleBlock: big.NewInt(5),
+		ByzantiumBlock:       big.NewInt(1),
+		EIP150Block:          big.NewInt(2),
+		EIP150Hash:           common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		EIP155Block:          big.NewInt(0),
+		EIP158Block:          big.NewInt(3),
+		PetersburgBlock:      big.NewInt(4),
+		ConstantinopleBlock:  big.NewInt(5),
+		SixtySixPercentBlock: big.NewInt(310000),
 
 		Sport: &SportConfig{
 			Epoch:         30000,
 			SpeakerPolicy: 0,
+			MinFunds:      10000,
 		},
 
 		IsSmilo:       true,
@@ -78,7 +80,7 @@ var (
 
 		ChainID: big.NewInt(10),
 
-		RequiredMinFunds: 10000,
+		RequiredMinFunds: 1,
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
@@ -129,9 +131,12 @@ var (
 		PetersburgBlock:     big.NewInt(4),
 		ConstantinopleBlock: big.NewInt(5),
 
+		SixtySixPercentBlock: big.NewInt(2000000),
+
 		Sport: &SportConfig{
 			Epoch:         30000,
 			SpeakerPolicy: 0,
+			MinFunds:      20000,
 		},
 
 		IsSmilo:       true,
@@ -140,7 +145,7 @@ var (
 
 		ChainID: big.NewInt(20080914),
 
-		RequiredMinFunds: 20000,
+		RequiredMinFunds: 1,
 	}
 
 	//// SportTrustedCheckpoint contains the light client trusted checkpoint for the Smilo test network.
@@ -157,21 +162,19 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, false, true, false, 0}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(20080914), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, false, true, false, 0}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, false, false, false, 0}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, false, false, false, 0}
 
-	TestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, false, true, false, 0}
+	TestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, false, true, false, 0}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
-	SmiloTestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, nil, common.Hash{}, nil, nil, nil, nil, big.NewInt(0), nil, new(EthashConfig), nil, nil, true, true, false, 0}
-
-	SmiloTestChainConfigGas = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, nil, common.Hash{}, nil, nil, nil, nil, big.NewInt(0), nil, new(EthashConfig), nil, nil, true, true, false, 0}
+	SmiloTestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, nil, common.Hash{}, nil, nil, big.NewInt(300000), nil, nil, big.NewInt(0), nil, new(EthashConfig), nil, nil, true, true, false, 0}
 )
 
 // TrustedCheckpoint represents a set of post-processed trie roots (CHT and
@@ -206,6 +209,8 @@ type ChainConfig struct {
 	EIP155Block *big.Int `json:"eip155Block,omitempty"` // EIP155 HF block
 	EIP158Block *big.Int `json:"eip158Block,omitempty"` // EIP158 HF block
 
+	SixtySixPercentBlock *big.Int `json:"sixtySixPercentBlock"` // The 66% switch block (nil = no fork)
+
 	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
 	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
 	PetersburgBlock     *big.Int `json:"petersburgBlock,omitempty"`     // Petersburg switch block (nil = same as Constantinople)
@@ -221,7 +226,7 @@ type ChainConfig struct {
 	IsGas         bool `json:"isGas"`         //true for when using gas, false when not using any
 	IsGasRefunded bool `json:"isGasRefunded"` //true for when using gas and refund is enabled, false when not refundable
 
-	RequiredMinFunds int64 `json:"required_min_funds"` //default: 20000 smilos
+	RequiredMinFunds int64 `json:"required_min_funds"` // 1e16 -> 1 -> 1e16
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -245,8 +250,9 @@ func (c *CliqueConfig) String() string {
 
 // SportConfig is the consensus engine configs for Sport based sealing.
 type SportConfig struct {
-	Epoch         uint64 `json:"epoch"`  // Epoch length to reset votes and checkpoint
-	SpeakerPolicy uint64 `json:"policy"` // The policy for speaker selection
+	Epoch         uint64 `json:"epoch"`    // Epoch length to reset votes and checkpoint
+	SpeakerPolicy uint64 `json:"policy"`   // The policy for speaker selection
+	MinFunds      int64  `json:"minfunds"` // The policy for speaker selection
 }
 
 // String implements the stringer interface, returning the consensus engine details.

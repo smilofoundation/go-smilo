@@ -37,7 +37,7 @@ import (
 var testLogger = elog.New()
 
 type testSystemBackend struct {
-	id  uint64
+	id  int
 	sys *testSystem
 
 	engine Engine
@@ -52,8 +52,8 @@ type testSystemBackend struct {
 }
 
 type testCommittedMsgs struct {
-	commitProposal sport.Proposal
-	committedSeals [][]byte
+	commitBlockProposal sport.BlockProposal
+	committedSeals      [][]byte
 }
 
 // ==============================================
@@ -65,7 +65,7 @@ func (self *testSystemBackend) Address() common.Address {
 }
 
 // Peers returns all connected peers
-func (self *testSystemBackend) Fullnodes(proposal sport.Proposal) sport.FullnodeSet {
+func (self *testSystemBackend) Fullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
 	return self.peers
 }
 
@@ -96,11 +96,11 @@ func (self *testSystemBackend) Gossip(fullnodeSet sport.FullnodeSet, message []b
 	return nil
 }
 
-func (self *testSystemBackend) Commit(proposal sport.Proposal, seals [][]byte) error {
+func (self *testSystemBackend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	testLogger.Info("commit message", "address", self.Address())
 	self.committedMsgs = append(self.committedMsgs, testCommittedMsgs{
-		commitProposal: proposal,
-		committedSeals: seals,
+		commitBlockProposal: proposal,
+		committedSeals:      seals,
 	})
 
 	// fake new head events
@@ -108,7 +108,7 @@ func (self *testSystemBackend) Commit(proposal sport.Proposal, seals [][]byte) e
 	return nil
 }
 
-func (self *testSystemBackend) Verify(proposal sport.Proposal) (time.Duration, error) {
+func (self *testSystemBackend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 	return 0, nil
 }
 
@@ -129,26 +129,26 @@ func (self *testSystemBackend) Hash(b interface{}) common.Hash {
 	return cmn.StringToHash("Test")
 }
 
-func (self *testSystemBackend) NewRequest(request sport.Proposal) {
+func (self *testSystemBackend) NewRequest(request sport.BlockProposal) {
 	go self.events.Post(sport.RequestEvent{
-		Proposal: request,
+		BlockProposal: request,
 	})
 }
 
-func (self *testSystemBackend) HasBadProposal(hash common.Hash) bool {
+func (self *testSystemBackend) HasBadBlockProposal(hash common.Hash) bool {
 	return false
 }
 
-func (self *testSystemBackend) LastProposal() (sport.Proposal, common.Address) {
+func (self *testSystemBackend) LastBlockProposal() (sport.BlockProposal, common.Address) {
 	l := len(self.committedMsgs)
 	if l > 0 {
-		return self.committedMsgs[l-1].commitProposal, common.Address{}
+		return self.committedMsgs[l-1].commitBlockProposal, common.Address{}
 	}
 	return makeBlock(0), common.Address{}
 }
 
 // Only block height 5 will return true
-func (self *testSystemBackend) HasProposal(hash common.Hash, number *big.Int) bool {
+func (self *testSystemBackend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
 	return number.Cmp(big.NewInt(5)) == 0
 }
 
@@ -156,7 +156,7 @@ func (self *testSystemBackend) GetSpeaker(number uint64) common.Address {
 	return common.Address{}
 }
 
-func (self *testSystemBackend) ParentFullnodes(proposal sport.Proposal) sport.FullnodeSet {
+func (self *testSystemBackend) ParentFullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
 	return self.peers
 }
 
@@ -175,19 +175,19 @@ type testSystem struct {
 	quit          chan struct{}
 }
 
-func newTestSystem(n uint64) *testSystem {
+func newTestSystem(availableNodes int) *testSystem {
 	testLogger.SetHandler(elog.StdoutHandler)
 	return &testSystem{
-		backends: make([]*testSystemBackend, n),
+		backends: make([]*testSystemBackend, availableNodes),
 
 		queuedMessage: make(chan sport.MessageEvent),
 		quit:          make(chan struct{}),
 	}
 }
 
-func generateFullnodes(n int) []common.Address {
+func generateFullnodes(availableNodes int) []common.Address {
 	vals := make([]common.Address, 0)
-	for i := 0; i < n; i++ {
+	for i := 0; i < availableNodes; i++ {
 		privateKey, _ := crypto.GenerateKey()
 		vals = append(vals, crypto.PubkeyToAddress(privateKey.PublicKey))
 	}
@@ -198,19 +198,18 @@ func newTestFullnodeSet(n int) sport.FullnodeSet {
 	return fullnode.NewFullnodeSet(generateFullnodes(n), sport.RoundRobin)
 }
 
-// FIXME: int64 is needed for N and F
-func NewTestSystemWithBackend(n uint64) *testSystem {
+func NewTestSystemWithBackend(availableNodes int) *testSystem {
 	testLogger.SetHandler(elog.StdoutHandler)
 
-	addrs := generateFullnodes(int(n))
-	sys := newTestSystem(n)
+	addrs := generateFullnodes(availableNodes)
+	sys := newTestSystem(availableNodes)
 	config := sport.DefaultConfig
 
-	for i := uint64(0); i < n; i++ {
+	for i := 0; i < availableNodes; i++ {
 		vset := fullnode.NewFullnodeSet(addrs, sport.RoundRobin)
 		backend := sys.NewBackend(i)
 		backend.peers = vset
-		backend.address = vset.GetByIndex(i).Address()
+		backend.address = vset.GetByIndex(uint64(i)).Address()
 
 		core := New(backend, config).(*core)
 		core.state = StateAcceptRequest
@@ -271,7 +270,7 @@ func (t *testSystem) stop(core bool) {
 	}
 }
 
-func (t *testSystem) NewBackend(id uint64) *testSystemBackend {
+func (t *testSystem) NewBackend(id int) *testSystemBackend {
 	// assume always success
 	ethDB := ethdb.NewMemDatabase()
 	backend := &testSystemBackend{
@@ -305,6 +304,6 @@ func makeBlock(number int64) *types.Block {
 	return block.WithSeal(header)
 }
 
-func newTestProposal() sport.Proposal {
+func newTestBlockProposal() sport.BlockProposal {
 	return makeBlock(1)
 }

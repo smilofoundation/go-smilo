@@ -182,8 +182,8 @@ func TestStoreBacklog(t *testing.T) {
 	p := c.fullnodeSet.GetByIndex(0)
 	// push preprepare msg
 	preprepare := &sport.Preprepare{
-		View:     v,
-		Proposal: makeBlock(1),
+		View:          v,
+		BlockProposal: makeBlock(1),
 	}
 	prepreparePayload, _ := Encode(preprepare)
 	m := &message{
@@ -292,8 +292,8 @@ func TestProcessBacklog(t *testing.T) {
 		Sequence: big.NewInt(1),
 	}
 	preprepare := &sport.Preprepare{
-		View:     v,
-		Proposal: makeBlock(1),
+		View:          v,
+		BlockProposal: makeBlock(1),
 	}
 	prepreparePayload, _ := Encode(preprepare)
 

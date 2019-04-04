@@ -77,12 +77,15 @@ func (api *API) Propose(address common.Address, auth bool) {
 	api.smilo.candidatesLock.Lock()
 	defer api.smilo.candidatesLock.Unlock()
 
+	// BEGIN SMILO SPECIFICS
+	requireSmilos := new(big.Int).Mul(big.NewInt(api.smilo.config.MinFunds), big.NewInt(1e18))
+
 	//check that the address have 10k smilos in it
 	statedb, _, err := api.chain.State()
 	if err != nil {
 		log.Error("Could not propose new candidate, got error with statedb", "error", err, "address", address, "auth", auth)
 		return
-	} else if statedb.GetBalance(address).Cmp(big.NewInt(api.smilo.config.MinFunds)) < 0 {
+	} else if statedb.GetBalance(address).Cmp(requireSmilos) < 0 {
 		log.Error("Could not propose new candidate", "error", core.ErrInsufficientFunds.Error(), "address", address, "auth", auth, "MinFunds", api.smilo.config.MinFunds, "balance", statedb.GetBalance(address))
 		return
 	}

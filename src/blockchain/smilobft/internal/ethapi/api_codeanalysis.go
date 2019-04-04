@@ -119,8 +119,5 @@ func smiloAnalysisCheck(codeanalysisPath string) error {
 	cmd := exec.Command(codeanalysisPath, "--version")
 	cmd.Stdout = &out
 	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
