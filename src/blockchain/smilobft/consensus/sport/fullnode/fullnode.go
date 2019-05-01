@@ -26,3 +26,11 @@ func (theFullNode *fullnode) Address() common.Address {
 func (theFullNode *fullnode) String() string {
 	return theFullNode.Address().String()
 }
+
+func (theFullNode *fullnode) GetLotteryTicket() string {
+	return theFullNode.Address().String()
+}
+
+func (theFullNode *fullnode) SetLotteryTicket(ticket string) {
+	theFullNode.ticket = ticket
+}

@@ -72,7 +72,7 @@ func TestNewFullnodeSet(t *testing.T) {
 	}
 }
 
-func TestNormalFullnodeSet(t *testing.T) {
+func TestNormalFullnodeSetRoundRobin(t *testing.T) {
 	b1 := cmn.Hex2Bytes(testAddress)
 	b2 := cmn.Hex2Bytes(testAddress2)
 	addr1 := common.BytesToAddress(b1)
@@ -81,6 +81,64 @@ func TestNormalFullnodeSet(t *testing.T) {
 	val2 := NewFullNode(addr2)
 
 	fullnodeSet := newFullnodeSet([]common.Address{addr1, addr2}, sport.RoundRobin)
+	if fullnodeSet == nil {
+		t.Errorf("the format of fullnode set is invalid")
+		t.FailNow()
+	}
+
+	// check size
+	if size := fullnodeSet.Size(); size != 2 {
+		t.Errorf("the size of fullnode set is wrong: have %v, want 2", size)
+	}
+	// test get by index
+	if val := fullnodeSet.GetByIndex(uint64(0)); !reflect.DeepEqual(val, val1) {
+		t.Errorf("fullnode mismatch: have %v, want %v", val, val1)
+	}
+	// test get by invalid index
+	if val := fullnodeSet.GetByIndex(uint64(2)); val != nil {
+		t.Errorf("fullnode mismatch: have %v, want nil", val)
+	}
+	// test get by address
+	if _, val := fullnodeSet.GetByAddress(addr2); !reflect.DeepEqual(val, val2) {
+		t.Errorf("fullnode mismatch: have %v, want %v", val, val2)
+	}
+	// test get by invalid address
+	invalidAddr := cmn.HexToAddress("0x9535b2e7faaba5288511d89341d94a38063a349b")
+	if _, val := fullnodeSet.GetByAddress(invalidAddr); val != nil {
+		t.Errorf("fullnode mismatch: have %v, want nil", val)
+	}
+	// test get speaker
+	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
+		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
+	}
+	// test calculate speaker
+	lastSpeaker := addr1
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0))
+	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
+		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
+	}
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
+		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
+	}
+	// test empty last speaker
+	lastSpeaker = common.Address{}
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
+		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
+	}
+}
+
+
+func TestNormalFullnodeSetLottery(t *testing.T) {
+	b1 := cmn.Hex2Bytes(testAddress)
+	b2 := cmn.Hex2Bytes(testAddress2)
+	addr1 := common.BytesToAddress(b1)
+	addr2 := common.BytesToAddress(b2)
+	val1 := NewFullNode(addr1)
+	val2 := NewFullNode(addr2)
+
+	fullnodeSet := newFullnodeSet([]common.Address{addr1, addr2}, sport.Lottery)
 	if fullnodeSet == nil {
 		t.Errorf("the format of fullnode set is invalid")
 		t.FailNow()

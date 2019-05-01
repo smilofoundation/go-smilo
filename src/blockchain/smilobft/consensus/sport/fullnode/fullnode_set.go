@@ -18,6 +18,7 @@
 package fullnode
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -70,7 +71,15 @@ func (fullnodeSet *fullnodeSet) IsSpeaker(address common.Address) bool {
 func (fullnodeSet *fullnodeSet) CalcSpeaker(lastSpeaker common.Address, round uint64) {
 	fullnodeSet.fullnodeMu.RLock()
 	defer fullnodeSet.fullnodeMu.RUnlock()
-	fullnodeSet.speaker = fullnodeSet.selector(fullnodeSet, lastSpeaker, round)
+
+	if fullnodeSet.policy == sport.RoundRobin {
+		fullnodeSet.speaker = roundRobinSpeaker(fullnodeSet, lastSpeaker, round)
+	} else if fullnodeSet.policy == sport.Lottery {
+		//fullnodeSet.speaker = lotterySpeaker(fullnodeSet, lastSpeaker, round, fullnodeSet.)
+	} else {
+		panic(fmt.Sprintf("Could not execute CalcSpeaker, fullnodeSet.policy is invalid %d ", fullnodeSet.policy))
+	}
+
 }
 
 func (fullnodeSet *fullnodeSet) AddFullnode(address common.Address) bool {

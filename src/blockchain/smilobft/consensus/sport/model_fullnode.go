@@ -29,6 +29,10 @@ type Fullnode interface {
 
 	// String representation of Fullnode
 	String() string
+
+	// Lottery ticket
+	GetLotteryTicket() string
+	SetLotteryTicket(string)
 }
 
 // ----------------------------------------------------------------------------
