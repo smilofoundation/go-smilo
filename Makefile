@@ -7,8 +7,11 @@
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
 
 
-COMPANY=Smilo
+COMPANY=smilo
 AUTHOR=go-smilo
+NAME=node
+VERSION=latest
+FULLDOCKERNAME=$(COMPANY)/$(NAME):$(VERSION)
 
 DIR = $(shell pwd)
 PACKAGES = $(shell find ./src -type d -not -path '\./src')
@@ -29,6 +32,9 @@ test: clean ## Run tests
 
 test-c: clean ## Run tests with coverage
 	go test ./src/... -timeout=15m -cover
+
+regression: clean ## Run tests with coverage
+	go test ./src/blockchain/regression/... -timeout=15m -cover
 
 test-all: clean
 	$(foreach pkg,$(PACKAGES),\
