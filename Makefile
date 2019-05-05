@@ -45,7 +45,7 @@ test-race: clean ## Run tests with -race. Note: expected to fail, but look for "
 
 lint: clean ## Run linters. Use make install-linters first.
 	vendorcheck ./src/...
-	gometalinter --deadline=3m -j 2 --disable-all --tests --vendor \
+	gometalinter.v2 --deadline=3m -j 2 --disable-all --tests --vendor \
 		-E deadcode \
 		-E errcheck \
 		-E gas \
@@ -92,7 +92,7 @@ install-linters: ## Install linters
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u golang.org/x/tools/cmd/gofmt
 #	go get -u github.com/davecheney/godoc2md
-	gometalinter --vendored-linters --install
+	gometalinter.v2 --vendored-linters --install
 
 
 format:  # Formats the code. Must have goimports installed (use make install-linters).
