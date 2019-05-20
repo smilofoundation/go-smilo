@@ -662,6 +662,11 @@ var (
 		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
 		Value: eth.DefaultConfig.Sport.BlockPeriod,
 	}
+	SportFaultyModeFlag = cli.Uint64Flag{
+		Name:  "smilobft.faultymode",
+		Usage: "The faulty node indicates the faulty node's behavior",
+		Value: eth.DefaultConfig.Sport.FaultyMode,
+	}
 	SolcPathFlag = cli.StringFlag{
 		Name:  "solcpath",
 		Usage: "path to solc executable, if provided, enables eth.compile.solidity web3",
@@ -1173,6 +1178,9 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
 		cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
+	}
+	if ctx.GlobalIsSet(SportFaultyModeFlag.Name) {
+		cfg.Sport.FaultyMode = ctx.GlobalUint64(SportFaultyModeFlag.Name)
 	}
 }
 

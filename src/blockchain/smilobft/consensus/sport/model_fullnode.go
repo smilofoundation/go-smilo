@@ -70,9 +70,9 @@ type FullnodeSet interface {
 	RemoveFullnode(address common.Address) bool
 	// Copy fullnode set
 	Copy() FullnodeSet
-	// Get the maximum number of faulty nodes
+	// F - Get the maximum number of faulty nodes
 	MaxFaulty() int
-	// Minimum nodes to approve on Consensus
+	// E - Minimum nodes to approve on Consensus
 	MinApprovers() int
 	// Get the extra number of faulty nodes
 	E() int

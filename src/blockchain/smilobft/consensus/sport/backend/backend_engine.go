@@ -556,3 +556,8 @@ func sigHash(header *types.Header) (hash common.Hash) {
 func (sb *backend) SealHash(header *types.Header) common.Hash {
 	return sigHash(header)
 }
+
+func (sb *backend) badBlock() bool {
+	return sb.config.FaultyMode == sport.BadBlock.Uint64() ||
+		(sb.config.FaultyMode == sport.Random.Uint64() && rand.Intn(2) == 1)
+}

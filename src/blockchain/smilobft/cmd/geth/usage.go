@@ -275,6 +275,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.SportRequestTimeoutFlag,
 			utils.SportBlockPeriodFlag,
+			utils.SportFaultyModeFlag,
 			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
