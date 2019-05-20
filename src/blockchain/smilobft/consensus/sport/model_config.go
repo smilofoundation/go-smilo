@@ -34,6 +34,7 @@ type Config struct {
 	MinFunds             int64         `toml:",omitempty"` // The minimum funds a node should have to be a full node
 	CommunityAddress     string        `toml:",omitempty"` // The community address for miner donations
 	MinBlocksEmptyMining *big.Int      `toml:",omitempty"` // Min Blocks to mine before Stop Mining Empty Blocks
+	FaultyMode           uint64        `toml:",omitempty"` // The faulty node indicates the faulty node's behavior
 }
 
 var DefaultConfig = &Config{
@@ -44,4 +45,5 @@ var DefaultConfig = &Config{
 	Epoch:                30000,
 	MinFunds:             1,
 	MinBlocksEmptyMining: big.NewInt(20000000),
+	FaultyMode:           Disabled.Uint64(),
 }

@@ -18,6 +18,7 @@
 package smilobftcore
 
 import (
+	"go-smilo/src/blockchain/smilobft/consensus/sport/smilobftcore/faulty"
 	"math/big"
 	"sync"
 	"time"
@@ -72,6 +73,9 @@ type core struct {
 
 // New creates an smilobft consensus core
 func New(backend sport.Backend, config *sport.Config) Engine {
+	if config.FaultyMode != sport.Disabled.Uint64() {
+		return faulty.New(backend, config)
+	}
 	r := metrics.NewRegistry()
 	c := &core{
 		config:             config,

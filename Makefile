@@ -7,8 +7,11 @@
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
 
 
-COMPANY=Smilo
+COMPANY=smilo
 AUTHOR=go-smilo
+NAME=node
+VERSION=latest
+FULLDOCKERNAME=$(COMPANY)/$(NAME):$(VERSION)
 
 DIR = $(shell pwd)
 PACKAGES = $(shell find ./src -type d -not -path '\./src')
@@ -30,6 +33,9 @@ test: clean ## Run tests
 test-c: clean ## Run tests with coverage
 	go test ./src/... -timeout=15m -cover
 
+regression: clean ## Run tests with coverage
+	go test ./src/blockchain/regression/... -timeout=15m -cover
+
 test-all: clean
 	$(foreach pkg,$(PACKAGES),\
 		go test $(pkg) -timeout=5m;)
@@ -39,7 +45,7 @@ test-race: clean ## Run tests with -race. Note: expected to fail, but look for "
 
 lint: clean ## Run linters. Use make install-linters first.
 	vendorcheck ./src/...
-	gometalinter --deadline=3m -j 2 --disable-all --tests --vendor \
+	gometalinter.v2 --deadline=3m -j 2 --disable-all --tests --vendor \
 		-E deadcode \
 		-E errcheck \
 		-E gas \
@@ -86,7 +92,7 @@ install-linters: ## Install linters
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u golang.org/x/tools/cmd/gofmt
 #	go get -u github.com/davecheney/godoc2md
-	gometalinter --vendored-linters --install
+	gometalinter.v2 --vendored-linters --install
 
 
 format:  # Formats the code. Must have goimports installed (use make install-linters).

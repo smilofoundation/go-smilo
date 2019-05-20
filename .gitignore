@@ -6,6 +6,8 @@ poc
 build/_workspace
 build/bin
 src/blockchain/smilobft/build/_workspace
+src/blockchain/regression
+
 temp
 
 

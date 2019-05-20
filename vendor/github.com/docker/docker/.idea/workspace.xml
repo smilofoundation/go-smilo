@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="1451c822-b4b2-4a6c-ad33-a6310553ccc5" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/nat/nat.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/nat/parse.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/nat/sort.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/inmem_socket.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/proxy.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/sockets.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/sockets_unix.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/sockets_windows.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/tcp_socket.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/sockets/unix_socket.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/tlsconfig/certpool_go17.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/tlsconfig/certpool_other.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/tlsconfig/config.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/tlsconfig/config_client_ciphers.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/vendor/github.com/docker/go-connections/tlsconfig/config_legacy_client_ciphers.go" beforeDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" path="/usr/local/go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectFrameBounds">
+    <option name="y" value="131" />
+    <option name="width" value="1904" />
+    <option name="height" value="716" />
+  </component>
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="Scope" />
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="docker" type="b2602c69:ProjectViewProjectNode" />
+              <item name="docker" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="docker" type="b2602c69:ProjectViewProjectNode" />
+              <item name="docker" type="462c0819:PsiDirectoryNode" />
+              <item name="vendor" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="docker" type="b2602c69:ProjectViewProjectNode" />
+              <item name="docker" type="462c0819:PsiDirectoryNode" />
+              <item name="vendor" type="462c0819:PsiDirectoryNode" />
+              <item name="github.com" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="docker" type="b2602c69:ProjectViewProjectNode" />
+              <item name="docker" type="462c0819:PsiDirectoryNode" />
+              <item name="vendor" type="462c0819:PsiDirectoryNode" />
+              <item name="github.com" type="462c0819:PsiDirectoryNode" />
+              <item name="docker" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.gopath.indexing.explicitly.defined" value="true" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.vendoring.notification.had.been.shown" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="nodejs_npm_path_reset_for_default_project" value="true" />
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="0" y="131" width="1904" height="716" extended-state="1" />
+    <layout>
+      <window_info id="Gulp" order="0" sideWeight="0.5054602" side_tool="true" weight="0.256194" />
+      <window_info id="npm" order="1" />
+      <window_info id="Structure" order="2" sideWeight="0.30455258" side_tool="true" weight="0.20927781" />
+      <window_info id="Favorites" order="3" sideWeight="0.30294117" side_tool="true" weight="0.18676628" />
+      <window_info active="true" content_ui="combo" id="Project" order="4" sideWeight="0.6954474" visible="true" weight="0.26847422" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" sideWeight="0.49893278" weight="0.39662448" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.4949921" visible="true" weight="0.2598684" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49466383" weight="0.33755276" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32805908" />
+      <window_info anchor="bottom" id="Event Log" order="7" sideWeight="0.5050079" side_tool="true" weight="0.2598684" />
+      <window_info anchor="bottom" id="Docker" order="8" show_stripe_button="false" sideWeight="0.4994664" weight="0.32896176" />
+      <window_info anchor="bottom" id="Messages" order="9" />
+      <window_info anchor="bottom" id="Database Changes" order="10" show_stripe_button="false" />
+      <window_info anchor="bottom" id="TypeScript" order="11" />
+      <window_info anchor="bottom" id="Terminal" order="12" sideWeight="0.49235636" weight="0.26973686" />
+      <window_info anchor="bottom" id="Version Control" order="13" sideWeight="0.4967983" weight="0.28691983" />
+      <window_info anchor="right" id="Commander" order="0" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" auto_hide="true" id="LuaJ" order="3" show_stripe_button="false" weight="0.32977587" />
+      <window_info anchor="right" id="Database" order="4" show_stripe_button="false" weight="0.32977587" />
+    </layout>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+</project>

@@ -4,7 +4,7 @@ Official Golang implementation of the Smilo protocol.
 [![Build Status](https://travis-ci.org/Smilo-platform/go-smilo.svg?branch=master)](https://travis-ci.org/Smilo-platform/go-smilo)
 [![GoDoc](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft?status.svg)](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Smilo-platform/go-smilo)](https://goreportcard.com/report/github.com/Smilo-platform/go-smilo)
-
+[![Docker Repository on Quay](https://quay.io/repository/smilo/go-smilo/status "Docker Repository on Quay")](https://quay.io/repository/smilo/go-smilo)
 ## Building the source
 
 Building geth requires both a Go (version 1.9 or later) and a C compiler.
