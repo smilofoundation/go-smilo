@@ -18,6 +18,7 @@
 package sport
 
 import (
+	"crypto/ecdsa"
 	"math/big"
 	"time"
 
@@ -53,6 +54,9 @@ type Backend interface {
 
 	// Sign signs input data with the backend's private key
 	Sign([]byte) ([]byte, error)
+
+	// Get PrivateKey
+	GetPrivateKey() *ecdsa.PrivateKey
 
 	// CheckSignature verifies the signature by checking if it's signed by
 	// the given fullnode

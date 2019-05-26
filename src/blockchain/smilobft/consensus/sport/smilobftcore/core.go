@@ -187,7 +187,13 @@ func (c *core) startNewRound(round *big.Int) {
 	// New snapshot for new round
 	c.updateRoundState(newView, c.fullnodeSet, roundChange)
 	// Calculate new speaker
-	c.fullnodeSet.CalcSpeaker(lastSpeaker, newView.Round.Uint64())
+
+	currentBlockHash := lastBlockProposal.Hash().Hex()
+	if c.current.Preprepare != nil {
+		currentBlockHash = c.current.Preprepare.BlockProposal.Hash().Hex()
+	}
+
+	c.fullnodeSet.CalcSpeaker(lastSpeaker, newView.Round.Uint64(), c.backend.GetPrivateKey(), currentBlockHash)
 	c.waitingForRoundChange = false
 	c.setState(StateAcceptRequest)
 	if roundChange && c.IsSpeaker() && c.current != nil {

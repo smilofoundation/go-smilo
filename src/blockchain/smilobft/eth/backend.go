@@ -37,7 +37,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
-	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	smiloBackend "go-smilo/src/blockchain/smilobft/consensus/sport/backend"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/bloombits"
@@ -259,7 +258,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		if chainConfig.Sport.Epoch != 0 {
 			config.Sport.Epoch = chainConfig.Sport.Epoch
 		}
-		config.Sport.SpeakerPolicy = sport.SpeakerPolicy(chainConfig.Sport.SpeakerPolicy)
+		//config.Sport.SpeakerPolicy = sport.SpeakerPolicy(chainConfig.Sport.SpeakerPolicy)
 
 		if chainConfig.Sport.MinFunds != 0 {
 			config.Sport.MinFunds = chainConfig.Sport.MinFunds

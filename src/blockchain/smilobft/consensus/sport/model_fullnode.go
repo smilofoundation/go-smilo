@@ -18,6 +18,7 @@
 package sport
 
 import (
+	"crypto/ecdsa"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -55,7 +56,7 @@ func (slice Fullnodes) Swap(i, j int) {
 
 type FullnodeSet interface {
 	// Calculate the speaker
-	CalcSpeaker(lastSpeaker common.Address, round uint64)
+	CalcSpeaker(lastSpeaker common.Address, round uint64, pk *ecdsa.PrivateKey, blockhash string)
 	// Return the fullnode size
 	Size() int
 	// Return the fullnode array

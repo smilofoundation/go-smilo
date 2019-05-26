@@ -18,15 +18,17 @@
 package fullnode
 
 import (
-	"bytes"
+	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
 	"go-smilo/src/blockchain/smilobft/swarm/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
 
 func calcSeed(fullnodeSet sport.FullnodeSet, speaker common.Address, round uint64) uint64 {
@@ -55,24 +57,32 @@ func roundRobinSpeaker(fullnodeSet sport.FullnodeSet, speaker common.Address, ro
 	return fullnodeSet.GetByIndex(pick)
 }
 
-func lotterySpeaker(fullnodeSet sport.FullnodeSet, speaker common.Address, round uint64) sport.Fullnode {
+func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blockHash string) sport.Fullnode {
 	if fullnodeSet.Size() == 0 {
 		return nil
 	}
 
 	participantsJson, err := json.Marshal(fullnodeSet)
 	if err != nil {
-		log.Error("Could not create list of participants for àlottery ", err)
+		log.Error("Could not create list of participants for lottery ", err)
 		return nil
 	}
 
-	skb := vrf.PrivateKey(base58.Decode("test123"))
+	keyStr := hex.EncodeToString(crypto.FromECDSA(nodepk))
+	////keyStr := fmt.Sprintf("%x", nodepk.D.Bytes())
+	log.Debug("Going to lotterySpeaker .... ", "key", keyStr)
+	//
+	skb := vrf.PrivateKey(keyStr)
 
-	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", round))...)
+	//skb, _ := vrf.GenerateKey(nil)
+	//log.Debug("Going to lotterySpeaker for real .... ", "key", hex.EncodeToString(skb))
+
+
+	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", blockHash))...)
 	vrfBytes, proof := skb.Prove(provableMessage)
 	pk, _ := skb.Public()
-	verifyResult, vrfBytes2 := pk.Verify(provableMessage, proof)
-	if !verifyResult || bytes.Compare(vrfBytes, vrfBytes2) != 0 {
+	verifyResult, _ := pk.Verify(provableMessage, proof)
+	if !verifyResult {
 		log.Error("Proof lottery verification has failed")
 		return nil
 	}

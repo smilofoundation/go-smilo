@@ -64,7 +64,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 			// Get fullnode set for the given proposal
 			fullnodeSet := c.backend.ParentFullnodes(preprepare.BlockProposal).Copy()
 			previousSpeaker := c.backend.GetSpeaker(preprepare.BlockProposal.Number().Uint64() - 1)
-			fullnodeSet.CalcSpeaker(previousSpeaker, preprepare.View.Round.Uint64())
+			fullnodeSet.CalcSpeaker(previousSpeaker, preprepare.View.Round.Uint64(), c.backend.GetPrivateKey(), preprepare.BlockProposal.Hash().Hex())
 			// Broadcast COMMIT if it is an existing block
 			// 1. The speaker needs to be a speaker matches the given (Sequence + Round)
 			// 2. The given block must exist

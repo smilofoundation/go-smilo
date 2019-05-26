@@ -18,7 +18,9 @@
 package fullnode
 
 import (
+	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"reflect"
 	"sort"
 
@@ -68,14 +70,16 @@ func (fullnodeSet *fullnodeSet) IsSpeaker(address common.Address) bool {
 	return reflect.DeepEqual(fullnodeSet.GetSpeaker(), val)
 }
 
-func (fullnodeSet *fullnodeSet) CalcSpeaker(lastSpeaker common.Address, round uint64) {
+func (fullnodeSet *fullnodeSet) CalcSpeaker(lastSpeaker common.Address, round uint64, pk *ecdsa.PrivateKey, blockhash string) {
 	fullnodeSet.fullnodeMu.RLock()
 	defer fullnodeSet.fullnodeMu.RUnlock()
 
 	if fullnodeSet.policy == sport.RoundRobin {
+	log.Debug("CalcSpeaker", "policy", "RoundRobin")
 		fullnodeSet.speaker = roundRobinSpeaker(fullnodeSet, lastSpeaker, round)
 	} else if fullnodeSet.policy == sport.Lottery {
-		//fullnodeSet.speaker = lotterySpeaker(fullnodeSet, lastSpeaker, round, fullnodeSet.)
+		log.Debug("CalcSpeaker", "policy", "Lottery")
+		fullnodeSet.speaker = lotterySpeaker(fullnodeSet, pk, blockhash)
 	} else {
 		panic(fmt.Sprintf("Could not execute CalcSpeaker, fullnodeSet.policy is invalid %d ", fullnodeSet.policy))
 	}
