@@ -37,14 +37,15 @@ import (
 	"bytes"
 	"testing"
 	// "fmt"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHonestComplete(t *testing.T) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pk, _ := sk.Public()
+	require.NoError(t, err)
+
+	pk, ok := sk.Public()
+	require.True(t, ok, "Could not obtain public key.")
 	alice := []byte("alice")
 	aliceVRF := sk.Compute(alice)
 	aliceVRFFromProof, aliceProof := sk.Prove(alice)
@@ -56,34 +57,25 @@ func TestHonestComplete(t *testing.T) {
 	// fmt.Printf("aliceProof:   %X\n", aliceProof)
 
 	verifyResult, calculatedVRF := pk.Verify(alice, aliceProof)
-	if !verifyResult || bytes.Compare(aliceVRF, calculatedVRF) != 0 {
-		t.Error("Gen -> Compute -> Prove -> Verify -> FALSE")
-	}
-	if !bytes.Equal(aliceVRF, aliceVRFFromProof) {
-		t.Error("Compute != Prove")
-	}
+	require.True(t, verifyResult || bytes.Compare(aliceVRF, calculatedVRF) == 0, "Gen -> Compute -> Prove -> Verify -> FALSE")
+
+	require.True(t, bytes.Equal(aliceVRF, aliceVRFFromProof), "Compute != Prove")
+
 }
 
 func TestConvertPrivateKeyToPublicKey(t *testing.T) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	pk, ok := sk.Public()
-	if !ok {
-		t.Fatal("Couldn't obtain public key.")
-	}
-	if !bytes.Equal(sk[32:], pk) {
-		t.Fatal("Raw byte respresentation doesn't match public key.")
-	}
+	require.True(t, ok, "Could not obtain public key.")
+	require.True(t, bytes.Equal(sk[32:], pk), "Raw byte respresentation doesn't match public key.")
 }
 
 func TestFlipBitForgery(t *testing.T) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	pk, _ := sk.Public()
 	alice := []byte("alice")
 	for i := 0; i < 32; i++ {
@@ -92,9 +84,7 @@ func TestFlipBitForgery(t *testing.T) {
 			aliceVRF[i] ^= 1 << j
 			_, aliceProof := sk.Prove(alice)
 			verifyResult, _ := pk.Verify(alice, aliceProof)
-			if verifyResult {
-				t.Fatalf("forged by using aliceVRF[%d]^=%d:\n (sk=%x)", i, j, sk)
-			}
+			require.False(t, verifyResult,"forged by using aliceVRF[%d]^=%d:\n (sk=%x)", i, j, sk)
 		}
 	}
 }
@@ -104,38 +94,28 @@ func sampleVectorTest(pk PublicKey, aliceVRF, aliceProof []byte, t *testing.T) {
 
 	// Positive test case
 	verifyResult, _ := pk.Verify(alice, aliceProof)
-	if !verifyResult {
-		t.Error("TestSampleVectors HonestVector Failed")
-	}
+	require.True(t, verifyResult,"TestSampleVectors HonestVector Failed")
 
 	// Negative test cases - try increment the first byte of every vector
 	pk[0]++
 	verifyResult, _ = pk.Verify(alice, aliceProof)
-	if !verifyResult {
-		t.Error("TestSampleVectors ForgedVector (pk modified) Passed")
-	}
+	require.True(t, verifyResult, "TestSampleVectors ForgedVector (pk modified) Passed")
 	pk[0]--
 
 	alice[0]++
 	verifyResult, _ = pk.Verify(alice, aliceProof)
-	if verifyResult {
-		t.Error("TestSampleVectors ForgedVector (alice modified) Passed")
-	}
+	require.True(t, verifyResult, "TestSampleVectors ForgedVector (alice modified) Passed")
 	alice[0]--
 
 	// todo check
 	aliceVRF[0]++
 	verifyResult, _ = pk.Verify(alice, aliceProof)
-	if verifyResult {
-		t.Error("TestSampleVectors ForgedVector (aliceVRF modified) Passed")
-	}
+	require.True(t, verifyResult,"TestSampleVectors ForgedVector (aliceVRF modified) Passed")
 	aliceVRF[0]--
 
 	aliceProof[0]++
 	verifyResult, _ = pk.Verify(alice, aliceProof)
-	if verifyResult {
-		t.Error("TestSampleVectors ForgedVector (aliceProof modified) Passed")
-	}
+	require.True(t, verifyResult,"TestSampleVectors ForgedVector (aliceProof modified) Passed")
 	aliceProof[0]--
 }
 
@@ -175,9 +155,8 @@ func BenchmarkHashToGE(b *testing.B) {
 
 func BenchmarkCompute(b *testing.B) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err, "Could not generate a key.")
+
 	alice := []byte("alice")
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -187,9 +166,8 @@ func BenchmarkCompute(b *testing.B) {
 
 func BenchmarkProve(b *testing.B) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err, "Could not generate a key.")
+
 	alice := []byte("alice")
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -199,12 +177,13 @@ func BenchmarkProve(b *testing.B) {
 
 func BenchmarkVerify(b *testing.B) {
 	sk, err := GenerateKey(nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err, "Could not generate a key.")
+
 	alice := []byte("alice")
 	_, aliceProof := sk.Prove(alice)
-	pk, _ := sk.Public()
+	pk, ok := sk.Public()
+	require.True(b, ok, "Could not obtain public key.")
+
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		pk.Verify(alice, aliceProof)
