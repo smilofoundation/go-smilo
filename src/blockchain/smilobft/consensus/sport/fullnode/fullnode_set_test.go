@@ -29,6 +29,7 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
+	"crypto/ecdsa"
 )
 
 var (
@@ -113,22 +114,21 @@ func TestNormalFullnodeSetRoundRobin(t *testing.T) {
 	}
 	// test calculate speaker
 	lastSpeaker := addr1
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
 	}
 	// test empty last speaker
 	lastSpeaker = common.Address{}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}
 }
-
 
 func TestNormalFullnodeSetLottery(t *testing.T) {
 	b1 := cmn.Hex2Bytes(testAddress)
@@ -170,18 +170,29 @@ func TestNormalFullnodeSetLottery(t *testing.T) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
 	}
 	// test calculate speaker
+	key0, err := crypto.GenerateKey()
+	require.NoError(t,err)
+
 	lastSpeaker := addr1
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0), key0, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+
+	key3, err := crypto.GenerateKey()
+	require.NoError(t,err)
+
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), key3, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
 	}
+
+	key4, err := crypto.GenerateKey()
+	require.NoError(t,err)
+
 	// test empty last speaker
 	lastSpeaker = common.Address{}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), key4, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}

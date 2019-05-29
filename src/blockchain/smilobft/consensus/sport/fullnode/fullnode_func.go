@@ -68,7 +68,23 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 		return nil
 	}
 
-	keyStr := hex.EncodeToString(crypto.FromECDSA(nodepk))
+	if nodepk == nil {
+		log.Error("Could not create list of participants for lottery, PK is nil", err)
+		return nil
+	}
+
+	pkhex := crypto.FromECDSA(nodepk)
+	if pkhex == nil || len(pkhex) == 0 {
+		log.Error("Could not create list of participants for lottery, PK FromECDSA is invalid", err)
+		return nil
+	}
+
+	keyStr := hex.EncodeToString(pkhex)
+	if keyStr == "" || len(pkhex) == 0 {
+		log.Error("Could not create list of participants for lottery, PK EncodeToString is invalid", err)
+		return nil
+	}
+
 	////keyStr := fmt.Sprintf("%x", nodepk.D.Bytes())
 	log.Debug("Going to lotterySpeaker .... ", "key", keyStr)
 	//
