@@ -31,7 +31,8 @@ import (
 
 type fullnode struct {
 	address common.Address
-	ticket string
+	proof  []byte
+	provableMessage []byte
 }
 
 func NewFullNode(addr common.Address) sport.Fullnode {

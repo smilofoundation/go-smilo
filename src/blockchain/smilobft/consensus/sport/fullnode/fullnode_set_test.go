@@ -18,6 +18,8 @@
 package fullnode
 
 import (
+	"encoding/hex"
+	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,9 +29,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"crypto/ecdsa"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
-	"crypto/ecdsa"
 )
 
 var (
@@ -171,31 +173,32 @@ func TestNormalFullnodeSetLottery(t *testing.T) {
 	}
 	// test calculate speaker
 	key0, err := crypto.GenerateKey()
-	require.NoError(t,err)
+	require.NoError(t, err)
 
 	lastSpeaker := addr1
 	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0), key0, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
-	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
-		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
+
+	found := false
+	for i := 0; i < 10; i++ {
+
+		if val := fullnodeSet.GetSpeaker(); val != nil {
+			proof, provableMessage := fullnodeSet.speaker.GetLotteryTicket()
+
+			pkhex := crypto.FromECDSA(key0)
+			keyStr := hex.EncodeToString(pkhex)
+			skb := vrf.PrivateKey(keyStr)
+			pk, _ := skb.Public()
+
+			verifyResult, _ := pk.Verify(provableMessage, proof)
+			if !verifyResult {
+				t.Logf("speaker mismatch: have %v, want %v", val, val2)
+			} else {
+				found = true
+			}
+		}
 	}
 
-	key3, err := crypto.GenerateKey()
-	require.NoError(t,err)
-
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), key3, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
-	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
-		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
-	}
-
-	key4, err := crypto.GenerateKey()
-	require.NoError(t,err)
-
-	// test empty last speaker
-	lastSpeaker = common.Address{}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), key4, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
-	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
-		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
-	}
+	require.True(t, found, "could not find valid speaker after 10 tries")
 }
 
 func TestEmptyFullnodeSet(t *testing.T) {

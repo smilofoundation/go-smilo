@@ -21,7 +21,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
@@ -93,7 +92,6 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 	//skb, _ := vrf.GenerateKey(nil)
 	//log.Debug("Going to lotterySpeaker for real .... ", "key", hex.EncodeToString(skb))
 
-
 	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", blockHash))...)
 	vrfBytes, proof := skb.Prove(provableMessage)
 	pk, _ := skb.Public()
@@ -108,7 +106,7 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 
 	if len(winners) > 0 {
 		firstWinner = winners[0]
-		firstWinner.SetLotteryTicket(base58.Encode(proof))
+		firstWinner.SetLotteryTicket(proof, provableMessage)
 	}
 
 	return firstWinner

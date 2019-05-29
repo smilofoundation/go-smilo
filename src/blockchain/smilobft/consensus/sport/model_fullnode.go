@@ -32,8 +32,8 @@ type Fullnode interface {
 	String() string
 
 	// Lottery ticket
-	GetLotteryTicket() string
-	SetLotteryTicket(string)
+	GetLotteryTicket() ([]byte,[]byte)
+	SetLotteryTicket(proof, provableMessage []byte)
 }
 
 // ----------------------------------------------------------------------------
