@@ -18,6 +18,7 @@
 package fullnode
 
 import (
+	"bytes"
 	"encoding/hex"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
 	"reflect"
@@ -186,7 +187,10 @@ func TestNormalFullnodeSetLottery(t *testing.T) {
 
 			pkhex := crypto.FromECDSA(key0)
 			keyStr := hex.EncodeToString(pkhex)
-			skb := vrf.PrivateKey(keyStr)
+			//skb := vrf.PrivateKey(keyStr)
+			b := bytes.NewReader([]byte(keyStr))
+
+			skb, _ := vrf.GenerateKey(b)
 			pk, _ := skb.Public()
 
 			verifyResult, _ := pk.Verify(provableMessage, proof)

@@ -18,6 +18,7 @@
 package fullnode
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
@@ -62,7 +63,7 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 		return nil
 	}
 
-	fullnodeSetString := []string{}
+	var fullnodeSetString []string
 	for _,v := range fullnodeSet.List() {
 		fullnodeSetString = append(fullnodeSetString, v.String())
 	}
@@ -95,14 +96,20 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 	////keyStr := fmt.Sprintf("%x", nodepk.D.Bytes())
 	log.Debug("Going to lotterySpeaker .... ", "key", keyStr)
 	//
-	skb := vrf.PrivateKey(keyStr)
+	//skb := vrf.PrivateKey(keyStr)
+	b:=bytes.NewReader([]byte(keyStr))
 
-	//skb, _ := vrf.GenerateKey(nil)
+	skb, _ := vrf.GenerateKey(b)
 	//log.Debug("Going to lotterySpeaker for real .... ", "key", hex.EncodeToString(skb))
 
 	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", blockHash))...)
 	vrfBytes, proof := skb.Prove(provableMessage)
-	pk, _ := skb.Public()
+	pk, works := skb.Public()
+	if !works {
+		log.Error("Proof lottery verification has failed, could not get PUB from PK")
+		return nil
+	}
+
 	verifyResult, _ := pk.Verify(provableMessage, proof)
 	if !verifyResult {
 		log.Error("Proof lottery verification has failed")
