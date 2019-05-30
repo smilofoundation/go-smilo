@@ -57,13 +57,21 @@ func roundRobinSpeaker(fullnodeSet sport.FullnodeSet, speaker common.Address, ro
 }
 
 func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blockHash string) sport.Fullnode {
-	if fullnodeSet.Size() == 0 {
+	size := fullnodeSet.Size()
+	if size == 0 {
 		return nil
 	}
 
-	participantsJson, err := json.Marshal(fullnodeSet)
+	fullnodeSetString := []string{}
+	for _,v := range fullnodeSet.List() {
+		fullnodeSetString = append(fullnodeSetString, v.String())
+	}
+
+	participantsJson, err := json.Marshal(fullnodeSetString)
+	// [{},{}]
+	participantsJsonStr := string(participantsJson)
 	if err != nil {
-		log.Error("Could not create list of participants for lottery ", err)
+		log.Error("Could not create list of participants for lottery ", "err", err, "participantsJsonStr", participantsJsonStr)
 		return nil
 	}
 
