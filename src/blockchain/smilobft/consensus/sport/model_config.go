@@ -22,6 +22,7 @@ type SpeakerPolicy uint64
 
 const (
 	RoundRobin SpeakerPolicy = iota
+	Lottery
 )
 
 type Config struct {
@@ -40,7 +41,7 @@ var DefaultConfig = &Config{
 	RequestTimeout:       10000,
 	MaxTimeout:           60,
 	BlockPeriod:          1,
-	SpeakerPolicy:        RoundRobin,
+	SpeakerPolicy:        Lottery,
 	Epoch:                30000,
 	MinFunds:             1,
 	MinBlocksEmptyMining: big.NewInt(20000000),

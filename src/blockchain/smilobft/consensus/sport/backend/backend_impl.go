@@ -18,6 +18,7 @@
 package backend
 
 import (
+	"crypto/ecdsa"
 	"math/big"
 	"time"
 
@@ -174,6 +175,11 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 func (sb *backend) Sign(data []byte) ([]byte, error) {
 	hashData := crypto.Keccak256(data)
 	return crypto.Sign(hashData, sb.privateKey)
+}
+
+// Sign implements sport.Backend.Sign
+func (sb *backend) GetPrivateKey() *ecdsa.PrivateKey {
+	return sb.privateKey
 }
 
 // CheckSignature implements sport.Backend.CheckSignature

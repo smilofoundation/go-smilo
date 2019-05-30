@@ -22,7 +22,7 @@ GO ?= 1.11
 
 build: clean
 	go build -o go-smilo main.go
-	docker build --no-cache -t $(FULLDOCKERNAME) .
+#	docker build --no-cache -t $(FULLDOCKERNAME) .
 
 test: clean ## Run tests
 	go test ./src/blockchain/... -timeout=10m

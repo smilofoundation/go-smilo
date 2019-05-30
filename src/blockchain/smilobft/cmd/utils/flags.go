@@ -20,6 +20,7 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -662,6 +663,11 @@ var (
 		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
 		Value: eth.DefaultConfig.Sport.BlockPeriod,
 	}
+	SportSpeakerPolicyFlag = cli.Uint64Flag{
+		Name:  "smilobft.speakerpolicy",
+		Usage: "Speaker Policy (0=RoundRobin,1=Lottery)  Default 0 (RoundRobin)",
+		Value: 0,
+	}
 	SolcPathFlag = cli.StringFlag{
 		Name:  "solcpath",
 		Usage: "path to solc executable, if provided, enables eth.compile.solidity web3",
@@ -1164,6 +1170,11 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(SportBlockPeriodFlag.Name) {
 		cfg.Sport.BlockPeriod = ctx.GlobalUint64(SportBlockPeriodFlag.Name)
+	}
+	if ctx.GlobalIsSet(SportSpeakerPolicyFlag.Name) {
+		cfg.Sport.SpeakerPolicy = sport.SpeakerPolicy(ctx.GlobalUint64(SportSpeakerPolicyFlag.Name))
+	} else {
+		cfg.Sport.SpeakerPolicy = sport.SpeakerPolicy(0)
 	}
 	if ctx.GlobalIsSet(SportEnableNodePermissionFlag.Name) {
 		cfg.SportEnableNodePermissionFlag = ctx.GlobalBool(SportEnableNodePermissionFlag.Name)

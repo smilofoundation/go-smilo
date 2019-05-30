@@ -148,6 +148,7 @@ var (
 		utils.SportEnableNodePermissionFlag,
 		utils.SportRequestTimeoutFlag,
 		utils.SportBlockPeriodFlag,
+		utils.SportSpeakerPolicyFlag,
 		utils.SolcPathFlag,
 		utils.SmiloCodeAnalysisPathFlag,
 		utils.MinBlocksEmptyMiningFlag,

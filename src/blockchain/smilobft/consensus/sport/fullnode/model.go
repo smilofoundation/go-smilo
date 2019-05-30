@@ -31,6 +31,8 @@ import (
 
 type fullnode struct {
 	address common.Address
+	proof  []byte
+	provableMessage []byte
 }
 
 func NewFullNode(addr common.Address) sport.Fullnode {
@@ -69,7 +71,6 @@ func newFullnodeSet(addrs []common.Address, policy sport.SpeakerPolicy) *fullnod
 	if fullnodeSet.Size() > 0 {
 		fullnodeSet.speaker = fullnodeSet.GetByIndex(0)
 	}
-	fullnodeSet.selector = roundRobinSpeaker
 
 	return fullnodeSet
 }

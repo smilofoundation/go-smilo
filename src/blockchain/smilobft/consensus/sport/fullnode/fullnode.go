@@ -26,3 +26,13 @@ func (theFullNode *fullnode) Address() common.Address {
 func (theFullNode *fullnode) String() string {
 	return theFullNode.Address().String()
 }
+
+func (theFullNode *fullnode) GetLotteryTicket() (proof []byte, provableMessage []byte) {
+	proof, provableMessage = theFullNode.proof, theFullNode.provableMessage
+	return proof, provableMessage
+}
+
+func (theFullNode *fullnode) SetLotteryTicket(proof, provableMessage []byte) {
+	theFullNode.proof = proof
+	theFullNode.provableMessage = provableMessage
+}

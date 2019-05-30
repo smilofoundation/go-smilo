@@ -18,8 +18,16 @@
 package fullnode
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"encoding/hex"
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
+	"go-smilo/src/blockchain/smilobft/swarm/log"
 
+	"fmt"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
 
@@ -47,4 +55,74 @@ func roundRobinSpeaker(fullnodeSet sport.FullnodeSet, speaker common.Address, ro
 	}
 	pick := seed % uint64(fullnodeSet.Size())
 	return fullnodeSet.GetByIndex(pick)
+}
+
+func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blockHash string) sport.Fullnode {
+	size := fullnodeSet.Size()
+	if size == 0 {
+		return nil
+	}
+
+	var fullnodeSetString []string
+	for _,v := range fullnodeSet.List() {
+		fullnodeSetString = append(fullnodeSetString, v.String())
+	}
+
+	participantsJson, err := json.Marshal(fullnodeSetString)
+	// [{},{}]
+	participantsJsonStr := string(participantsJson)
+	if err != nil {
+		log.Error("Could not create list of participants for lottery ", "err", err, "participantsJsonStr", participantsJsonStr)
+		return nil
+	}
+
+	if nodepk == nil {
+		log.Error("Could not create list of participants for lottery, PK is nil", err)
+		return nil
+	}
+
+	pkhex := crypto.FromECDSA(nodepk)
+	if pkhex == nil || len(pkhex) == 0 {
+		log.Error("Could not create list of participants for lottery, PK FromECDSA is invalid", err)
+		return nil
+	}
+
+	keyStr := hex.EncodeToString(pkhex)
+	if keyStr == "" || len(pkhex) == 0 {
+		log.Error("Could not create list of participants for lottery, PK EncodeToString is invalid", err)
+		return nil
+	}
+
+	////keyStr := fmt.Sprintf("%x", nodepk.D.Bytes())
+	log.Debug("Going to lotterySpeaker .... ", "key", keyStr)
+	//
+	//skb := vrf.PrivateKey(keyStr)
+	b:=bytes.NewReader([]byte(keyStr))
+
+	skb, _ := vrf.GenerateKey(b)
+	//log.Debug("Going to lotterySpeaker for real .... ", "key", hex.EncodeToString(skb))
+
+	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", blockHash))...)
+	vrfBytes, proof := skb.Prove(provableMessage)
+	pk, works := skb.Public()
+	if !works {
+		log.Error("Proof lottery verification has failed, could not get PUB from PK")
+		return nil
+	}
+
+	verifyResult, _ := pk.Verify(provableMessage, proof)
+	if !verifyResult {
+		log.Error("Proof lottery verification has failed")
+		return nil
+	}
+
+	winners := vrf.PickUniquePseudorandomParticipants(vrfBytes[:], 1, fullnodeSet.List())
+	var firstWinner sport.Fullnode
+
+	if len(winners) > 0 {
+		firstWinner = winners[0]
+		firstWinner.SetLotteryTicket(proof, provableMessage)
+	}
+
+	return firstWinner
 }

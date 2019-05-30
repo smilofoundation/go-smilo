@@ -18,6 +18,9 @@
 package fullnode
 
 import (
+	"bytes"
+	"encoding/hex"
+	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode/vrf"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"crypto/ecdsa"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
@@ -72,7 +76,7 @@ func TestNewFullnodeSet(t *testing.T) {
 	}
 }
 
-func TestNormalFullnodeSet(t *testing.T) {
+func TestNormalFullnodeSetRoundRobin(t *testing.T) {
 	b1 := cmn.Hex2Bytes(testAddress)
 	b2 := cmn.Hex2Bytes(testAddress2)
 	addr1 := common.BytesToAddress(b1)
@@ -113,20 +117,92 @@ func TestNormalFullnodeSet(t *testing.T) {
 	}
 	// test calculate speaker
 	lastSpeaker := addr1
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
 	}
 	// test empty last speaker
 	lastSpeaker = common.Address{}
-	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3))
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(3), &ecdsa.PrivateKey{}, "")
 	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val2) {
 		t.Errorf("speaker mismatch: have %v, want %v", val, val2)
 	}
+}
+
+func TestNormalFullnodeSetLottery(t *testing.T) {
+	b1 := cmn.Hex2Bytes(testAddress)
+	b2 := cmn.Hex2Bytes(testAddress2)
+	addr1 := common.BytesToAddress(b1)
+	addr2 := common.BytesToAddress(b2)
+	val1 := NewFullNode(addr1)
+	val2 := NewFullNode(addr2)
+
+	fullnodeSet := newFullnodeSet([]common.Address{addr1, addr2}, sport.Lottery)
+	if fullnodeSet == nil {
+		t.Errorf("the format of fullnode set is invalid")
+		t.FailNow()
+	}
+
+	// check size
+	if size := fullnodeSet.Size(); size != 2 {
+		t.Errorf("the size of fullnode set is wrong: have %v, want 2", size)
+	}
+	// test get by index
+	if val := fullnodeSet.GetByIndex(uint64(0)); !reflect.DeepEqual(val, val1) {
+		t.Errorf("fullnode mismatch: have %v, want %v", val, val1)
+	}
+	// test get by invalid index
+	if val := fullnodeSet.GetByIndex(uint64(2)); val != nil {
+		t.Errorf("fullnode mismatch: have %v, want nil", val)
+	}
+	// test get by address
+	if _, val := fullnodeSet.GetByAddress(addr2); !reflect.DeepEqual(val, val2) {
+		t.Errorf("fullnode mismatch: have %v, want %v", val, val2)
+	}
+	// test get by invalid address
+	invalidAddr := cmn.HexToAddress("0x9535b2e7faaba5288511d89341d94a38063a349b")
+	if _, val := fullnodeSet.GetByAddress(invalidAddr); val != nil {
+		t.Errorf("fullnode mismatch: have %v, want nil", val)
+	}
+	// test get speaker
+	if val := fullnodeSet.GetSpeaker(); !reflect.DeepEqual(val, val1) {
+		t.Errorf("speaker mismatch: have %v, want %v", val, val1)
+	}
+	// test calculate speaker
+	key0, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	lastSpeaker := addr1
+	fullnodeSet.CalcSpeaker(lastSpeaker, uint64(0), key0, "0xdd79aff43c6b9a911f5171bfed99503978d0f5cb9b9f72189ce99c827dff9bd2")
+
+	found := false
+	for i := 0; i < 10; i++ {
+
+		if val := fullnodeSet.GetSpeaker(); val != nil {
+			proof, provableMessage := fullnodeSet.speaker.GetLotteryTicket()
+
+			pkhex := crypto.FromECDSA(key0)
+			keyStr := hex.EncodeToString(pkhex)
+			//skb := vrf.PrivateKey(keyStr)
+			b := bytes.NewReader([]byte(keyStr))
+
+			skb, _ := vrf.GenerateKey(b)
+			pk, _ := skb.Public()
+
+			verifyResult, _ := pk.Verify(provableMessage, proof)
+			if !verifyResult {
+				t.Logf("speaker mismatch: have %v, want %v", val, val2)
+			} else {
+				found = true
+			}
+		}
+	}
+
+	require.True(t, found, "could not find valid speaker after 10 tries")
 }
 
 func TestEmptyFullnodeSet(t *testing.T) {
