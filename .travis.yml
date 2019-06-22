@@ -61,7 +61,7 @@ matrix:
       git:
         submodules: false # avoid cloning ethereum/tests
       script:
-        - coveralls
+        - make coveralls
 
 
 #    # This builder does the Ubuntu PPA upload
