@@ -57,7 +57,7 @@ matrix:
       dist: trusty
       go: 1.11.x
       env:
-        - lint
+        - COVERALLS_TOKEN
       git:
         submodules: false # avoid cloning ethereum/tests
       script:
