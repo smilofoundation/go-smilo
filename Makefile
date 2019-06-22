@@ -78,7 +78,7 @@ coveralls: ## Runs tests on ./src/ with HTML code coverage
 	$(foreach pkg,$(PACKAGES),\
 		go test -covermode=count -coverprofile=coverage.out $(pkg);\
 		tail -n +2 coverage.out >> coverage-all.out;)
-	goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+	$(GOPATH)/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $(COVERALLS_TOKEN)
 
 doc:
 	godoc2md go-smilo/src/model > ./docs/model.md
@@ -91,7 +91,7 @@ install-linters: ## Install linters
 	go get -u github.com/FiloSottile/vendorcheck
 	go get -u gopkg.in/alecthomas/gometalinter.v2
 	go get -u golang.org/x/tools/cmd/goimports
-	go get github.com/mattn/goveralls
+	go get -u github.com/mattn/goveralls
 
 
 format:  # Formats the code. Must have goimports installed (use make install-linters).
