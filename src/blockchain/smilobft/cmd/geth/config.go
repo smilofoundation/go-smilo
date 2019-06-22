@@ -242,14 +242,14 @@ func dumpConfig(ctx *cli.Context) error {
 
 // smiloValidateConsensus checks if a consensus was used. The node is killed if consensus was not used
 func smiloValidateConsensus(stack *node.Node) {
-	var ethereum *eth.Smilo
+	var smilo *eth.Smilo
 
-	err := stack.Service(&ethereum)
+	err := stack.Service(&smilo)
 	if err != nil {
-		log.Warn("Error retrieving Ethereum service:", "err", err)
+		log.Warn("Error retrieving Smilo service:", "err", err)
 	}
 
-	if ethereum == nil || ethereum.ChainConfig() == nil || ethereum.ChainConfig().Sport == nil && ethereum.ChainConfig().Clique == nil {
+	if smilo == nil || smilo.ChainConfig() == nil || smilo.ChainConfig().Sport == nil && smilo.ChainConfig().Clique == nil {
 		log.Warn("Consensus not specified")
 	}
 }
