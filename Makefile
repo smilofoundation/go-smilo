@@ -78,7 +78,7 @@ coveralls: ## Runs tests on ./src/ with HTML code coverage
 	$(foreach pkg,$(PACKAGES),\
 		go test -covermode=count -coverprofile=coverage.out $(pkg);\
 		tail -n +2 coverage.out >> coverage-all.out;)
-	$(GOPATH)/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $(COVERALLS_TOKEN)
+	$(GOPATH)/bin/goveralls -coverprofile=coverage-all.out -service=travis-ci -repotoken $(COVERALLS_TOKEN)
 
 doc:
 	godoc2md go-smilo/src/model > ./docs/model.md
