@@ -6,7 +6,7 @@ Official Golang implementation of the Smilo protocol.
 [![Go Report Card](https://goreportcard.com/badge/github.com/Smilo-platform/go-smilo)](https://goreportcard.com/report/github.com/Smilo-platform/go-smilo)
 [![Coverage Status](https://coveralls.io/repos/github/Smilo-platform/go-smilo/badge.svg)](https://coveralls.io/github/Smilo-platform/go-smilo)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/2918/badge)](https://bestpractices.coreinfrastructure.org/projects/2918)
-
+[![Docker Repository on Quay](https://quay.io/repository/smilo/go-smilo/status "Docker Repository on Quay")](https://quay.io/repository/smilo/go-smilo)
 
 ## Building the source
 
