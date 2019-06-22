@@ -52,6 +52,18 @@ matrix:
       script:
         - go run src/blockchain/smilobft/build/ci.go lint
 
+    # This builder only tests coveralls on latest version of Go
+    - os: linux
+      dist: trusty
+      go: 1.11.x
+      env:
+        - lint
+      git:
+        submodules: false # avoid cloning ethereum/tests
+      script:
+        - coveralls
+
+
 #    # This builder does the Ubuntu PPA upload
 #    - if: type = push
 #      os: linux
