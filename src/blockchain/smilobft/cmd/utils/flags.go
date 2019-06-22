@@ -752,14 +752,15 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
 	}
-	log.Debug("Going to setup bootnodes, ", "len(urls)", len(urls))
+	log.Info("Going to setup V4 BootstrapNodes, ", "len(urls)", len(urls))
 
 	cfg.BootstrapNodes = make([]*enode.Node, 0, len(urls))
 	for _, url := range urls {
 		node, err := enode.ParseV4(url)
 		if err != nil {
-			log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
+			log.Crit("Bootstrap V4 URL invalid", "enode", url, "err", err)
 		}
+		log.Info("BootstrapNodes V4 added OK ", "url", url)
 		cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
 	}
 }
@@ -768,6 +769,8 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 // flags, reverting to pre-configured ones if none have been specified.
 func setBootstrapNodesV5(ctx *cli.Context, cfg *p2p.Config) {
 	urls := params.DiscoveryV5Bootnodes
+	log.Info("Going to setup V5 BootstrapNodes, ", "len(urls)", len(urls))
+
 	switch {
 	case ctx.GlobalIsSet(BootnodesFlag.Name) || ctx.GlobalIsSet(BootnodesV5Flag.Name):
 		if ctx.GlobalIsSet(BootnodesV5Flag.Name) {
@@ -779,6 +782,8 @@ func setBootstrapNodesV5(ctx *cli.Context, cfg *p2p.Config) {
 		urls = params.RinkebyBootnodes
 	case ctx.GlobalBool(SportFlag.Name):
 		urls = params.SportBootnodes
+	case ctx.GlobalBool(TestnetFlag.Name):
+		urls = params.TestnetBootnodes
 	case cfg.BootstrapNodesV5 != nil:
 		return // already set, don't apply defaults.
 	}
@@ -790,6 +795,7 @@ func setBootstrapNodesV5(ctx *cli.Context, cfg *p2p.Config) {
 			log.Error("Bootstrap URL invalid", "enode", url, "err", err)
 			continue
 		}
+		log.Info("BootstrapNodes V5 added OK ", "url", url)
 		cfg.BootstrapNodesV5 = append(cfg.BootstrapNodesV5, node)
 	}
 }
