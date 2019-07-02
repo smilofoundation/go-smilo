@@ -4,6 +4,12 @@ Official Golang implementation of the Smilo protocol.
 [![Build Status](https://travis-ci.org/Smilo-platform/go-smilo.svg?branch=master)](https://travis-ci.org/Smilo-platform/go-smilo)
 [![GoDoc](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft?status.svg)](https://godoc.org/github.com/Smilo-platform/go-smilo/src/blockchain/smilobft)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Smilo-platform/go-smilo)](https://goreportcard.com/report/github.com/Smilo-platform/go-smilo)
+[![coveralls](https://coveralls.io/repos/github/Smilo-platform/go-smilo/badge.svg)](https://coveralls.io/github/Smilo-platform/go-smilo)
+[![codecov](https://codecov.io/gh/Smilo-platform/go-smilo/branch/master/graph/badge.svg)](https://codecov.io/gh/Smilo-platform/go-smilo)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/2918/badge)](https://bestpractices.coreinfrastructure.org/projects/2918)
+[![Docker Repository on Quay](https://quay.io/repository/smilo/go-smilo/status "Docker Repository on Quay")](https://quay.io/repository/smilo/go-smilo)
+[![Downloads](https://img.shields.io/github/downloads/Smilo-platform/go-smilo/total.svg)](https://github.com/Smilo-platform/go-smilo/releases)
+[![Beerpay](https://beerpay.io/Smilo-platform/go-smilo/badge.svg)](https://beerpay.io/Smilo-platform/go-smilo)
 
 ## Building the source
 
@@ -147,6 +153,9 @@ Please make sure your contributions adhere to our coding guidelines:
  * Pull requests need to be based on and opened against the `master` branch.
  * Commit messages should be prefixed with the package(s) they modify.
    * E.g. "eth, rpc: make trace configs optional"
+   
+See also: [Donating](https://github.com/Smilo-platform/Wiki/wiki/Donating-to-The-Smilo-Foundation)
+
 
 ## License
 
