@@ -61,7 +61,6 @@ const (
 
 	//Hex-encoded 64 byte array of "17" values
 	maxPrivateIntrinsicDataHex = "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
-
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.

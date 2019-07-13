@@ -20,9 +20,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -49,7 +50,6 @@ func signTx(key *ecdsa.PrivateKey, signer Signer) (*Transaction, common.Address,
 
 func TestSignSmiloHomesteadPublic(t *testing.T) {
 
-
 	k0, _ := createKey(crypto.S256(), k0v)
 	k1, _ := createKey(crypto.S256(), k1v)
 
@@ -72,12 +72,10 @@ func TestSignSmiloHomesteadPublic(t *testing.T) {
 
 func TestSignSmiloEIP155Public(t *testing.T) {
 
-
 	k0, _ := createKey(crypto.S256(), k0v)
 	k1, _ := createKey(crypto.S256(), k1v)
 
-	var chainId int64
-	chainId = 2
+	var chainId int64 = 2
 
 	v0 := chainId*2 + 35
 	v1 := chainId*2 + 36
@@ -91,7 +89,7 @@ func TestSignSmiloEIP155Public(t *testing.T) {
 
 	require.True(t, from == addr, fmt.Sprintf("Expected from and address to be equal. Got %x want %x", from, addr))
 
-	require.False(t, signedTx.IsVault(), fmt.Sprintf("Public transaction is set to a private transation v == [%v]", signedTx.data.V))
+	require.False(t, signedTx.IsVault(), fmt.Sprintf("Public transaction is set to a vault transaction v == [%v]", signedTx.data.V))
 
 	signedTx, addr, _ = signTx(k1, EIPsigner)
 
@@ -104,12 +102,10 @@ func TestSignSmiloEIP155Public(t *testing.T) {
 
 func TestSignSmiloEIP155FailPublicChain1(t *testing.T) {
 
-
 	k0, _ := createKey(crypto.S256(), k0v)
 	k1, _ := createKey(crypto.S256(), k1v)
 
-	var chainId int64
-	chainId = 1
+	var chainId int64 = 1
 
 	v0 := chainId*2 + 35
 	v1 := chainId*2 + 36
@@ -143,9 +139,7 @@ func TestSignSmiloEIP155FailPublicChain1(t *testing.T) {
 
 }
 
-
 func TestSignSmiloHomesteadEIP155SigningVaultSmilo(t *testing.T) {
-
 
 	keys := []*big.Int{k0v, k1v}
 
@@ -160,7 +154,7 @@ func TestSignSmiloHomesteadEIP155SigningVaultSmilo(t *testing.T) {
 
 		signedTx.SetVault()
 
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be private [%v]", signedTx.IsVault()))
+		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
 
 		from, err := Sender(recoverySigner, signedTx)
 
@@ -170,9 +164,7 @@ func TestSignSmiloHomesteadEIP155SigningVaultSmilo(t *testing.T) {
 
 }
 
-
 func TestSignSmiloHomesteadOnlyVaultSmilo(t *testing.T) {
-
 
 	keys := []*big.Int{k0v, k1v}
 
@@ -186,7 +178,7 @@ func TestSignSmiloHomesteadOnlyVaultSmilo(t *testing.T) {
 		require.Nil(t, err, err)
 
 		signedTx.SetVault()
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be private [%v]", signedTx.IsVault()))
+		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
 
 		from, err := Sender(recoverySigner, signedTx)
 
@@ -210,7 +202,7 @@ func TestSignSmiloEIP155OnlyVaultSmilo(t *testing.T) {
 
 		signedTx.SetVault()
 
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be private [%v]", signedTx.IsVault()))
+		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
 
 		from, err := Sender(EIP155Signer, signedTx)
 

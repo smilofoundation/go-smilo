@@ -18,14 +18,16 @@ package core
 
 import (
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/stretchr/testify/require"
+
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/vault"
-	"math/big"
-	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 )

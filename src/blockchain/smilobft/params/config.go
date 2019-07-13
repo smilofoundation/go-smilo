@@ -227,7 +227,7 @@ type ChainConfig struct {
 	IsGas         bool `json:"isGas"`         //true for when using gas, false when not using any
 	IsGasRefunded bool `json:"isGasRefunded"` //true for when using gas and refund is enabled, false when not refundable
 
-	RequiredMinFunds int64 `json:"required_min_funds"` // 1e16 -> 1 -> 1e16
+	RequiredMinFunds           int64  `json:"required_min_funds"` // 1e16 -> 1 -> 1e16
 	CustomTransactionSizeLimit uint64 `json:"custom_transaction_size_limit"`
 }
 
@@ -501,7 +501,6 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		IsPetersburg:     c.IsPetersburg(num),
 	}
 }
-
 
 // Rules for CustomTransactionSizeLimit if set
 func (c *ChainConfig) IsValid() error {

@@ -170,7 +170,6 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, constant
 			log.Info("Writing custom genesis block")
 		}
 
-
 		// Set default transaction size limit if not set in genesis
 		if genesis.Config.CustomTransactionSizeLimit == 0 {
 			genesis.Config.CustomTransactionSizeLimit = DefaultTxPoolConfig.CustomTransactionSizeLimit
@@ -181,7 +180,6 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, constant
 		if err != nil {
 			return genesis.Config, common.Hash{}, err
 		}
-
 
 		block, err := genesis.Commit(db)
 

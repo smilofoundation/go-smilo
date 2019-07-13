@@ -318,7 +318,7 @@ func TestInvalidTransactionsCustomTransactionSizeLimit(t *testing.T) {
 	pool2 := NewTxPool(testTxPoolConfig, params.TestChainConfig, blockchain)
 
 	pool2.currentState.AddBalance(from, big.NewInt(0xffffffffffffff), big.NewInt(1))
-	data2 := make([]byte, 127 * 1024)
+	data2 := make([]byte, 127*1024)
 
 	tx4, _ := types.SignTx(types.NewTransaction(2, common.Address{}, big.NewInt(100), 100000, big.NewInt(1), data2), types.HomesteadSigner{}, key)
 	if err := pool2.AddRemote(tx4); err != ErrIntrinsicGas {
