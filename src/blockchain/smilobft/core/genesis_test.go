@@ -18,6 +18,7 @@
 package core
 
 import (
+	"errors"
 	"math/big"
 	"reflect"
 	"testing"
@@ -139,6 +140,15 @@ func TestSetupGenesis(t *testing.T) {
 				NewConfig:    big.NewInt(3),
 				RewindTo:     1,
 			},
+		},
+		{
+			name: "genesis with incorrect CustomTransactionSizeLimit",
+			fn: func(db ethdb.Database) (*params.ChainConfig, common.Hash, error) {
+				customg.Config.CustomTransactionSizeLimit = 100000
+				return SetupGenesisBlock(db, &customg)
+			},
+			wantErr:    errors.New("custom transaction size limit must be bigger than 32 and lower than 128"),
+			wantConfig: customg.Config,
 		},
 	}
 

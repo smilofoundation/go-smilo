@@ -275,6 +275,12 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		}
 		//if input is empty for the smart contract call, return
 		if len(data) == 0 && isVault {
+			if isSmilo && isGas {
+				st.refundGasSmiloVersion()
+			} else {
+				st.refundGas()
+				st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
+			}
 			return nil, 0, false, nil
 		}
 
@@ -340,7 +346,7 @@ func (st *StateTransition) refundGas() {
 func (st *StateTransition) refundGasSmiloVersion() {
 	//refund := st.gasUsed()
 	// if GetRefund > gasUsed, then refund what is on GetRefund (GetRefund is used for contract suicide params.SuicideRefundGas)
-	// TODO: I'm not sure, if you do not pay smilo to deploy but get smilo back on suicide calls, you could earn smilo by doing this many times ?4tyuiop[
+	// TODO: I'm not sure, if you do not pay smilo to deploy but get smilo back on suicide calls, you could earn smilo by doing this many times ?
 	//if st.state.GetRefund() > refund {
 	//	refund = st.state.GetRefund()
 	//}

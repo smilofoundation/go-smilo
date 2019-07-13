@@ -58,6 +58,10 @@ import (
 
 const (
 	defaultGasPrice = params.GWei
+
+	//Hex-encoded 64 byte array of "17" values
+	maxPrivateIntrinsicDataHex = "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -824,6 +828,18 @@ func (s *PublicBlockChainAPI) EstimateGas(ctx context.Context, args CallArgs) (h
 	if hi == cap {
 		if !executable(hi) {
 			return 0, fmt.Errorf("gas required exceeds allowance or always failing transaction")
+		}
+	}
+	// Reject vault transactions that have intrinsic gas bigger than public intrinsic gas allowed
+	if args.Value.ToInt().Cmp(big.NewInt(0)) == 0 {
+		isHomestead := s.b.ChainConfig().IsHomestead(new(big.Int).SetInt64(int64(rpc.PendingBlockNumber)))
+		intrinsicGasPublic, _ := core.IntrinsicGas(args.Data, args.To == nil, isHomestead)
+		intrinsicGasPrivate, _ := core.IntrinsicGas(common.Hex2Bytes(maxPrivateIntrinsicDataHex), args.To == nil, isHomestead)
+		if intrinsicGasPrivate > intrinsicGasPublic {
+			if math.MaxUint64-hi < intrinsicGasPrivate-intrinsicGasPublic {
+				return 0, fmt.Errorf("private intrinsic gas addition exceeds allowance")
+			}
+			return hexutil.Uint64(hi + (intrinsicGasPrivate - intrinsicGasPublic)), nil
 		}
 	}
 	return hexutil.Uint64(hi), nil
