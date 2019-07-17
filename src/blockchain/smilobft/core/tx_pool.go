@@ -153,6 +153,8 @@ type TxPoolConfig struct {
 	GlobalQueue  uint64 // Maximum number of non-executable transaction slots for all accounts
 
 	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
+
+	CustomTransactionSizeLimit uint64 // Maximum size allowed for valid transaction (in KB)
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -170,6 +172,8 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	GlobalQueue:  1024,
 
 	Lifetime: 30 * time.Minute,
+
+	CustomTransactionSizeLimit: 32,
 }
 
 // sanitize checks the provided user configurations and changes anything that's
@@ -607,12 +611,18 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	gasPrice := tx.GasPrice()
 	gas := tx.Gas()
 
+	customSizeLimit := pool.chainconfig.CustomTransactionSizeLimit
+	if customSizeLimit == 0 {
+		customSizeLimit = DefaultTxPoolConfig.CustomTransactionSizeLimit
+	}
+
 	if isVault && tx.GasPrice().Cmp(common.Big0) != 0 {
 		log.Debug("############### validateTx, Gas is not in use but transaction has GasPrice ", "isGas", isGas, "TX-Hash", tx.Hash().Hex(), "GasPrice", tx.GasPrice(), "isVault", isVault)
 		return ErrInvalidGasPrice
 	}
-	// Heuristic limit, reject transactions over 32KB to prevent DOS attacks
-	if tx.Size() > 32*1024 {
+	// Heuristic limit, reject transactions over 32KB (or custom limit) to prevent DOS attacks
+	if tx.Size() > common.StorageSize(customSizeLimit)*1024 {
+		log.Error("############### validateTx, ErrOversizedData ", "tx.Size()", tx.Size(), "customSizeLimit*1024", common.StorageSize(customSizeLimit)*1024, "customSizeLimit", customSizeLimit)
 		return ErrOversizedData
 	}
 	// Transactions can't be negative. This may never happen using RLP decoded
