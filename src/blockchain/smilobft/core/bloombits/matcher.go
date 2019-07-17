@@ -59,7 +59,7 @@ type partialMatches struct {
 // It can also have the actual results set to be used as a delivery data struct.
 //
 // The contest and error fields are used by the light client to terminate matching
-// early if an error is enountered on some path of the pipeline.
+// early if an error is encountered on some path of the pipeline.
 type Retrieval struct {
 	Bit      uint
 	Sections []uint64

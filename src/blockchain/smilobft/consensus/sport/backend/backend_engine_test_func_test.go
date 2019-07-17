@@ -20,6 +20,8 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -30,7 +32,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
@@ -39,12 +40,12 @@ import (
 // other fake events to process Sport.
 func newBlockChain(n int) (*core.BlockChain, *backend) {
 	genesis, nodeKeys := getGenesisAndKeys(n)
-	memDB := ethdb.NewMemDatabase()
+	memDB := rawdb.NewMemoryDatabase()
 	config := sport.DefaultConfig
 	// Use the first key as private key
 	b, _ := New(config, nodeKeys[0], memDB).(*backend)
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{})
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{},nil)
 	if err != nil {
 		panic(err)
 	}
@@ -117,10 +118,10 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     parent.Number().Add(parent.Number(), common.Big1),
-		GasLimit:   core.CalcGasLimit(parent),
+		GasLimit:   core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807),
 		GasUsed:    0,
 		Extra:      parent.Extra(),
-		Time:       new(big.Int).Add(parent.Time(), new(big.Int).SetUint64(config.BlockPeriod)),
+		Time:       new(big.Int).Add(big.NewInt(0).SetUint64(parent.Time()), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
 		Difficulty: defaultDifficulty,
 	}
 	return header
@@ -128,14 +129,30 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 
 func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
 	block := makeBlockWithoutSeal(chain, engine, parent)
-	block, _ = engine.Seal(chain, block, nil)
-	return block
+	//stopCh := make(chan struct{})
+	//resultCh := make(chan *types.Block, 10)
+	//go engine.Seal(chain, block, resultCh, stopCh)
+	//blk := <-resultCh
+	//return blk
+	resultCh := make(chan *types.Block, 10)
+	stopCh := make(chan struct{})
+	go func() {
+		err := engine.Seal(chain, block, resultCh, stopCh)
+		if err != nil {
+			fmt.Printf("error mismatch: have %v, want %v", err, block)
+		}
+	}()
+	finalBlock := <-resultCh
+	if finalBlock.Hash() != block.Hash() {
+		fmt.Printf("hash mismatch: have %v, want %v", finalBlock.Hash(), block.Hash())
+	}
+	return finalBlock
 }
 
 func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
 	header := makeHeader(parent, engine.config)
 	engine.Prepare(chain, header)
 	state, _, _ := chain.StateAt(parent.Root())
-	block, _ := engine.Finalize(chain, header, state, nil, nil, nil)
+	block, _ := engine.FinalizeAndAssemble(chain, header, state, nil, nil, nil)
 	return block
 }

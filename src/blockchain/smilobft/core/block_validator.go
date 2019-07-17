@@ -24,8 +24,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/params"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 )
 
@@ -74,11 +72,6 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 		}
 		return consensus.ErrPrunedAncestor
 	}
-	// warn for empty blocks
-	if block.Number().Int64() > 1 && len(block.Transactions()) == 0 {
-		log.Warn("************************* block_validator.ValidateBody, Not enough transactions to seal a block ...", "number", block.Number().Int64(), "transactions", len(block.Transactions()))
-	}
-
 	return nil
 }
 
@@ -105,12 +98,8 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	isEIP158 := v.config.IsEIP158(header.Number)
-	actualStateRoot := statedb.IntermediateRoot(isEIP158)
-	receivedStateRoot := header.Root
-
-	if receivedStateRoot != actualStateRoot {
-		return fmt.Errorf("invalid merkle root (receivedStateRoot: %x actualStateRoot: %x)", receivedStateRoot, actualStateRoot)
+	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {
+		return fmt.Errorf("invalid merkle root (remote: %x local: %x)", header.Root, root)
 	}
 	return nil
 }
@@ -119,7 +108,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 // to keep the baseline gas above the provided floor, and increase it towards the
 // ceil if the blocks are full. If the ceil is exceeded, it will always decrease
 // the gas allowance.
-func CalcGasLimit(parent *types.Block) uint64 {
+func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 	// contrib = (parentGasUsed * 3 / 2) / 1024
 	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
 
@@ -137,12 +126,16 @@ func CalcGasLimit(parent *types.Block) uint64 {
 	if limit < params.MinGasLimit {
 		limit = params.MinGasLimit
 	}
-	// however, if we're now below the target (TargetGasLimit) we increase the
-	// limit as much as we can (parentGasLimit / 1024 -1)
-	if limit < params.TargetGasLimit {
+	// If we're outside our allowed gas range, we try to hone towards them
+	if limit < gasFloor {
 		limit = parent.GasLimit() + decay
-		if limit > params.TargetGasLimit {
-			limit = params.TargetGasLimit
+		if limit > gasFloor {
+			limit = gasFloor
+		}
+	} else if limit > gasCeil {
+		limit = parent.GasLimit() - decay
+		if limit < gasCeil {
+			limit = gasCeil
 		}
 	}
 	return limit

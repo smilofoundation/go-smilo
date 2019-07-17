@@ -19,14 +19,14 @@ package backend
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/swarm/log"
 )
 
 // API is a user facing RPC API to dump smilobft state

@@ -31,7 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/orinocopay/go-etherutils"
 
@@ -153,7 +153,7 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Don't waste time checking blocks from the future
-	if header.Time.Cmp(big.NewInt(now().Unix())) > 0 {
+	if big.NewInt(0).SetUint64(header.Time).Cmp(big.NewInt(now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
 
@@ -202,7 +202,7 @@ func (sb *backend) verifyCascadingFields(chain consensus.ChainReader, header *ty
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
-	if parent.Time.Uint64()+sb.config.BlockPeriod > header.Time.Uint64() {
+	if parent.Time+sb.config.BlockPeriod > header.Time {
 		return errInvalidTimestamp
 	}
 	// Verify fullnodes in extraData. Fullnodes in snapshot and extraData should be the same.
@@ -349,29 +349,37 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	header.Extra = extra
 
 	// set header's timestamp
-	header.Time = new(big.Int).Add(parent.Time, new(big.Int).SetUint64(sb.config.BlockPeriod))
-	if header.Time.Int64() < time.Now().Unix() {
-		header.Time = big.NewInt(time.Now().Unix())
+	header.Time = new(big.Int).Add(new(big.Int).SetUint64(parent.Time), new(big.Int).SetUint64(sb.config.BlockPeriod)).Uint64()
+	if int64(header.Time) < time.Now().Unix() {
+		header.Time = big.NewInt(time.Now().Unix()).Uint64()
 	}
 	return nil
 }
 
-// Finalize (clique override) runs any post-transaction state modifications (e.g. block rewards)
+// Finalize (clique override) implements consensus.Engine, ensuring no uncles are set, nor block
+// rewards given.
+func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header) {
+	// No block rewards in PoA, so the state remains as is and uncles are dropped
+	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.UncleHash = types.CalcUncleHash(nil)
+}
+
+// FinalizeAndAssemble (clique override) runs any post-transaction state modifications (e.g. block rewards)
 // and assembles the final block.
 //
 // Note, the block header and state database might be updated to reflect any
 // consensus rules that happen at finalization (e.g. block rewards).
-func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
+func (sb *backend) FinalizeAndAssemble(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 
 	// warn for empty blocks
-	number := header.Number.Int64()
+	//number := header.Number.Int64()
 
-	//Will generate rewards for every block until block 40000000
-	//From this point on, ddd block rewards in Sport only if there is transactions in it
-	if header.Number.Cmp(big.NewInt(1)) > 0 && len(txs) > 0 || number < 40000000 {
-		AccumulateRewards(sb.config.CommunityAddress, state, header)
-	}
+	////Will generate rewards for every block until block 40000000
+	////From this point on, ddd block rewards in Sport only if there is transactions in it
+	//if header.Number.Cmp(big.NewInt(1)) > 0 && len(txs) > 0 || number < 40000000 {
+	//	AccumulateRewards(sb.config.CommunityAddress, state, header)
+	//}
 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
@@ -383,7 +391,7 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 }
 
 // Seal (clique override) generates a new block for the given input block with the local miner's seal place on top.
-func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
+func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	// update the block header timestamp and signature and propose the block to core engine
 	header := block.Header()
 	number := header.Number.Uint64()
@@ -391,32 +399,28 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	// Bail out if we're unauthorized to sign a block
 	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, v := snap.FullnodeSet.GetByAddress(sb.address); v == nil {
-		return nil, errUnauthorized
+		return errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
-		return nil, consensus.ErrUnknownAncestor
+		return consensus.ErrUnknownAncestor
 	}
 	block, err = sb.updateBlock(parent, block)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// wait for the timestamp of header, use this to adjust the block period
-	delay := time.Unix(block.Header().Time.Int64(), 0).Sub(now())
+	delay := time.Unix(int64(block.Header().Time), 0).Sub(now())
 	select {
 	case <-time.After(delay):
 	case <-stop:
-		return nil, nil
-	}
-
-	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
-	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
-		return nil, errWaitTransactions
+		results <- nil
+		return nil
 	}
 
 	// get the proposed block hash and clear it if the seal() is completed.
@@ -432,17 +436,20 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	go sb.EventMux().Post(sport.RequestEvent{
 		BlockProposal: block,
 	})
-
 	for {
 		select {
 		case result := <-sb.commitChBlock:
 			// if the block hash and the hash from channel are the same,
 			// return the result. Otherwise, keep waiting the next hash.
-			if block.Hash() == result.Hash() {
-				return result, nil
+			if result != nil && block.Hash() == result.Hash() {
+				results <- result
+				return nil
+			} else {
+				log.Error("the block hash and the hash from channel are the same", "block.Hash()", block.Hash(), "result.Hash()", result.Hash())
 			}
 		case <-stop:
-			return nil, nil
+			results <- nil
+			return nil
 		}
 	}
 }

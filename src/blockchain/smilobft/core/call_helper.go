@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/ecdsa"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -42,7 +43,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	)
 
 	cg.header.Number = new(big.Int)
-	cg.header.Time = new(big.Int).SetUint64(43)
+	cg.header.Time = uint64(43)
 	cg.header.Difficulty = new(big.Int).SetUint64(1000488)
 	cg.header.GasLimit = 4700000
 
@@ -64,7 +65,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 		tx.SetVault()
 	}
 
-	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{})
+	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
 	context := NewEVMContext(msg, &cg.header, bc, &from)
 	vmenv := vm.NewEVM(context, publicState, vaultState, params.SmiloTestChainConfig, vm.Config{})
 	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)
@@ -73,7 +74,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 
 // MakeCallHelper returns a new callHelper
 func MakeCallHelper() *callHelper {
-	memdb := ethdb.NewMemDatabase()
+	memdb := rawdb.NewMemoryDatabase()
 	db := state.NewDatabase(memdb)
 
 	publicState, err := state.New(common.Hash{}, db)

@@ -22,7 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"errors"
 
@@ -218,21 +218,15 @@ func (f *Filter) unindexedLogs(ctx context.Context, end uint64) ([]*types.Log, e
 	var logs []*types.Log
 
 	for ; f.begin <= int64(end); f.begin++ {
-		blockNumber := rpc.BlockNumber(f.begin)
 		header, err := f.backend.HeaderByNumber(ctx, rpc.BlockNumber(f.begin))
 		if header == nil || err != nil {
 			return logs, err
 		}
-
-		bloomMatches := bloomFilter(header.Bloom, f.addresses, f.topics) ||
-			bloomFilter(core.GetVaultBlockBloom(f.db, uint64(blockNumber)), f.addresses, f.topics)
-		if bloomMatches {
-			found, err := f.checkMatches(ctx, header)
-			if err != nil {
-				return logs, err
-			}
-			logs = append(logs, found...)
+		found, err := f.blockLogs(ctx, header)
+		if err != nil {
+			return logs, err
 		}
+		logs = append(logs, found...)
 	}
 	return logs, nil
 }

@@ -26,7 +26,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
@@ -87,26 +86,25 @@ func TestDAOForkBlockNewChain(t *testing.T) {
 	// TODO: fix test
 	t.SkipNow()
 
-	for _, arg := range []struct {
-		name        string
+	for i, arg := range []struct {
 		genesis     string
 		expectBlock *big.Int
 		expectVote  bool
 	}{
 		// Test DAO Default Mainnet
-		{"Test DAO Default Mainnet", "", params.MainnetChainConfig.DAOForkBlock, true},
+		{"", params.MainnetChainConfig.DAOForkBlock, true},
 		// test DAO Init Old Privnet
-		{"test DAO Init Old Privnet", daoOldGenesis, nil, false},
+		{daoOldGenesis, nil, false},
 		// test DAO Default No Fork Privnet
-		{"test DAO Default No Fork Privnet", daoNoForkGenesis, daoGenesisForkBlock, false},
+		{daoNoForkGenesis, daoGenesisForkBlock, false},
 		// test DAO Default Pro Fork Privnet
-		{"test DAO Default Pro Fork Privnet", daoProForkGenesis, daoGenesisForkBlock, true},
+		{daoProForkGenesis, daoGenesisForkBlock, true},
 	} {
-		testDAOForkBlockNewChain(t, arg.name, arg.genesis, arg.expectBlock, arg.expectVote)
+		testDAOForkBlockNewChain(t, i, arg.genesis, arg.expectBlock, arg.expectVote)
 	}
 }
 
-func testDAOForkBlockNewChain(t *testing.T, test string, genesis string, expectBlock *big.Int, expectVote bool) {
+func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBlock *big.Int, expectVote bool) {
 	// Create a temporary data directory to use and inspect later
 	datadir := tmpdir(t)
 	defer os.RemoveAll(datadir)
@@ -115,7 +113,7 @@ func testDAOForkBlockNewChain(t *testing.T, test string, genesis string, expectB
 	if genesis != "" {
 		json := filepath.Join(datadir, "genesis.json")
 		if err := ioutil.WriteFile(json, []byte(genesis), 0600); err != nil {
-			t.Fatalf("test %s: failed to write genesis file: %v", test, err)
+			t.Fatalf("test %d: failed to write genesis file: %v", test, err)
 		}
 		runGeth(t, "--datadir", datadir, "init", json).WaitExit()
 	} else {
@@ -126,32 +124,32 @@ func testDAOForkBlockNewChain(t *testing.T, test string, genesis string, expectB
 	}
 	// Retrieve the DAO config flag from the database
 	path := filepath.Join(datadir, "geth", "chaindata")
-	db, err := ethdb.NewLDBDatabase(path, 0, 0)
+	db, err := rawdb.NewLevelDBDatabase(path, 0, 0, "")
 	if err != nil {
-		t.Fatalf("test %s: failed to open test database: %v", test, err)
+		t.Fatalf("test %d: failed to open test database: %v", test, err)
 	}
 	defer db.Close()
 
-	genesisHash := common.HexToHash("0xd83be2c542174f983dcd21b68eacdab0597c66d0907f44c2cb2ee36e0ededa17")
+	genesisHash := common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
 	if genesis != "" {
 		genesisHash = daoGenesisHash
 	}
 	config := rawdb.ReadChainConfig(db, genesisHash)
 	if config == nil {
-		t.Errorf("test %s: failed to retrieve chain config, %v", test, err)
+		t.Errorf("test %d: failed to retrieve chain config: %v", test, err)
 		return // we want to return here, the other checks can't make it past this point (nil panic).
 	}
 	// Validate the DAO hard-fork block number against the expected value
 	if config.DAOForkBlock == nil {
 		if expectBlock != nil {
-			t.Errorf("test %s: dao hard-fork block mismatch: have nil, want %v", test, expectBlock)
+			t.Errorf("test %d: dao hard-fork block mismatch: have nil, want %v", test, expectBlock)
 		}
 	} else if expectBlock == nil {
-		t.Errorf("test %s: dao hard-fork block mismatch: have %v, want nil", test, config.DAOForkBlock)
+		t.Errorf("test %d: dao hard-fork block mismatch: have %v, want nil", test, config.DAOForkBlock)
 	} else if config.DAOForkBlock.Cmp(expectBlock) != 0 {
-		t.Errorf("test %s: dao hard-fork block mismatch: have %v, want %v", test, config.DAOForkBlock, expectBlock)
+		t.Errorf("test %d: dao hard-fork block mismatch: have %v, want %v", test, config.DAOForkBlock, expectBlock)
 	}
 	if config.DAOForkSupport != expectVote {
-		t.Errorf("test %s: dao hard-fork support mismatch: have %v, want %v", test, config.DAOForkSupport, expectVote)
+		t.Errorf("test %d: dao hard-fork support mismatch: have %v, want %v", test, config.DAOForkSupport, expectVote)
 	}
 }

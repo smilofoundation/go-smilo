@@ -68,7 +68,7 @@ func (c *core) storeRequestMsg(request *sport.Request) {
 	c.pendingRequestsMu.Lock()
 	defer c.pendingRequestsMu.Unlock()
 
-	c.pendingRequests.Push(request, float32(-request.BlockProposal.Number().Int64()))
+	c.pendingRequests.Push(request, -request.BlockProposal.Number().Int64())
 }
 
 func (c *core) processPendingRequests() {

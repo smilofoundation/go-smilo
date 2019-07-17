@@ -18,9 +18,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
@@ -40,7 +40,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/core/vm/runtime"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
@@ -104,12 +103,12 @@ func runCmd(ctx *cli.Context) error {
 	if ctx.GlobalString(GenesisFlag.Name) != "" {
 		gen := readGenesis(ctx.GlobalString(GenesisFlag.Name))
 		genesisConfig = gen
-		db := ethdb.NewMemDatabase()
+		db := rawdb.NewMemoryDatabase()
 		genesis := gen.ToBlock(db)
 		statedb, _ = state.New(genesis.Root(), state.NewDatabase(db))
 		chainConfig = gen.Config
 	} else {
-		statedb, _ = state.New(common.Hash{}, state.NewDatabase(ethdb.NewMemDatabase()))
+		statedb, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 		genesisConfig = new(core.Genesis)
 	}
 	if ctx.GlobalString(SenderFlag.Name) != "" {
@@ -126,28 +125,36 @@ func runCmd(ctx *cli.Context) error {
 		ret  []byte
 		err  error
 	)
+	codeFileFlag := ctx.GlobalString(CodeFileFlag.Name)
+	codeFlag := ctx.GlobalString(CodeFlag.Name)
+
 	// The '--code' or '--codefile' flag overrides code in state
-	if ctx.GlobalString(CodeFileFlag.Name) != "" {
+	if codeFileFlag != "" || codeFlag != "" {
 		var hexcode []byte
-		var err error
-		// If - is specified, it means that code comes from stdin
-		if ctx.GlobalString(CodeFileFlag.Name) == "-" {
-			//Try reading from stdin
-			if hexcode, err = ioutil.ReadAll(os.Stdin); err != nil {
-				fmt.Printf("Could not load code from stdin: %v\n", err)
-				os.Exit(1)
+		if codeFileFlag != "" {
+			var err error
+			// If - is specified, it means that code comes from stdin
+			if codeFileFlag == "-" {
+				//Try reading from stdin
+				if hexcode, err = ioutil.ReadAll(os.Stdin); err != nil {
+					fmt.Printf("Could not load code from stdin: %v\n", err)
+					os.Exit(1)
+				}
+			} else {
+				// Codefile with hex assembly
+				if hexcode, err = ioutil.ReadFile(codeFileFlag); err != nil {
+					fmt.Printf("Could not load code from file: %v\n", err)
+					os.Exit(1)
+				}
 			}
 		} else {
-			// Codefile with hex assembly
-			if hexcode, err = ioutil.ReadFile(ctx.GlobalString(CodeFileFlag.Name)); err != nil {
-				fmt.Printf("Could not load code from file: %v\n", err)
-				os.Exit(1)
-			}
+			hexcode = []byte(codeFlag)
 		}
-		code = common.Hex2Bytes(string(bytes.TrimRight(hexcode, "\n")))
-
-	} else if ctx.GlobalString(CodeFlag.Name) != "" {
-		code = common.Hex2Bytes(ctx.GlobalString(CodeFlag.Name))
+		if len(hexcode)%2 != 0 {
+			fmt.Printf("Invalid input length for hex data (%d)\n", len(hexcode))
+			os.Exit(1)
+		}
+		code = common.FromHex(string(hexcode))
 	} else if fn := ctx.Args().First(); len(fn) > 0 {
 		// EASM-file to compile
 		src, err := ioutil.ReadFile(fn)
@@ -160,7 +167,6 @@ func runCmd(ctx *cli.Context) error {
 		}
 		code = common.Hex2Bytes(bin)
 	}
-
 	initialGas := ctx.GlobalUint64(GasFlag.Name)
 	if genesisConfig.GasLimit != 0 {
 		initialGas = genesisConfig.GasLimit
@@ -176,8 +182,9 @@ func runCmd(ctx *cli.Context) error {
 		Coinbase:    genesisConfig.Coinbase,
 		BlockNumber: new(big.Int).SetUint64(genesisConfig.Number),
 		EVMConfig: vm.Config{
-			Tracer: tracer,
-			Debug:  ctx.GlobalBool(DebugFlag.Name) || ctx.GlobalBool(MachineFlag.Name),
+			Tracer:         tracer,
+			Debug:          ctx.GlobalBool(DebugFlag.Name) || ctx.GlobalBool(MachineFlag.Name),
+			EVMInterpreter: ctx.GlobalString(EVMInterpreterFlag.Name),
 		},
 	}
 
@@ -213,7 +220,7 @@ func runCmd(ctx *cli.Context) error {
 	if ctx.GlobalBool(DumpFlag.Name) {
 		statedb.Commit(true)
 		statedb.IntermediateRoot(true)
-		fmt.Println(string(statedb.Dump()))
+		fmt.Println(string(statedb.Dump(false, false, true)))
 	}
 
 	if memProfilePath := ctx.GlobalString(MemProfileFlag.Name); memProfilePath != "" {

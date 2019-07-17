@@ -47,10 +47,10 @@ var TestnetBootnodes = []string{
 //TODO: config bootnodes
 var RinkebyBootnodes = []string{}
 
-// RinkebyV5Bootnodes are the enode URLs of the P2P bootstrap nodes running on the
-// Rinkeby test network for the experimental RLPx v5 topic-discovery network.
-//TODO: config bootnodes
-var RinkebyV5Bootnodes = []string{}
+// GoerliBootnodes are the enode URLs of the P2P bootstrap nodes running on the
+// Görli test network.
+var GoerliBootnodes = []string{}
+
 
 // Sport are the enode URLs of the P2P bootstrap nodes running on the SPORT consensus mainnet.
 var SportBootnodes = []string{

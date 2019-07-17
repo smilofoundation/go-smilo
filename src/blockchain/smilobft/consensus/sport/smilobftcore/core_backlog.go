@@ -17,7 +17,7 @@
 package smilobftcore
 
 import (
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+	"github.com/ethereum/go-ethereum/common/prque"
 
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
@@ -92,7 +92,7 @@ func (c *core) storeBacklog(msg *message, src sport.Fullnode) {
 	logger.Debug("Retrieving backlog queue", "for", src.Address(), "backlogs_size", len(c.backlogs))
 	backlog := c.backlogs[src.Address()]
 	if backlog == nil {
-		backlog = prque.New()
+		backlog = prque.New(nil)
 	}
 	switch msg.Code {
 	case msgPreprepare:

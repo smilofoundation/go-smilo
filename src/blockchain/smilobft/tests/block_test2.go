@@ -40,7 +40,6 @@ var waitDeployedTests = map[string]struct {
 
 func TestBlock(t *testing.T) {
 
-	//db := ethdb.NewMemDatabase()
 
 	tx1 := types.NewTransaction(1, common.BytesToAddress(
 		[]byte{0x11}), big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11})
@@ -54,7 +53,6 @@ func TestBlock(t *testing.T) {
 
 	require.NotNil(t, block)
 	require.NotEmpty(t, block.Hash())
-	//require.NotEmpty(t, block.Nonce())
 
 	t.Log(block)
 

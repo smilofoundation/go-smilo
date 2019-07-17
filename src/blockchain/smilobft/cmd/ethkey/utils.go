@@ -19,10 +19,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmd/utils"
 	"io/ioutil"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/urfave/cli.v1"
 

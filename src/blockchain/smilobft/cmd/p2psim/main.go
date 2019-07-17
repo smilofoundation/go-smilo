@@ -46,7 +46,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"gopkg.in/urfave/cli.v1"
 
 	"go-smilo/src/blockchain/smilobft/p2p"

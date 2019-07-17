@@ -30,7 +30,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"github.com/mattn/go-colorable"
 
 	"go-smilo/src/blockchain/smilobft/node"
@@ -44,7 +44,6 @@ var (
 )
 
 func init() {
-
 	flag.Parse()
 
 	log.PrintOrigins(true)
