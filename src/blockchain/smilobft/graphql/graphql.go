@@ -509,7 +509,7 @@ func (b *Block) Timestamp(ctx context.Context) (hexutil.Uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return hexutil.Uint64(header.Time), nil
+	return hexutil.Uint64(header.Time.Uint64()), nil
 }
 
 func (b *Block) Nonce(ctx context.Context) (hexutil.Bytes, error) {

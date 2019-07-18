@@ -90,6 +90,7 @@ func (c *core) handleEvents() {
 			// A real event arrived, process interesting content
 			switch ev := event.Data.(type) {
 			case sport.RequestEvent:
+				//SPORT:1
 				r := &sport.Request{
 					BlockProposal: ev.BlockProposal,
 				}

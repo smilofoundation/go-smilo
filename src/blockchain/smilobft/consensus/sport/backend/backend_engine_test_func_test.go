@@ -20,7 +20,6 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"fmt"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 
@@ -121,7 +120,7 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 		GasLimit:   core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807),
 		GasUsed:    0,
 		Extra:      parent.Extra(),
-		Time:       new(big.Int).Add(big.NewInt(0).SetUint64(parent.Time()), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
+		Time:       new(big.Int).Add(parent.Time(), new(big.Int).SetUint64(config.BlockPeriod)),
 		Difficulty: defaultDifficulty,
 	}
 	return header
@@ -129,24 +128,8 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 
 func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
 	block := makeBlockWithoutSeal(chain, engine, parent)
-	//stopCh := make(chan struct{})
-	//resultCh := make(chan *types.Block, 10)
-	//go engine.Seal(chain, block, resultCh, stopCh)
-	//blk := <-resultCh
-	//return blk
-	resultCh := make(chan *types.Block, 10)
-	stopCh := make(chan struct{})
-	go func() {
-		err := engine.Seal(chain, block, resultCh, stopCh)
-		if err != nil {
-			fmt.Printf("error mismatch: have %v, want %v", err, block)
-		}
-	}()
-	finalBlock := <-resultCh
-	if finalBlock.Hash() != block.Hash() {
-		fmt.Printf("hash mismatch: have %v, want %v", finalBlock.Hash(), block.Hash())
-	}
-	return finalBlock
+	block, _ = engine.Seal(chain, block, nil)
+	return block
 }
 
 func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {

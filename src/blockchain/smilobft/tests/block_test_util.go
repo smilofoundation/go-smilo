@@ -249,7 +249,7 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	if h.GasUsed != h2.GasUsed {
 		return fmt.Errorf("GasUsed: want: %d have: %d", h.GasUsed, h2.GasUsed)
 	}
-	if h.Timestamp.Cmp(big.NewInt(0).SetUint64(h2.Time)) != 0 {
+	if h.Timestamp.Cmp(h2.Time) != 0 {
 		return fmt.Errorf("Timestamp: want: %v have: %v", h.Timestamp, h2.Time)
 	}
 	return nil

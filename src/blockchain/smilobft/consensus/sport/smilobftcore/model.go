@@ -26,7 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/common/prque"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
@@ -82,7 +82,7 @@ func New(backend sport.Backend, config *sport.Config) Engine {
 		backend:            backend,
 		backlogs:           make(map[common.Address]*prque.Prque),
 		backlogsMu:         new(sync.Mutex),
-		pendingRequests:    prque.New(nil),
+		pendingRequests:    prque.New(),
 		pendingRequestsMu:  new(sync.Mutex),
 		consensusTimestamp: time.Time{},
 		roundMeter:         metrics.NewMeter(),

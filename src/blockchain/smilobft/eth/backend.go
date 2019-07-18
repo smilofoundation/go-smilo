@@ -209,9 +209,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		}
 		cacheConfig = &core.CacheConfig{
 			TrieCleanLimit:      config.TrieCleanCache,
-			TrieCleanNoPrefetch: config.NoPrefetch,
 			TrieDirtyLimit:      config.TrieDirtyCache,
-			TrieDirtyDisabled:   config.NoPruning,
 			TrieTimeLimit:       config.TrieTimeout,
 		}
 	)
@@ -306,21 +304,13 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		return ethash.NewFaker()
 	case ModeTest:
 		log.Warn("Ethash used in test mode")
-		return ethash.NewTester(nil, config.Miner.Noverify)
+		return ethash.NewTester()
 	case ModeShared:
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
-		engine := ethash.New(ethash.Config{
-			CacheDir:       ctx.ResolvePath(config.Ethash.CacheDir),
-			CachesInMem:    config.Ethash.CachesInMem,
-			CachesOnDisk:   config.Ethash.CachesOnDisk,
-			DatasetDir:     config.Ethash.DatasetDir,
-			DatasetsInMem:  config.Ethash.DatasetsInMem,
-			DatasetsOnDisk: config.Ethash.DatasetsOnDisk,
-		}, config.Miner.Notify, config.Miner.Noverify)
-		engine.SetThreads(-1) // Disable CPU mining
-		return engine
+		log.Warn("Ethash used in full fake mode")
+		return ethash.NewFullFaker()
 	}
 }
 

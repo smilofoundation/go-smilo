@@ -33,7 +33,7 @@ import (
 
 var dualStateTestHeader = types.Header{
 	Number:     new(big.Int),
-	Time:       uint64(43),
+	Time:       big.NewInt(43),
 	Difficulty: new(big.Int).SetUint64(1000488),
 	GasLimit:   4700000,
 }

@@ -70,7 +70,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer node.Close()
+		defer node.Stop()
 
 		for node.Server().NodeInfo().Ports.Listener == 0 {
 			time.Sleep(250 * time.Millisecond)
@@ -180,12 +180,10 @@ func makeMiner(genesis *core.Genesis) (*node.Node, error) {
 			TxPool:          core.DefaultTxPoolConfig,
 			GPO:             eth.DefaultConfig.GPO,
 			Ethash:          eth.DefaultConfig.Ethash,
-			Miner: Config{
-				GasFloor: genesis.GasLimit * 9 / 10,
-				GasCeil:  genesis.GasLimit * 11 / 10,
-				GasPrice: big.NewInt(1),
-				Recommit: time.Second,
-			},
+			MinerGasFloor:   genesis.GasLimit * 9 / 10,
+			MinerGasCeil:    genesis.GasLimit * 11 / 10,
+			MinerGasPrice:   big.NewInt(1),
+			MinerRecommit:   time.Second,
 		})
 	}); err != nil {
 		return nil, err

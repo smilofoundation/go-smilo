@@ -1778,7 +1778,7 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 				DatasetDir:     stack.ResolvePath(eth.DefaultConfig.Ethash.DatasetDir),
 				DatasetsInMem:  eth.DefaultConfig.Ethash.DatasetsInMem,
 				DatasetsOnDisk: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-			}, nil, false)
+			})
 		}
 	}
 	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
@@ -1786,9 +1786,9 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 	}
 	cache := &core.CacheConfig{
 		TrieCleanLimit:      eth.DefaultConfig.TrieCleanCache,
-		TrieCleanNoPrefetch: ctx.GlobalBool(CacheNoPrefetchFlag.Name),
+		//TrieCleanNoPrefetch: ctx.GlobalBool(CacheNoPrefetchFlag.Name),
 		TrieDirtyLimit:      eth.DefaultConfig.TrieDirtyCache,
-		TrieDirtyDisabled:   ctx.GlobalString(GCModeFlag.Name) == "archive",
+		//TrieDirtyDisabled:   ctx.GlobalString(GCModeFlag.Name) == "archive",
 		TrieTimeLimit:       eth.DefaultConfig.TrieTimeout,
 	}
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheTrieFlag.Name) {

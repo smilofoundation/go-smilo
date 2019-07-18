@@ -118,7 +118,7 @@
   revision = "37f05ff46ffa7a825d1b24cf2b62d4a4c1a9d2e8"
 
 [[projects]]
-  digest = "1:80cdf53b43e0923d0a70861ace24206a1578fa55ac6c8375da11aef1a764cf5f"
+  digest = "1:578676db1f290ccede3a47d07d50d3b4bdaa39ccbd1286a51ec55c7c1884fb81"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -154,12 +154,6 @@
     "crypto/bn256/google",
     "crypto/ecies",
     "crypto/secp256k1",
-    "crypto/secp256k1/libsecp256k1",
-    "crypto/secp256k1/libsecp256k1/include",
-    "crypto/secp256k1/libsecp256k1/src",
-    "crypto/secp256k1/libsecp256k1/src/modules",
-    "crypto/secp256k1/libsecp256k1/src/modules/recovery",
-    "crypto/sha3",
     "eth/downloader",
     "ethdb",
     "ethdb/leveldb",
@@ -236,7 +230,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:a02bd86b9a3a64546d2d34b8c1082a41c5ed1f6621c15f66e7730606681f98e2"
+  digest = "0:"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -361,17 +355,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:752fd1c56fb23c890a527973affd5e4df4ab6c0e86273bfa69030c580cf2c270"
+  digest = "1:db24bdcd60564a4214dfbc49a44d97f396cda26bd6bc67428de7ce43ed429f12"
   name = "github.com/karalabe/usb"
-  packages = [
-    ".",
-    "hidapi/hidapi",
-    "hidapi/libusb",
-    "hidapi/mac",
-    "hidapi/windows",
-    "libusb/libusb",
-    "libusb/libusb/os",
-  ]
+  packages = ["."]
   pruneopts = "UT"
   revision = "9be757f914c0907b7ddd561ea86eec15313ac022"
 
@@ -763,6 +749,14 @@
 
 [[projects]]
   branch = "v2"
+  digest = "1:0a2f4b974a413866afa1b41130d756643841fb9ad661b81c9a6dd9f1364ed19f"
+  name = "gopkg.in/karalabe/cookiejar.v2"
+  packages = ["collections/prque"]
+  pruneopts = "UT"
+  revision = "8dcd6a7f4951f6ff3ee9cbb919a06d8925822e57"
+
+[[projects]]
+  branch = "v2"
   digest = "1:3d3f9391ab615be8655ae0d686a1564f3fec413979bb1aaf018bac1ec1bb1cc7"
   name = "gopkg.in/natefinch/npipe.v2"
   packages = ["."]
@@ -883,6 +877,7 @@
     "golang.org/x/text/unicode/norm",
     "golang.org/x/tools/imports",
     "gopkg.in/check.v1",
+    "gopkg.in/karalabe/cookiejar.v2/collections/prque",
     "gopkg.in/natefinch/npipe.v2",
     "gopkg.in/olebedev/go-duktape.v3",
     "gopkg.in/urfave/cli.v1",

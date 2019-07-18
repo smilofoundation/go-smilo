@@ -165,7 +165,7 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
 		sb.logger.Error("Invalid proposal, consensus.ErrFutureBlock %v", proposal)
-		return time.Unix(int64(block.Header().Time), 0).Sub(now()), consensus.ErrFutureBlock
+		return time.Unix(block.Header().Time.Int64(), 0).Sub(now()), consensus.ErrFutureBlock
 	}
 	return 0, err
 }

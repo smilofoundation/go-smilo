@@ -65,15 +65,10 @@ func TestSealStopChannel(t *testing.T) {
 		eventSub.Unsubscribe()
 	}
 	go eventLoop()
-	resultCh := make(chan *types.Block, 10)
-	go func() {
-		err := engine.Seal(chain, block, resultCh, stop)
-		if err != nil {
-			t.Errorf("error mismatch: have %v, want nil", err)
-		}
-	}()
-
-	finalBlock := <-resultCh
+	finalBlock, err := engine.Seal(chain, block, stop)
+	if err != nil {
+		t.Errorf("error mismatch: have %v, want nil", err)
+	}
 	if finalBlock != nil {
 		t.Errorf("block mismatch: have %v, want nil", finalBlock)
 	}
@@ -96,33 +91,27 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	}
 	go eventLoop()
 	seal := func() {
-		engine.Seal(chain, block, nil, make(chan struct{}))
+		engine.Seal(chain, block, nil)
 		t.Error("seal should not be completed")
 	}
 	go seal()
 
+	// wait 2 seconds to ensure we cannot get any blocks from Sport
 	const timeoutDura = 2 * time.Second
 	timeout := time.NewTimer(timeoutDura)
-	select {
-	case <-timeout.C:
-		// wait 2 seconds to ensure we cannot get any blocks from Sport
-	}
+	<-timeout.C
+
 }
 
 func TestSealCommitted(t *testing.T) {
-	t.Skip()
 	chain, engine := newBlockChain(1)
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	expectedBlock, _ := engine.updateBlock(engine.chain.GetHeader(block.ParentHash(), block.NumberU64()-1), block)
-	resultCh := make(chan *types.Block, 10)
-	stopCh := make(chan struct{})
-	go func() {
-		err := engine.Seal(chain, block, resultCh, stopCh)
-		if err != nil {
-			t.Errorf("error mismatch: have %v, want %v", err, expectedBlock)
-		}
-	}()
-	finalBlock := <-resultCh
+
+	finalBlock, err := engine.Seal(chain, block, nil)
+	if err != nil {
+		t.Errorf("error mismatch: have %v, want nil", err)
+	}
 	if finalBlock.Hash() != expectedBlock.Hash() {
 		t.Errorf("hash mismatch: have %v, want %v", finalBlock.Hash(), expectedBlock.Hash())
 	}
@@ -183,7 +172,7 @@ func TestVerifyHeader(t *testing.T) {
 	// invalid timestamp
 	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	header = block.Header()
-	header.Time = new(big.Int).Add(new(big.Int).SetUint64(chain.Genesis().Time()), new(big.Int).SetUint64(engine.config.BlockPeriod-1)).Uint64()
+	header.Time = new(big.Int).Add(chain.Genesis().Time(), new(big.Int).SetUint64(engine.config.BlockPeriod-1))
 	err = engine.VerifyHeader(chain, header, false)
 	if err != errInvalidTimestamp {
 		t.Errorf("error mismatch: have %v, want %v", err, errInvalidTimestamp)
@@ -192,7 +181,7 @@ func TestVerifyHeader(t *testing.T) {
 	// future block
 	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	header = block.Header()
-	header.Time = new(big.Int).Add(big.NewInt(now().Unix()), new(big.Int).SetUint64(10)).Uint64()
+	header.Time = new(big.Int).Add(big.NewInt(now().Unix()), new(big.Int).SetUint64(10))
 	err = engine.VerifyHeader(chain, header, false)
 	if err != consensus.ErrFutureBlock {
 		t.Errorf("error mismatch: have %v, want %v", err, consensus.ErrFutureBlock)
@@ -258,7 +247,7 @@ func TestVerifyHeaders(t *testing.T) {
 		headers = append(headers, blocks[i].Header())
 	}
 	now = func() time.Time {
-		return time.Unix(int64(headers[size-1].Time), 0)
+		return time.Unix(headers[size-1].Time.Int64(), 0)
 	}
 	_, results := engine.VerifyHeaders(chain, headers, nil)
 	const timeoutDura = 2 * time.Second

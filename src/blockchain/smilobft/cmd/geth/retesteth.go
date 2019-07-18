@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"go-smilo/src/blockchain/smilobft/cmd/utils"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
@@ -33,6 +32,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/node"
 	"go-smilo/src/blockchain/smilobft/params"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"go-smilo/src/blockchain/smilobft/trie"
 	"math/big"
 	"os"
@@ -251,8 +251,8 @@ func (e *NoRewardEngine) FinalizeAndAssemble(chain consensus.ChainReader, header
 	}
 }
 
-func (e *NoRewardEngine) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
-	return e.inner.Seal(chain, block, results, stop)
+func (e *NoRewardEngine) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
+	return e.inner.Seal(chain, block, stop)
 }
 
 func (e *NoRewardEngine) SealHash(header *types.Header) common.Hash {
@@ -390,7 +390,7 @@ func (api *RetestethAPI) SetChainParams(ctx context.Context, chainParams ChainPa
 			CachesOnDisk:   3,
 			DatasetsInMem:  1,
 			DatasetsOnDisk: 2,
-		}, nil, false)
+		})
 	default:
 		return false, fmt.Errorf("unrecognised seal engine: %s", chainParams.SealEngine)
 	}
@@ -455,7 +455,7 @@ func (api *RetestethAPI) mineBlock() error {
 	if api.blockInterval == 0 {
 		timestamp = uint64(time.Now().Unix())
 	} else {
-		timestamp = parent.Time() + api.blockInterval
+		timestamp = parent.Time().Uint64() + api.blockInterval
 	}
 	gasLimit := core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807)
 	header := &types.Header{
@@ -463,7 +463,7 @@ func (api *RetestethAPI) mineBlock() error {
 		Number:     big.NewInt(int64(api.blockNumber + 1)),
 		GasLimit:   gasLimit,
 		Extra:      api.extraData,
-		Time:       timestamp,
+		Time:       big.NewInt(0).SetUint64(timestamp),
 	}
 	header.Coinbase = api.author
 	if api.engine != nil {

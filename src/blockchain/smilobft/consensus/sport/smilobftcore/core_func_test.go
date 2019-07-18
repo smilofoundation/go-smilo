@@ -299,7 +299,7 @@ func makeBlock(number int64) *types.Block {
 		Number:     big.NewInt(number),
 		GasLimit:   0,
 		GasUsed:    0,
-		Time:       big.NewInt(0).Uint64(),
+		Time:       big.NewInt(0),
 	}
 	block := &types.Block{}
 	return block.WithSeal(header)

@@ -155,7 +155,7 @@ func (api *PrivateMinerAPI) SetRecommitInterval(interval int) {
 
 // GetHashrate returns the current hashrate of the miner.
 func (api *PrivateMinerAPI) GetHashrate() uint64 {
-	return api.e.miner.HashRate()
+	return uint64(api.e.miner.HashRate())
 }
 
 // PrivateAdminAPI is the collection of Smilo full node-related APIs

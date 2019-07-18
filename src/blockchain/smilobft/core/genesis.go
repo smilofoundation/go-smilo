@@ -244,7 +244,6 @@ func GetIsSmiloEIP155Activated(db DatabaseReader) bool {
 	return len(data) == 1
 }
 
-
 func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 	switch {
 	case g != nil:
@@ -277,7 +276,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       g.Timestamp,
+		Time:       new(big.Int).SetUint64(g.Timestamp),
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
@@ -375,7 +374,6 @@ func DefaultRinkebyGenesisBlock() *Genesis {
 		Alloc:      decodePrealloc(rinkebyAllocData),
 	}
 }
-
 
 // DefaultGoerliGenesisBlock returns the Görli network genesis block.
 func DefaultGoerliGenesisBlock() *Genesis {

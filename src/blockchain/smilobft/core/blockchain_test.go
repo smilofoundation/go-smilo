@@ -1682,62 +1682,62 @@ func TestBlockchainRecovery(t *testing.T) {
 	}
 }
 
-func TestIncompleteAncientReceiptChainInsertion(t *testing.T) {
-	// Configure and generate a sample block chain
-	var (
-		gendb   = rawdb.NewMemoryDatabase()
-		key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		address = crypto.PubkeyToAddress(key.PublicKey)
-		funds   = big.NewInt(1000000000)
-		gspec   = &Genesis{Config: params.TestChainConfig, Alloc: GenesisAlloc{address: {Balance: funds}}}
-		genesis = gspec.MustCommit(gendb)
-	)
-	height := uint64(1024)
-	blocks, receipts := GenerateChain(gspec.Config, genesis, ethash.NewFaker(), gendb, int(height), nil)
-
-	// Import the chain as a ancient-first node and ensure all pointers are updated
-	frdir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("failed to create temp freezer dir: %v", err)
-	}
-	defer os.Remove(frdir)
-	ancientDb, err := rawdb.NewDatabaseWithFreezer(rawdb.NewMemoryDatabase(), frdir, "")
-	if err != nil {
-		t.Fatalf("failed to create temp freezer db: %v", err)
-	}
-	gspec.MustCommit(ancientDb)
-	ancient, _ := NewBlockChain(ancientDb, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
-	defer ancient.Stop()
-
-	headers := make([]*types.Header, len(blocks))
-	for i, block := range blocks {
-		headers[i] = block.Header()
-	}
-	if n, err := ancient.InsertHeaderChain(headers, 1); err != nil {
-		t.Fatalf("failed to insert header %d: %v", n, err)
-	}
-	// Abort ancient receipt chain insertion deliberately
-	ancient.terminateInsert = func(hash common.Hash, number uint64) bool {
-		return number == blocks[len(blocks)/2].NumberU64()
-	}
-	previousFastBlock := ancient.CurrentFastBlock()
-	if n, err := ancient.InsertReceiptChain(blocks, receipts, uint64(3*len(blocks)/4)); err == nil {
-		t.Fatalf("failed to insert receipt %d: %v", n, err)
-	}
-	if ancient.CurrentFastBlock().NumberU64() != previousFastBlock.NumberU64() {
-		t.Fatalf("failed to rollback ancient data, want %d, have %d", previousFastBlock.NumberU64(), ancient.CurrentFastBlock().NumberU64())
-	}
-	if frozen, err := ancient.db.Ancients(); err != nil || frozen != 1 {
-		t.Fatalf("failed to truncate ancient data")
-	}
-	ancient.terminateInsert = nil
-	if n, err := ancient.InsertReceiptChain(blocks, receipts, uint64(3*len(blocks)/4)); err != nil {
-		t.Fatalf("failed to insert receipt %d: %v", n, err)
-	}
-	if ancient.CurrentFastBlock().NumberU64() != blocks[len(blocks)-1].NumberU64() {
-		t.Fatalf("failed to insert ancient recept chain after rollback")
-	}
-}
+//func TestIncompleteAncientReceiptChainInsertion(t *testing.T) {
+//	// Configure and generate a sample block chain
+//	var (
+//		gendb   = rawdb.NewMemoryDatabase()
+//		key, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+//		address = crypto.PubkeyToAddress(key.PublicKey)
+//		funds   = big.NewInt(1000000000)
+//		gspec   = &Genesis{Config: params.TestChainConfig, Alloc: GenesisAlloc{address: {Balance: funds}}}
+//		genesis = gspec.MustCommit(gendb)
+//	)
+//	height := uint64(1024)
+//	blocks, receipts := GenerateChain(gspec.Config, genesis, ethash.NewFaker(), gendb, int(height), nil)
+//
+//	// Import the chain as a ancient-first node and ensure all pointers are updated
+//	frdir, err := ioutil.TempDir("", "")
+//	if err != nil {
+//		t.Fatalf("failed to create temp freezer dir: %v", err)
+//	}
+//	defer os.Remove(frdir)
+//	ancientDb, err := rawdb.NewDatabaseWithFreezer(rawdb.NewMemoryDatabase(), frdir, "")
+//	if err != nil {
+//		t.Fatalf("failed to create temp freezer db: %v", err)
+//	}
+//	gspec.MustCommit(ancientDb)
+//	ancient, _ := NewBlockChain(ancientDb, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
+//	defer ancient.Stop()
+//
+//	headers := make([]*types.Header, len(blocks))
+//	for i, block := range blocks {
+//		headers[i] = block.Header()
+//	}
+//	if n, err := ancient.InsertHeaderChain(headers, 1); err != nil {
+//		t.Fatalf("failed to insert header %d: %v", n, err)
+//	}
+//	// Abort ancient receipt chain insertion deliberately
+//	ancient.terminateInsert = func(hash common.Hash, number uint64) bool {
+//		return number == blocks[len(blocks)/2].NumberU64()
+//	}
+//	previousFastBlock := ancient.CurrentFastBlock()
+//	if n, err := ancient.InsertReceiptChain(blocks, receipts, uint64(3*len(blocks)/4)); err == nil {
+//		t.Fatalf("failed to insert receipt %d: %v", n, err)
+//	}
+//	if ancient.CurrentFastBlock().NumberU64() != previousFastBlock.NumberU64() {
+//		t.Fatalf("failed to rollback ancient data, want %d, have %d", previousFastBlock.NumberU64(), ancient.CurrentFastBlock().NumberU64())
+//	}
+//	if frozen, err := ancient.db.Ancients(); err != nil || frozen != 1 {
+//		t.Fatalf("failed to truncate ancient data")
+//	}
+//	ancient.terminateInsert = nil
+//	if n, err := ancient.InsertReceiptChain(blocks, receipts, uint64(3*len(blocks)/4)); err != nil {
+//		t.Fatalf("failed to insert receipt %d: %v", n, err)
+//	}
+//	if ancient.CurrentFastBlock().NumberU64() != blocks[len(blocks)-1].NumberU64() {
+//		t.Fatalf("failed to insert ancient recept chain after rollback")
+//	}
+//}
 
 // Tests that importing a very large side fork, which is larger than the canon chain,
 // but where the difficulty per block is kept low: this means that it will not

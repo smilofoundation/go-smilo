@@ -25,6 +25,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
 
+//SPORT:2
 func (c *core) sendPreprepare(request *sport.Request) {
 	logger := c.logger.New("state", c.state)
 
@@ -47,6 +48,7 @@ func (c *core) sendPreprepare(request *sport.Request) {
 	}
 }
 
+//SPORT:3
 func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	logger := c.logger.New("from", src, "state", c.state)
 
@@ -59,6 +61,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 
 	// Ensure we have the same view with the PRE-PREPARE message
 	// If it is old message, see if we need to broadcast COMMIT
+	//SPORT:6
 	if err := c.checkMessage(msgPreprepare, preprepare.View); err != nil {
 		if err == errOldMessage {
 			// Get fullnode set for the given proposal
@@ -101,6 +104,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	}
 
 	// Here is about to accept the PRE-PREPARE
+	//SPORT:4
 	if c.state == StateAcceptRequest {
 		// Send ROUND CHANGE if the locked proposal and the received proposal are different
 		if c.current.IsHashLocked() {

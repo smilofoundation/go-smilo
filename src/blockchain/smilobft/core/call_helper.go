@@ -43,7 +43,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	)
 
 	cg.header.Number = new(big.Int)
-	cg.header.Time = uint64(43)
+	cg.header.Time = new(big.Int).SetUint64(43)
 	cg.header.Difficulty = new(big.Int).SetUint64(1000488)
 	cg.header.GasLimit = 4700000
 

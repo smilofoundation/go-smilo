@@ -20,26 +20,27 @@ package miner
 import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"math/big"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
-	"time"
-
+	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/eth/downloader"
+	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
 // Backend wraps all methods required for mining.
 type Backend interface {
+	AccountManager() *accounts.Manager
 	BlockChain() *core.BlockChain
 	TxPool() *core.TxPool
 	ChainDb() ethdb.Database
@@ -50,21 +51,23 @@ type Config struct {
 	Etherbase common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
 	Notify    []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages(only useful in ethash).
 	ExtraData hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
-	GasFloor  uint64         // Target gas floor for mined blocks.
-	GasCeil   uint64         // Target gas ceiling for mined blocks.
-	GasPrice  *big.Int       // Minimum gas price for mining a transaction
-	Recommit  time.Duration  // The time interval for miner to re-create mining work.
-	Noverify  bool           // Disable remote mining solution verification(only useful in ethash).
+	GasFloor  uint64                             // Target gas floor for mined blocks.
+	GasCeil   uint64                             // Target gas ceiling for mined blocks.
+	GasPrice  *big.Int                           // Minimum gas price for mining a transaction
+	Recommit  time.Duration                      // The time interval for miner to re-create mining work.
+	Noverify  bool                               // Disable remote mining solution verification(only useful in ethash).
 }
 
 // Miner creates blocks and searches for proof-of-work values.
 type Miner struct {
-	mux      *event.TypeMux
-	worker   *worker
+	mux *event.TypeMux
+
+	worker *worker
+
 	coinbase common.Address
+	mining   int32
 	eth      Backend
 	engine   consensus.Engine
-	exitCh   chan struct{}
 
 	canStart    int32 // can start indicates whether we can start the mining operation
 	shouldStart int32 // should start indicates whether we should start after sync
@@ -75,10 +78,10 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 		eth:      eth,
 		mux:      mux,
 		engine:   engine,
-		exitCh:   make(chan struct{}),
-		worker:   newWorker(config, chainConfig, engine, eth, mux, isLocalBlock, minBlocksEmptyMining),
+		worker:   newWorker(config, chainConfig, engine, common.Address{}, eth, mux, minBlocksEmptyMining),
 		canStart: 1,
 	}
+	miner.Register(NewCpuAgent(eth.BlockChain(), engine))
 	go miner.update()
 
 	return miner
@@ -90,35 +93,28 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 // and halt your mining operation for as long as the DOS continues.
 func (self *Miner) update() {
 	events := self.mux.Subscribe(downloader.StartEvent{}, downloader.DoneEvent{}, downloader.FailedEvent{})
-	defer events.Unsubscribe()
-
-	for {
-		select {
-		case ev := <-events.Chan():
-			if ev == nil {
-				return
+out:
+	for ev := range events.Chan() {
+		switch ev.Data.(type) {
+		case downloader.StartEvent:
+			atomic.StoreInt32(&self.canStart, 0)
+			if self.Mining() {
+				self.Stop()
+				atomic.StoreInt32(&self.shouldStart, 1)
+				log.Info("Mining aborted due to sync")
 			}
-			switch ev.Data.(type) {
-			case downloader.StartEvent:
-				atomic.StoreInt32(&self.canStart, 0)
-				if self.Mining() {
-					self.Stop()
-					atomic.StoreInt32(&self.shouldStart, 1)
-					log.Info("Mining aborted due to sync")
-				}
-			case downloader.DoneEvent, downloader.FailedEvent:
-				shouldStart := atomic.LoadInt32(&self.shouldStart) == 1
+		case downloader.DoneEvent, downloader.FailedEvent:
+			shouldStart := atomic.LoadInt32(&self.shouldStart) == 1
 
-				atomic.StoreInt32(&self.canStart, 1)
-				atomic.StoreInt32(&self.shouldStart, 0)
-				if shouldStart {
-					self.Start(self.coinbase)
-				}
-				// stop immediately and ignore all further pending events
-				return
+			atomic.StoreInt32(&self.canStart, 1)
+			atomic.StoreInt32(&self.shouldStart, 0)
+			if shouldStart {
+				self.Start(self.coinbase)
 			}
-		case <-self.exitCh:
-			return
+			// unsubscribe. we're only interested in this event once
+			events.Unsubscribe()
+			// stop immediately and ignore all further pending events
+			break out
 		}
 	}
 }
@@ -131,28 +127,47 @@ func (self *Miner) Start(coinbase common.Address) {
 		log.Info("Network syncing, will start miner afterwards")
 		return
 	}
+	atomic.StoreInt32(&self.mining, 1)
+
+	log.Info("Starting mining operation")
 	self.worker.start()
+	self.worker.commitNewWork(time.Now().Unix())
 }
 
 func (self *Miner) Stop() {
 	self.worker.stop()
+	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.shouldStart, 0)
 }
 
-func (self *Miner) Close() {
-	self.worker.close()
-	close(self.exitCh)
+func (self *Miner) Register(agent Agent) {
+	if self.Mining() {
+		agent.Start()
+	}
+	self.worker.register(agent)
+}
+
+func (self *Miner) Unregister(agent Agent) {
+	self.worker.unregister(agent)
 }
 
 func (self *Miner) Mining() bool {
-	return self.worker.isRunning()
+	return atomic.LoadInt32(&self.mining) > 0
 }
 
-func (self *Miner) HashRate() uint64 {
+func (self *Miner) HashRate() (tot int64) {
 	if pow, ok := self.engine.(consensus.PoW); ok {
-		return uint64(pow.Hashrate())
+		tot += int64(pow.Hashrate())
 	}
-	return 0
+	// do we care this might race? is it worth we're rewriting some
+	// aspects of the worker/locking up agents so we can get an accurate
+	// hashrate?
+	for agent := range self.worker.agents {
+		if _, ok := agent.(*CpuAgent); !ok {
+			tot += agent.GetHashRate()
+		}
+	}
+	return
 }
 
 func (self *Miner) SetExtra(extra []byte) error {

@@ -29,7 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/common/prque"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )

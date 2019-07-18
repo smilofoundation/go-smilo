@@ -27,7 +27,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/common/prque"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
 
@@ -93,7 +94,7 @@ func TestStoreRequestMsg(t *testing.T) {
 			Sequence: big.NewInt(0),
 			Round:    big.NewInt(0),
 		}, newTestFullnodeSet(4), common.Hash{}, nil, nil, nil),
-		pendingRequests:   prque.New(nil),
+		pendingRequests:   prque.New(),
 		pendingRequestsMu: new(sync.Mutex),
 	}
 	requests := []sport.Request{
