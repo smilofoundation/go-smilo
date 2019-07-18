@@ -118,7 +118,7 @@
   revision = "37f05ff46ffa7a825d1b24cf2b62d4a4c1a9d2e8"
 
 [[projects]]
-  digest = "1:578676db1f290ccede3a47d07d50d3b4bdaa39ccbd1286a51ec55c7c1884fb81"
+  digest = "1:80cdf53b43e0923d0a70861ace24206a1578fa55ac6c8375da11aef1a764cf5f"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -154,6 +154,11 @@
     "crypto/bn256/google",
     "crypto/ecies",
     "crypto/secp256k1",
+    "crypto/secp256k1/libsecp256k1",
+    "crypto/secp256k1/libsecp256k1/include",
+    "crypto/secp256k1/libsecp256k1/src",
+    "crypto/secp256k1/libsecp256k1/src/modules",
+    "crypto/secp256k1/libsecp256k1/src/modules/recovery",
     "eth/downloader",
     "ethdb",
     "ethdb/leveldb",
@@ -230,7 +235,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:a02bd86b9a3a64546d2d34b8c1082a41c5ed1f6621c15f66e7730606681f98e2"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -822,6 +827,7 @@
     "github.com/ethereum/go-ethereum/metrics/exp",
     "github.com/ethereum/go-ethereum/metrics/influxdb",
     "github.com/ethereum/go-ethereum/rlp",
+    "github.com/ethereum/go-ethereum/rpc",
     "github.com/fatih/color",
     "github.com/fjl/memsize/memsizeui",
     "github.com/gballet/go-libpcsclite",

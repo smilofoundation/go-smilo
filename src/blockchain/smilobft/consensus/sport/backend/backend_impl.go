@@ -114,13 +114,18 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
 	if sb.proposedBlockHash == block.Hash() {
-		// feed block hash to Seal() and wait the Seal() result
+		sb.logger.Debug("feed block hash to Seal() and wait the Seal() result")
 		sb.commitChBlock <- block
 		return nil
+	} else {
+		sb.logger.Debug("Failed to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 
 	if sb.broadcaster != nil {
+		sb.logger.Debug("broadcaster Enqueue fetcherID block")
 		sb.broadcaster.Enqueue(fetcherID, block)
+	} else {
+		sb.logger.Debug("Failed broadcast Enqueue fetcherID block, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 	return nil
 }

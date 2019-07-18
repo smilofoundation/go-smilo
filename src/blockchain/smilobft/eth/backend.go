@@ -304,12 +304,11 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		return ethash.NewFaker()
 	case ModeTest:
 		log.Warn("Ethash used in test mode")
-		return ethash.NewTester()
+		return ethash.NewTester(nil, config.Miner.Noverify)
 	case ModeShared:
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
-		log.Warn("Ethash used in full fake mode")
 		return ethash.NewFullFaker()
 	}
 }

@@ -19,11 +19,11 @@ package misc
 import (
 	"bytes"
 	"errors"
-	"math/big"
-
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/params"
+	"math/big"
+
 )
 
 var (
@@ -73,13 +73,13 @@ func VerifyDAOHeaderExtraData(config *params.ChainConfig, header *types.Header) 
 // contract.
 func ApplyDAOHardFork(statedb *state.StateDB, blockNumber *big.Int) {
 	// Retrieve the contract to refund balances into
-	//if !statedb.Exist(params.DAORefundContract) {
-	//	statedb.CreateAccount(params.DAORefundContract)
-	//}
-	//
-	////Move every DAO account and extra-balance account funds into the refund contract
-	//for _, addr := range params.DAODrainList() {
-	//	statedb.AddBalance(params.DAORefundContract, statedb.GetBalance(addr), statedb.GetBalance(addr))
-	//	statedb.SetBalance(addr, new(big.Int), blockNumber)
-	//}
+	if !statedb.Exist(params.DAORefundContract) {
+		statedb.CreateAccount(params.DAORefundContract)
+	}
+
+	// Move every DAO account and extra-balance account funds into the refund contract
+	for _, addr := range params.DAODrainList() {
+		statedb.AddBalance(params.DAORefundContract, statedb.GetBalance(addr), blockNumber)
+		statedb.SetBalance(addr, new(big.Int), blockNumber)
+	}
 }

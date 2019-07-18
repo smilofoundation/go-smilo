@@ -41,8 +41,8 @@ type revision struct {
 }
 
 var (
-	// emptyRoot is the known root hash of an empty trie.
-	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	// emptyState is the known hash of an empty state trie entry.
+	emptyState = crypto.Keccak256Hash(nil)
 
 	// emptyCode is the known hash of the empty EVM bytecode.
 	emptyCode = crypto.Keccak256Hash(nil)
@@ -348,6 +348,15 @@ func (self *StateDB) HasSuicided(addr common.Address) bool {
 		return stateObject.suicided
 	}
 	return false
+}
+
+// GetStorageRoot returns the root of the storage associated with the given address.
+func (self *StateDB) GetStorageRoot(addr common.Address) (common.Hash, error) {
+	so := self.getStateObject(addr)
+	if so == nil {
+		return common.Hash{}, fmt.Errorf("can't find state object")
+	}
+	return so.storageRoot(self.db), nil
 }
 
 /*
@@ -759,7 +768,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		if err := rlp.DecodeBytes(leaf, &account); err != nil {
 			return nil
 		}
-		if account.Root != emptyRoot {
+		if account.Root != emptyState {
 			s.db.TrieDB().Reference(account.Root, parent)
 		}
 		code := common.BytesToHash(account.CodeHash)

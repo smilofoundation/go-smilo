@@ -373,13 +373,13 @@ func (sb *backend) FinalizeAndAssemble(chain consensus.ChainReader, header *type
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 
 	// warn for empty blocks
-	number := header.Number.Int64()
+	//number := header.Number.Int64()
 
 	//Will generate rewards for every block until block 40000000
 	//From this point on, ddd block rewards in Sport only if there is transactions in it
-	if header.Number.Cmp(big.NewInt(1)) > 0 && len(txs) > 0 || number < 40000000 {
-		AccumulateRewards(sb.config.CommunityAddress, state, header)
-	}
+	//if header.Number.Cmp(big.NewInt(1)) > 0 && len(txs) > 0 || number < 40000000 {
+	//	AccumulateRewards(sb.config.CommunityAddress, state, header)
+	//}
 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
@@ -390,8 +390,10 @@ func (sb *backend) FinalizeAndAssemble(chain consensus.ChainReader, header *type
 	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
-// Seal (clique override) generates a new block for the given input block with the local miner's seal place on top.
-func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
+// Seal generates a new block for the given input block with the local miner's
+// seal place on top.
+func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+
 	// update the block header timestamp and signature and propose the block to core engine
 	header := block.Header()
 	number := header.Number.Uint64()
@@ -399,19 +401,19 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	// Bail out if we're unauthorized to sign a block
 	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, v := snap.FullnodeSet.GetByAddress(sb.address); v == nil {
-		return nil, errUnauthorized
+		return errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
-		return nil, consensus.ErrUnknownAncestor
+		return consensus.ErrUnknownAncestor
 	}
 	block, err = sb.updateBlock(parent, block)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// wait for the timestamp of header, use this to adjust the block period
@@ -419,39 +421,38 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	select {
 	case <-time.After(delay):
 	case <-stop:
-		return nil, nil
-	}
-
-	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
-	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
-		return nil, errWaitTransactions
+		results <- nil
+		return nil
 	}
 
 	// get the proposed block hash and clear it if the seal() is completed.
 	sb.sealMu.Lock()
 	sb.proposedBlockHash = block.Hash()
+	sb.logger.Debug("get the proposed block hash and clear it if the seal() is completed ", "hash", sb.proposedBlockHash)
 	clear := func() {
 		sb.proposedBlockHash = common.Hash{}
 		sb.sealMu.Unlock()
 	}
 	defer clear()
 
-	// post block into Sport engine
-	// SPORT:0
+	// post block into Istanbul engine
 	go sb.EventMux().Post(sport.RequestEvent{
 		BlockProposal: block,
 	})
-
 	for {
 		select {
 		case result := <-sb.commitChBlock:
+			sb.logger.Debug("Seal got back the committed block from commitChBlock")
 			// if the block hash and the hash from channel are the same,
 			// return the result. Otherwise, keep waiting the next hash.
-			if block.Hash() == result.Hash() {
-				return result, nil
+			if result != nil && block.Hash() == result.Hash() {
+				results <- result
+				return nil
 			}
 		case <-stop:
-			return nil, nil
+			sb.logger.Debug("Seal got stop inside commitChBlock loop, WTF ?")
+			results <- nil
+			return nil
 		}
 	}
 }

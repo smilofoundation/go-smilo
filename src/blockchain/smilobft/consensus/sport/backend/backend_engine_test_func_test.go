@@ -128,8 +128,11 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 
 func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
 	block := makeBlockWithoutSeal(chain, engine, parent)
-	block, _ = engine.Seal(chain, block, nil)
-	return block
+	resultCh := make(chan *types.Block, 10)
+	stopCh := make(chan struct{})
+	go engine.Seal(chain, block, resultCh, stopCh)
+	blk := <-resultCh
+	return blk
 }
 
 func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {

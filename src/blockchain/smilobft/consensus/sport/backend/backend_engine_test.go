@@ -19,7 +19,9 @@ package backend
 
 import (
 	"bytes"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -65,10 +67,15 @@ func TestSealStopChannel(t *testing.T) {
 		eventSub.Unsubscribe()
 	}
 	go eventLoop()
-	finalBlock, err := engine.Seal(chain, block, stop)
-	if err != nil {
-		t.Errorf("error mismatch: have %v, want nil", err)
-	}
+	resultCh := make(chan *types.Block, 10)
+	go func() {
+		err := engine.Seal(chain, block, resultCh, stop)
+		if err != nil {
+			t.Errorf("error mismatch: have %v, want nil", err)
+		}
+	}()
+
+	finalBlock := <-resultCh
 	if finalBlock != nil {
 		t.Errorf("block mismatch: have %v, want nil", finalBlock)
 	}
@@ -91,27 +98,37 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	}
 	go eventLoop()
 	seal := func() {
-		engine.Seal(chain, block, nil)
+		engine.Seal(chain, block, nil, make(chan struct{}))
 		t.Error("seal should not be completed")
 	}
 	go seal()
 
-	// wait 2 seconds to ensure we cannot get any blocks from Sport
 	const timeoutDura = 2 * time.Second
 	timeout := time.NewTimer(timeoutDura)
-	<-timeout.C
-
+	select {
+	case <-timeout.C:
+		// wait 2 seconds to ensure we cannot get any blocks from Istanbul
+	}
 }
 
 func TestSealCommitted(t *testing.T) {
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(4), log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
+
+
 	chain, engine := newBlockChain(1)
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	expectedBlock, _ := engine.updateBlock(engine.chain.GetHeader(block.ParentHash(), block.NumberU64()-1), block)
 
-	finalBlock, err := engine.Seal(chain, block, nil)
-	if err != nil {
-		t.Errorf("error mismatch: have %v, want nil", err)
-	}
+	resultCh := make(chan *types.Block, 10)
+	go func() {
+		err := engine.Seal(chain, block, resultCh, make(chan struct{}))
+
+		if err != nil {
+			t.Errorf("error mismatch: have %v, want %v", err, expectedBlock)
+		}
+	}()
+
+	finalBlock := <-resultCh
 	if finalBlock.Hash() != expectedBlock.Hash() {
 		t.Errorf("hash mismatch: have %v, want %v", finalBlock.Hash(), expectedBlock.Hash())
 	}

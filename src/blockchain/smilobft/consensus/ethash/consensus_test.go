@@ -18,15 +18,14 @@ package ethash
 
 import (
 	"encoding/json"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/math"
-
-	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/params"
 )
 
 type diffTest struct {
