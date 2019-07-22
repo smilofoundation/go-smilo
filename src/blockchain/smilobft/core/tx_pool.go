@@ -314,6 +314,8 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 
 	// Subscribe events from blockchain and start the main event loop.
 	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
+
+	// Start the event loop and return
 	pool.wg.Add(1)
 	go pool.loop()
 
@@ -607,6 +609,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return err
 	}
 	if tx.Gas() < intrGas {
+		log.Error("ErrIntrinsicGas", "from", from.String(), "TX GAS", tx.Gas(), "intrGas", intrGas, "TX-Hash", tx.Hash().Hex(), "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
 		return ErrIntrinsicGas
 	}
 
@@ -1413,6 +1416,8 @@ func (pool *TxPool) demoteUnexecutables() {
 		blockNum := pool.chain.CurrentBlock().Number()
 		smiloPayLimit := pool.currentState.GetSmiloPay(addr, blockNum)
 
+		//TODO: smilopay
+		// Drop all transactions that are too costly (low balance or out of smiloPay), and queue any invalids back for later
 		drops, invalids := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
 
 		for _, tx := range drops {
@@ -1438,7 +1443,7 @@ func (pool *TxPool) demoteUnexecutables() {
 			gapped := list.Cap(0)
 			for _, tx := range gapped {
 				hash := tx.Hash()
-				log.Error("Demoting invalidated transaction", "hash", hash)
+				log.Error("$$$$$$$$$$$$$$$$$ demoteUnexecutables, Demoting invalidated transaction", "hash", hash)
 				pool.enqueueTx(hash, tx)
 			}
 			pendingCounter.Dec(int64(len(gapped)))

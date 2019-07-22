@@ -28,11 +28,11 @@ func IsNodePermissioned(nodeID string, currentNode string, datadir string, direc
 	log.Trace("isNodePermissioned", "permissionedList", permissionedList)
 	for _, v := range permissionedList {
 		if v == nodeID {
-			log.Trace("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "ALLOWED-BY", currentNode[:NODE_NAME_LENGTH])
+			log.Debug("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "ALLOWED-BY", currentNode[:NODE_NAME_LENGTH])
 			return true
 		}
 	}
-	log.Trace("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "DENIED-BY", currentNode[:NODE_NAME_LENGTH])
+	log.Warn("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "DENIED-BY", currentNode[:NODE_NAME_LENGTH])
 	return false
 }
 

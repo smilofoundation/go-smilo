@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
+	//"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"math/big"
 	"runtime"
 	"sync"
@@ -125,6 +125,7 @@ func (s *Smilo) SetContractBackend(backend bind.ContractBackend) {
 // New creates a new Smilo object (including the
 // initialisation of the common Smilo object)
 func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
+	log.Info("$$$$$$$ Going to creates a new Smilo backend config object ")
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.Smilo in light sync mode, use les.LightEthereum")
@@ -191,7 +192,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	if bcVersion != nil {
 		dbVer = fmt.Sprintf("%d", *bcVersion)
 	}
-	log.Info("Initialising Smilo protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
+	log.Info("$$$$$$$$$$$$ Initialising Smilo protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
 
 	if !config.SkipBcVersionCheck {
 		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
@@ -284,7 +285,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 	}
 	// If Sport is requested, set it up
 	if chainConfig.Sport != nil {
-		log.Info("Sport Consesensus activated, will set it up", "chainConfig.Sport", chainConfig.Sport)
+		log.Info("Sport Consensus activated, will set it up", "chainConfig.Sport", chainConfig.Sport)
 		if chainConfig.Sport.Epoch != 0 {
 			config.Sport.Epoch = chainConfig.Sport.Epoch
 		}
@@ -304,11 +305,12 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		return ethash.NewFaker()
 	case ModeTest:
 		log.Warn("Ethash used in test mode")
-		return ethash.NewTester(nil, config.Miner.Noverify)
+		return ethash.NewTester()
 	case ModeShared:
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
+		log.Warn("Ethash used in full fake mode")
 		return ethash.NewFullFaker()
 	}
 }
@@ -495,6 +497,8 @@ func (s *Smilo) StartMining(threads int) error {
 	}
 	// If the miner was not running, initialize it
 	if !s.IsMining() {
+
+		log.Info("Miner is not running, initializing it ...", "threads", threads)
 		// Propagate the initial price point to the transaction pool
 		s.lock.RLock()
 		price := s.gasPrice
@@ -507,14 +511,14 @@ func (s *Smilo) StartMining(threads int) error {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
-		if clique, ok := s.engine.(*clique.Clique); ok {
-			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
-			if wallet == nil || err != nil {
-				log.Error("Etherbase account unavailable locally", "err", err)
-				return fmt.Errorf("signer missing: %v", err)
-			}
-			clique.Authorize(eb, wallet.SignData)
-		}
+		//if clique, ok := s.engine.(*clique.Clique); ok {
+		//	wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+		//	if wallet == nil || err != nil {
+		//		log.Error("Etherbase account unavailable locally", "err", err)
+		//		return fmt.Errorf("signer missing: %v", err)
+		//	}
+		//	clique.Authorize(eb, wallet.SignData)
+		//}
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
 		atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)
@@ -557,14 +561,18 @@ func (s *Smilo) ArchiveMode() bool                  { return s.config.NoPruning 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Smilo) Protocols() []p2p.Protocol {
-	protos := make([]p2p.Protocol, len(ProtocolVersions))
-	for i, vsn := range ProtocolVersions {
-		protos[i] = s.protocolManager.makeProtocol(vsn)
-		protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
-	}
-	if s.lesServer != nil {
-		protos = append(protos, s.lesServer.Protocols()...)
-	}
+	var protos []p2p.Protocol
+	//
+	//for i, vsn := range ProtocolVersions {
+	//	protos[i] = s.protocolManager.makeProtocol(vsn)
+	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
+	//}
+	//if s.lesServer != nil {
+	//	protos = append(protos, s.lesServer.Protocols()...)
+	//}
+
+	protos = append(protos, s.protocolManager.SubProtocols...)
+
 	return protos
 }
 
@@ -600,7 +608,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 func (s *Smilo) Stop() error {
 	s.bloomIndexer.Close()
 	s.blockchain.Stop()
-	s.engine.Close()
+	//s.engine.Close()
 	s.protocolManager.Stop()
 	if s.lesServer != nil {
 		s.lesServer.Stop()

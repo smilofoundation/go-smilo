@@ -236,7 +236,7 @@ func init() {
 		// See config.go
 		dumpConfigCommand,
 		// See retesteth.go
-		retestethCommand,
+		//retestethCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
@@ -334,6 +334,7 @@ func geth(ctx *cli.Context) error {
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node) {
+	log.Info("startNode, Going to start geth node ... ")
 	debug.Memsize.Add("node", stack)
 
 	// Start up the node itself
@@ -437,7 +438,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		}
 		var ethereum *eth.Smilo
 		if err := stack.Service(&ethereum); err != nil {
-			utils.Fatalf("Ethereum service not running: %v", err)
+			utils.Fatalf("Smilo service not running: %v", err)
 		}
 		// Set the gas price to the limits from the CLI and start mining
 		gasprice := utils.GlobalBig(ctx, utils.MinerLegacyGasPriceFlag.Name)

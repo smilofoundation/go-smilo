@@ -86,6 +86,7 @@ var (
 	errInvalidChain            = errors.New("retrieved hash chain is invalid")
 	errInvalidBody             = errors.New("retrieved block body is invalid")
 	errInvalidReceipt          = errors.New("retrieved receipt is invalid")
+	errCancelBlockFetch        = errors.New("block download canceled (requested)")
 	errCancelStateFetch        = errors.New("state data download canceled (requested)")
 	errCancelContentProcessing = errors.New("content processing canceled (requested)")
 	errCanceled                = errors.New("syncing canceled (requested)")
@@ -511,6 +512,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 	if d.syncInitHook != nil {
 		d.syncInitHook(origin, height)
 	}
+
 	fetchers := []func() error{
 		func() error { return d.fetchHeaders(p, origin+1, pivot) }, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin + 1) },          // Bodies are retrieved during normal and fast sync
@@ -1856,4 +1858,42 @@ func (d *Downloader) requestTTL() time.Duration {
 		ttl = ttlLimit
 	}
 	return ttl
+}
+
+// Fetches a single header from a peer
+func (d *Downloader) fetchHeader(p *peerConnection, hash common.Hash) (*types.Header, error) {
+	log.Info("retrieving remote chain height", "peer", p)
+
+	go p.peer.RequestHeadersByHash(hash, 1, 0, false)
+
+	timeout := time.After(d.requestTTL())
+	for {
+		select {
+		case <-d.cancelCh:
+			return nil, errCancelBlockFetch
+
+		case packet := <-d.headerCh:
+			// Discard anything not from the origin peer
+			if packet.PeerId() != p.id {
+				log.Info("Received headers from incorrect peer", "peer id", packet.PeerId())
+				break
+			}
+			// Make sure the peer actually gave something valid
+			headers := packet.(*headerPack).headers
+			if len(headers) != 1 {
+				log.Info("invalid number of head headers (!= 1)", "peer", p, "len(headers)", len(headers))
+				return nil, errBadPeer
+			}
+			return headers[0], nil
+
+		case <-timeout:
+			log.Info("head header timeout", "peer", p)
+			return nil, errTimeout
+
+		case <-d.bodyCh:
+		case <-d.stateCh:
+		case <-d.receiptCh:
+			// Out of bounds delivery, ignore
+		}
+	}
 }

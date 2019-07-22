@@ -532,7 +532,7 @@ func (bc *BlockChain) repair(head **types.Block) error {
 		if block == nil {
 			return fmt.Errorf("missing block %d [%x]", (*head).NumberU64()-1, (*head).ParentHash())
 		}
-		(*head) = block
+		*head = block
 	}
 }
 
@@ -653,9 +653,9 @@ func (bc *BlockChain) HasFastBlock(hash common.Hash, number uint64) bool {
 	if !bc.HasBlock(hash, number) {
 		return false
 	}
-	if bc.receiptsCache.Contains(hash) {
-		return true
-	}
+	//if bc.receiptsCache.Contains(hash) {
+	//	return true
+	//}
 	return rawdb.HasReceipts(bc.db, hash, number)
 }
 
@@ -1027,18 +1027,20 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	rawdb.WriteBlock(bc.db, block)
 
 	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
+
 	if err != nil {
 		return NonStatTy, err
 	}
 	triedb := bc.stateCache.TrieDB()
 
+	// Explicit commit for vault state
 	if vaultState != nil {
-		privateRoot, err := vaultState.Commit(bc.chainConfig.IsEIP158(block.Number()))
+		vaultRoot, err := vaultState.Commit(bc.chainConfig.IsEIP158(block.Number()))
 		if err != nil {
 			return NonStatTy, err
 		}
-		privateTriedb := bc.vaultStateCache.TrieDB()
-		if err := privateTriedb.Commit(privateRoot, false); err != nil {
+		vaultTriedb := bc.vaultStateCache.TrieDB()
+		if err := vaultTriedb.Commit(vaultRoot, false); err != nil {
 			return NonStatTy, err
 		}
 	}
@@ -1333,7 +1335,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 			bc.reportBlock(block, receipts, err)
 			return it.index, events, coalescedLogs, err
 		}
-		// Validate the state using the default validator
+		// Validate the state using the default fullnode
 		err = bc.Validator().ValidateState(block, parentBlock, thisstate, receipts, usedGas)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)

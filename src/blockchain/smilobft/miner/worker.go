@@ -193,8 +193,8 @@ func (self *worker) setEtherbase(addr common.Address) {
 }
 
 // setRecommitInterval updates the interval for miner sealing work recommitting.
-func (w *worker) setRecommitInterval(interval time.Duration) {
-	w.resubmitIntervalCh <- interval
+func (self *worker) setRecommitInterval(interval time.Duration) {
+	self.resubmitIntervalCh <- interval
 }
 
 
@@ -236,7 +236,11 @@ func (self *worker) start() {
 
 	atomic.StoreInt32(&self.mining, 1)
 	if sport, ok := self.engine.(consensus.SmiloBFT); ok {
-		sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+		log.Info("SmiloBFT consensus will start ...")
+		err := sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+		if err != nil {
+			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v",err))
+		}
 	}
 
 	// spin up agents
@@ -561,7 +565,7 @@ func (self *worker) commitNewWork(timestamp int64) {
 	s := self.current.state.Copy()
 
 	log.Warn("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
-	work.Block, err = self.engine.FinalizeAndAssemble(self.chain, self.current.header, s, self.current.txs, uncles, self.current.receipts)
+	work.Block, err = self.engine.Finalize(self.chain, self.current.header, s, self.current.txs, uncles, self.current.receipts)
 
 	if err != nil {
 		log.Error("Failed to finalize block for sealing", "err", err)

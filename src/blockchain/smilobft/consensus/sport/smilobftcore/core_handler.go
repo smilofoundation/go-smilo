@@ -90,27 +90,38 @@ func (c *core) handleEvents() {
 			// A real event arrived, process interesting content
 			switch ev := event.Data.(type) {
 			case sport.RequestEvent:
+				c.logger.Debug("$$$ SmiloBFT, handleEvents, RequestEvent arrived, will handleRequest", "BlockProposal", ev.BlockProposal.Hash().Hex())
 				//SPORT:1
 				r := &sport.Request{
 					BlockProposal: ev.BlockProposal,
 				}
 				err := c.handleRequest(r)
 				if err == errFutureMessage {
+					c.logger.Debug("$$$ SmiloBFT, handleEvents, RequestEvent arrived, errFutureMessage", "BlockProposal", ev.BlockProposal.Hash().Hex())
 					c.storeRequestMsg(r)
 				}
 			case sport.MessageEvent:
 				if err := c.handleMsg(ev.Payload); err == nil {
-					c.backend.Gossip(c.fullnodeSet, ev.Payload)
+					c.logger.Debug("$$$ SmiloBFT, handleEvents, MessageEvent arrived, will send Gossip to fullnodeSet")
+					err = c.backend.Gossip(c.fullnodeSet, ev.Payload)
+					if err != nil {
+						c.logger.Error("$$$ SmiloBFT, handleEvents, handleMsg, failed to backend.Gossip", "err", err)
+					}
+				} else {
+					c.logger.Error("$$$ SmiloBFT, handleEvents, handleMsg", "err", err)
 				}
 			case backlogEvent:
 				// No need to check signature for internal messages
 				if err := c.handleCheckedMsg(ev.msg, ev.src); err == nil {
 					p, err := ev.msg.Payload()
 					if err != nil {
-						c.logger.Warn("Get message payload failed", "err", err)
+						c.logger.Warn("handleEvents, Get message payload failed", "err", err)
 						continue
 					}
-					c.backend.Gossip(c.fullnodeSet, p)
+					err = c.backend.Gossip(c.fullnodeSet, p)
+					if err != nil {
+						c.logger.Error("$$$ SmiloBFT, handleEvents, handleCheckedMsg, backend.Gossip ", "err", err)
+					}
 				}
 			}
 		case _, ok := <-c.timeoutSub.Chan():
@@ -124,7 +135,10 @@ func (c *core) handleEvents() {
 			}
 			switch event.Data.(type) {
 			case sport.FinalCommittedEvent:
-				c.handleFinalCommitted()
+				err := c.handleFinalCommitted()
+				if err != nil {
+					c.logger.Error("$$$ SmiloBFT, handleEvents, FinalCommittedEvent, handleFinalCommitted", "err", err)
+				}
 			}
 		}
 	}
@@ -132,7 +146,10 @@ func (c *core) handleEvents() {
 
 // sendEvent sends events to mux
 func (c *core) sendEvent(ev interface{}) {
-	c.backend.EventMux().Post(ev)
+	err := c.backend.EventMux().Post(ev)
+	if err != nil {
+		c.logger.Error("$$$ SmiloBFT, sendEvent", "err", err)
+	}
 }
 
 func (c *core) handleMsg(payload []byte) error {
@@ -191,7 +208,7 @@ func (c *core) handleTimeoutMsg() {
 		FE := c.fullnodeSet.MaxFaulty() + c.fullnodeSet.E()
 		maxRound := c.roundChangeSet.MaxRound(FE)
 		if maxRound != nil && maxRound.Cmp(c.current.Round()) > 0 {
-			c.logger.Debug("handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "FE", FE)
+			c.logger.Debug("********** handleTimeoutMsg, sendRoundChange", "maxRound", maxRound, "FE", FE)
 			c.sendRoundChange(maxRound)
 			return
 		} else {

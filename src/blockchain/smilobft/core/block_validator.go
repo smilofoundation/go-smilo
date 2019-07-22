@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 
@@ -72,6 +73,11 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 		}
 		return consensus.ErrPrunedAncestor
 	}
+	// warn for empty blocks
+	if block.Number().Int64() > 1 && len(block.Transactions()) == 0 {
+		log.Warn("************************* block_validator.ValidateBody, Not enough transactions to seal a block ...", "number", block.Number().Int64(), "transactions", len(block.Transactions()))
+	}
+
 	return nil
 }
 
@@ -98,8 +104,12 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
-	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {
-		return fmt.Errorf("invalid merkle root (remote: %x local: %x)", header.Root, root)
+	isEIP158 := v.config.IsEIP158(header.Number)
+	actualStateRoot := statedb.IntermediateRoot(isEIP158)
+	receivedStateRoot := header.Root
+
+	if receivedStateRoot != actualStateRoot {
+		return fmt.Errorf("invalid merkle root (receivedStateRoot: %x actualStateRoot: %x)", receivedStateRoot, actualStateRoot)
 	}
 	return nil
 }

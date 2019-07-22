@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
-	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"math/big"
 	"strings"
 	"time"
@@ -1080,7 +1079,7 @@ type RPCTransaction struct {
 // newRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *RPCTransaction {
-	var signer types.Signer = types.FrontierSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	// joel: this is one of the two places we used a wrong signer to print txes
 	if tx.Protected() && !tx.IsVault() {
 		signer = types.NewEIP155Signer(tx.ChainId())
@@ -1274,7 +1273,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	}
 	receipt := receipts[index]
 
-	var signer types.Signer = types.FrontierSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	if tx.Protected() && !tx.IsVault() {
 		signer = types.NewEIP155Signer(tx.ChainId())
 	}
@@ -1694,37 +1693,37 @@ func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (stri
 // This is a temporary method to debug the externalsigner integration,
 // TODO: Remove this method when the integration is mature
 func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address common.Address, number uint64) (common.Address, error) {
-	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
-	if block == nil {
-		return common.Address{}, fmt.Errorf("block #%d not found", number)
-	}
-	header := block.Header()
-	header.Extra = make([]byte, 32+65)
-	encoded := clique.CliqueRLP(header)
+	//block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
+	//if block == nil {
+	//	return common.Address{}, fmt.Errorf("block #%d not found", number)
+	//}
+	//header := block.Header()
+	//header.Extra = make([]byte, 32+65)
+	//encoded := clique.CliqueRLP(header)
+	//
+	//// Look up the wallet containing the requested signer
+	//account := accounts.Account{Address: address}
+	//wallet, err := api.b.AccountManager().Find(account)
+	//if err != nil {
+	//	return common.Address{}, err
+	//}
+	//
+	//signature, err := wallet.SignData(account, accounts.MimetypeClique, encoded)
+	//if err != nil {
+	//	return common.Address{}, err
+	//}
+	//sealHash := clique.SealHash(header).Bytes()
+	//log.Info("test signing of clique block",
+	//	"Sealhash", fmt.Sprintf("%x", sealHash),
+	//	"signature", fmt.Sprintf("%x", signature))
+	//pubkey, err := crypto.Ecrecover(sealHash, signature)
+	//if err != nil {
+	//	return common.Address{}, err
+	//}
+	//var signer common.Address
+	//copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
 
-	// Look up the wallet containing the requested signer
-	account := accounts.Account{Address: address}
-	wallet, err := api.b.AccountManager().Find(account)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	signature, err := wallet.SignData(account, accounts.MimetypeClique, encoded)
-	if err != nil {
-		return common.Address{}, err
-	}
-	sealHash := clique.SealHash(header).Bytes()
-	log.Info("test signing of clique block",
-		"Sealhash", fmt.Sprintf("%x", sealHash),
-		"signature", fmt.Sprintf("%x", signature))
-	pubkey, err := crypto.Ecrecover(sealHash, signature)
-	if err != nil {
-		return common.Address{}, err
-	}
-	var signer common.Address
-	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
-
-	return signer, nil
+	return common.Address{}, nil
 }
 
 // PrintBlock retrieves a block and returns its pretty printed form.

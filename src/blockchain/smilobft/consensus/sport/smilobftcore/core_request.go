@@ -37,6 +37,7 @@ func (c *core) handleRequest(request *sport.Request) error {
 
 	c.current.pendingRequest = request
 	if c.state == StateAcceptRequest {
+		logger.Debug("handleRequest, StateAcceptRequest, sendPreprepare", "number", request.BlockProposal.Number(), "hash", request.BlockProposal.Hash())
 		c.sendPreprepare(request)
 	}
 	return nil
