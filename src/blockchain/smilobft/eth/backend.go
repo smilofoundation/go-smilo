@@ -243,7 +243,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, config.Sport.MinBlocksEmptyMining)
 	log.Info("$$$$$$ Prepare extradata", "Miner",config.Miner, "chainConfig",eth.chainConfig)
 	extradata := makeExtraData(config.Miner.ExtraData, eth.chainConfig.IsSmilo)
-	log.Info("$$$$$$ makeExtraData", cmn.HexToHash(string(extradata)))
+	log.Info("$$$$$$ makeExtraData", "extradata",cmn.HexToHash(string(extradata)))
 	err = eth.miner.SetExtra(extradata)
 	if err != nil {
 		log.Error("Could not set Extra on miner, WTF ? ")

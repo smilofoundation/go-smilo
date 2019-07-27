@@ -69,7 +69,7 @@ func newFullnodeSet(addrs []common.Address, policy sport.SpeakerPolicy) *fullnod
 	// init speaker
 	if fullnodeSet.Size() > 0 {
 		fullnodeSet.speaker = fullnodeSet.GetByIndex(0)
-		log.Debug("newFullnodeSet, Going to set initial speaker, ", "speaker", fullnodeSet.speaker.String())
+		log.Debug("newFullnodeSet, Going to set initial speaker, ", "new speaker", fullnodeSet.speaker.String())
 	}
 	fullnodeSet.selector = roundRobinSpeaker
 
