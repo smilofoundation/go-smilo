@@ -84,12 +84,12 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-				err := p.Send(smilobftMsg, payload)
-				if err != nil {
-					log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
-				} else {
-					//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
-				}
+			err := p.Send(smilobftMsg, payload)
+			if err != nil {
+				log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
 
 		}
 	}
@@ -123,11 +123,11 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
 	if sb.proposedBlockHash == block.Hash() {
-		sb.logger.Debug("feed block hash to Seal() and wait the Seal() result")
+		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitChBlock <- block
 		return nil
 	} else {
-		sb.logger.Debug("Failed to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
+		sb.logger.Error("ERROR WHEN comparing proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 
 	if sb.broadcaster != nil {

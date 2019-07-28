@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/davecgh/go-spew/spew"
 

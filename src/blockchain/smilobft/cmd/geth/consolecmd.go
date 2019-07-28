@@ -21,8 +21,9 @@ import (
 	"os/signal"
 	"strings"
 
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"gopkg.in/urfave/cli.v1"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"fmt"
 	"path/filepath"

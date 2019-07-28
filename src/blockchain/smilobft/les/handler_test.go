@@ -19,11 +19,12 @@ package les
 
 import (
 	"encoding/binary"
-	"github.com/ethereum/go-ethereum/common/mclock"
 	"math/big"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

@@ -34,13 +34,14 @@ package scwallet
 
 import (
 	"encoding/json"
-	"go-smilo/src/blockchain/smilobft/accounts"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/accounts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

@@ -17,8 +17,9 @@
 package main
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

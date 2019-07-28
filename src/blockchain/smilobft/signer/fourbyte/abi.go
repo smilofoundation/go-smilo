@@ -20,9 +20,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"regexp"
 	"strings"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 )

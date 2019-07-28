@@ -17,9 +17,10 @@
 package dashboard
 
 import (
-	"go-smilo/src/blockchain/smilobft/p2p"
 	"runtime"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p"
 
 	"github.com/elastic/gosigar"
 	"github.com/ethereum/go-ethereum/metrics"

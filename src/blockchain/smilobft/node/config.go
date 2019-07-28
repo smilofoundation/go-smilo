@@ -19,13 +19,14 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/external"
-	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"go-smilo/src/blockchain/smilobft/accounts/external"
+	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

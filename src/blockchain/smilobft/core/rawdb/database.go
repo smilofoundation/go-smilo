@@ -20,11 +20,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"time"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/ethdb/leveldb"
 	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
-	"os"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

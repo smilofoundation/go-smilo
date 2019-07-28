@@ -18,15 +18,17 @@ package graphql
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/internal/ethapi"
-	"go-smilo/src/blockchain/smilobft/p2p"
 	"net"
 	"net/http"
 
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
+	"go-smilo/src/blockchain/smilobft/p2p"
+
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 // Service encapsulates a GraphQL service.

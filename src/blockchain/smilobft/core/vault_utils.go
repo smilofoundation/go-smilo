@@ -2,17 +2,18 @@ package core
 
 import (
 	"encoding/binary"
+
 	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 )
 
 var (
-	vaultRootPrefix          = []byte("P")
-	vaultblockReceiptsPrefix = []byte("Pr") // blockReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
-	vaultReceiptPrefix       = []byte("Prs")
-	vaultBloomPrefix         = []byte("Pb")
-
+	vaultRootPrefix = []byte("P")
+	//vaultblockReceiptsPrefix = []byte("Pr") // blockReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
+	//vaultReceiptPrefix       = []byte("Prs")
+	vaultBloomPrefix = []byte("Pb")
 )
 
 // encodeBlockNumber encodes a block number as big endian uint64

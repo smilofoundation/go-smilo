@@ -19,13 +19,14 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"errors"
-	"go-smilo/src/blockchain/smilobft/internal/testlog"
 	"io"
 	"math/rand"
 	"net"
 	"reflect"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/internal/testlog"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"

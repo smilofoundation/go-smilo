@@ -23,11 +23,12 @@ import (
 	crand "crypto/rand"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"io"
 	"net"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"

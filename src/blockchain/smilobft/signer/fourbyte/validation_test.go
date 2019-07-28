@@ -17,9 +17,10 @@
 package fourbyte
 
 import (
-	"go-smilo/src/blockchain/smilobft/signer/core"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/signer/core"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

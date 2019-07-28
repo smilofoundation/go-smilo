@@ -19,11 +19,12 @@ package discover
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"net"
 	"reflect"
 	"sort"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )

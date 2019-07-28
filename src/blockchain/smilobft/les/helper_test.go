@@ -22,15 +22,17 @@ package les
 import (
 	"context"
 	"crypto/rand"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
-	"go-smilo/src/blockchain/smilobft/accounts/abi/bind/backends"
-	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle/contract"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind/backends"
+	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle/contract"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

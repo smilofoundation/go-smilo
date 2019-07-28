@@ -19,15 +19,18 @@ package les
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+
 	rpc "go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"

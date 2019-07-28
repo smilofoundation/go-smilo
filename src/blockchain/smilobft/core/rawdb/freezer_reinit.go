@@ -18,11 +18,12 @@ package rawdb
 
 import (
 	"errors"
-	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"runtime"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/prque"

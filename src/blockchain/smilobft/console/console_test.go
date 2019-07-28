@@ -20,12 +20,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/miner"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/miner"
 
 	"github.com/ethereum/go-ethereum/common"
 

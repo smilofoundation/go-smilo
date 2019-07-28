@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	//"go-smilo/src/blockchain/smilobft/p2p/enr"
@@ -34,6 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
@@ -209,9 +211,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 			EVMInterpreter:          config.EVMInterpreter,
 		}
 		cacheConfig = &core.CacheConfig{
-			TrieCleanLimit:      config.TrieCleanCache,
-			TrieDirtyLimit:      config.TrieDirtyCache,
-			TrieTimeLimit:       config.TrieTimeout,
+			TrieCleanLimit: config.TrieCleanCache,
+			TrieDirtyLimit: config.TrieDirtyCache,
+			TrieTimeLimit:  config.TrieTimeout,
 		}
 	)
 	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
@@ -241,9 +243,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		return nil, err
 	}
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, config.Sport.MinBlocksEmptyMining)
-	log.Info("$$$$$$ Prepare extradata", "Miner",config.Miner, "chainConfig",eth.chainConfig)
+	log.Info("$$$$$$ Prepare extradata", "Miner", config.Miner, "chainConfig", eth.chainConfig)
 	extradata := makeExtraData(config.Miner.ExtraData, eth.chainConfig.IsSmilo)
-	log.Info("$$$$$$ makeExtraData", "extradata",cmn.HexToHash(string(extradata)))
+	log.Info("$$$$$$ makeExtraData", "extradata", cmn.HexToHash(string(extradata)))
 	err = eth.miner.SetExtra(extradata)
 	if err != nil {
 		log.Error("Could not set Extra on miner, WTF ? ")
@@ -511,14 +513,14 @@ func (s *Smilo) StartMining(threads int) error {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
-		//if clique, ok := s.engine.(*clique.Clique); ok {
-		//	wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
-		//	if wallet == nil || err != nil {
-		//		log.Error("Etherbase account unavailable locally", "err", err)
-		//		return fmt.Errorf("signer missing: %v", err)
-		//	}
-		//	clique.Authorize(eb, wallet.SignData)
-		//}
+		if clique, ok := s.engine.(*clique.Clique); ok {
+			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+			if wallet == nil || err != nil {
+				log.Error("Etherbase account unavailable locally", "err", err)
+				return fmt.Errorf("signer missing: %v", err)
+			}
+			clique.Authorize(eb, wallet.SignData)
+		}
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
 		atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)

@@ -18,18 +18,21 @@ package external
 
 import (
 	"fmt"
+	"math/big"
+	"sync"
+
 	"github.com/ethereum/go-ethereum/event"
+
 	"go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 	"go-smilo/src/blockchain/smilobft/signer/core"
-	"math/big"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 

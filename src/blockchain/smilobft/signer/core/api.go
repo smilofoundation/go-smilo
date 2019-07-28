@@ -21,11 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
-	"go-smilo/src/blockchain/smilobft/signer/storage"
 	"math/big"
 	"os"
 	"reflect"
+
+	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
+	"go-smilo/src/blockchain/smilobft/signer/storage"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

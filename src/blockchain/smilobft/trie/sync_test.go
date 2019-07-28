@@ -18,8 +18,9 @@ package trie
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 
 	"github.com/ethereum/go-ethereum/common"
 )

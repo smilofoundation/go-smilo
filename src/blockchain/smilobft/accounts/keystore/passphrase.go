@@ -33,11 +33,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"go-smilo/src/blockchain/smilobft/accounts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"

@@ -51,7 +51,6 @@ var RinkebyBootnodes = []string{}
 // Görli test network.
 var GoerliBootnodes = []string{}
 
-
 // Sport are the enode URLs of the P2P bootstrap nodes running on the SPORT consensus mainnet.
 var SportBootnodes = []string{
 	// Smilo Foundation Go Bootnodes

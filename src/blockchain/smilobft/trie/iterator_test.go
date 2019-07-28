@@ -19,9 +19,10 @@ package trie
 import (
 	"bytes"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	"math/rand"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 
 	"github.com/ethereum/go-ethereum/common"
 )

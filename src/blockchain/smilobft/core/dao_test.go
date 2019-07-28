@@ -17,9 +17,10 @@
 package core
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core/vm"

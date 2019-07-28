@@ -20,14 +20,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/trie"
 	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/trie"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -78,10 +80,10 @@ type ProtocolManager struct {
 	checkpointNumber uint64      // Block number for the sync progress validator to cross reference
 	checkpointHash   common.Hash // Block hash for the sync progress validator to cross reference
 
-	txpool     txPool
-	blockchain *core.BlockChain
+	txpool      txPool
+	blockchain  *core.BlockChain
 	chainconfig *params.ChainConfig
-	maxPeers   int
+	maxPeers    int
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -203,7 +205,6 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		log.Error("handler, errIncompatibleConfig")
 		return nil, errIncompatibleConfig
 	}
-
 
 	// Construct the downloader (long sync) and its backing state bloom if fast
 	// sync is requested. The downloader is responsible for deallocating the state
@@ -757,7 +758,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 		if err := request.sanityCheck(); err != nil {
-			log.Warn("Block failed sanityCheck", "block hash", cmn.Bytes2Hex(request.Block.Hash().Bytes()))
+			log.Error("Block failed sanityCheck", "block hash", cmn.Bytes2Hex(request.Block.Hash().Bytes()))
 			return err
 		}
 		request.Block.ReceivedAt = msg.ReceivedAt

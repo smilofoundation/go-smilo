@@ -3,12 +3,14 @@
 package eth
 
 import (
-	"go-smilo/src/blockchain/smilobft/miner"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/miner"
+	"go-smilo/src/blockchain/smilobft/params"
+
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"

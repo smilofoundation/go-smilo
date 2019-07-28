@@ -19,13 +19,14 @@ package rawdb
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/ethdb"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/ethdb"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

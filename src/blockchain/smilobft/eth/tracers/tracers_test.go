@@ -20,9 +20,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
-	"go-smilo/src/blockchain/smilobft/params"
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
@@ -30,10 +27,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/params"
+
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

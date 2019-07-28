@@ -1,11 +1,12 @@
 package les
 
 import (
+	"math/big"
+	"testing"
+
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"math/big"
-	"testing"
 
 	"net"
 

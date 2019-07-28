@@ -19,13 +19,15 @@ package bind_test
 import (
 	"bytes"
 	"context"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 

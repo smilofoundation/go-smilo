@@ -18,9 +18,10 @@ package downloader
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

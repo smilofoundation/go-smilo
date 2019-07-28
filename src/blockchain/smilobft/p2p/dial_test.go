@@ -18,13 +18,15 @@ package p2p
 
 import (
 	"encoding/binary"
-	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/internal/testlog"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/internal/testlog"
 
 	"github.com/davecgh/go-spew/spew"
 

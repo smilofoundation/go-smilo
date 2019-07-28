@@ -19,14 +19,16 @@ package console
 import (
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 	"io"
 	"strings"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
+
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"github.com/robertkrimen/otto"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts/usbwallet"
 )

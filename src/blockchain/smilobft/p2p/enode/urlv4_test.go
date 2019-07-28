@@ -18,11 +18,12 @@ package enode
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )

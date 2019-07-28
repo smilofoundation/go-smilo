@@ -20,11 +20,12 @@ package downloader
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/trie"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/trie"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

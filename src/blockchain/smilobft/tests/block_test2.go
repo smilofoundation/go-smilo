@@ -40,7 +40,6 @@ var waitDeployedTests = map[string]struct {
 
 func TestBlock(t *testing.T) {
 
-
 	tx1 := types.NewTransaction(1, common.BytesToAddress(
 		[]byte{0x11}), big.NewInt(111), 1111, big.NewInt(11111), []byte{0x11, 0x11, 0x11})
 	tx2 := types.NewTransaction(2, common.BytesToAddress(

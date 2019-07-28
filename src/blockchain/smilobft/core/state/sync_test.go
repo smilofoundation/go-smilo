@@ -18,10 +18,11 @@ package state
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

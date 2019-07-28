@@ -18,9 +18,10 @@ package forkid
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"

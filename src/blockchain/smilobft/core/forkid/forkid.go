@@ -20,13 +20,14 @@ package forkid
 import (
 	"encoding/binary"
 	"errors"
-	"go-smilo/src/blockchain/smilobft/core"
-	"go-smilo/src/blockchain/smilobft/params"
 	"hash/crc32"
 	"math"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"go-smilo/src/blockchain/smilobft/core"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

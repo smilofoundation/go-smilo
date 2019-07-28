@@ -17,8 +17,9 @@
 package keystore
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/accounts"

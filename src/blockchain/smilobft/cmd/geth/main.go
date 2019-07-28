@@ -19,14 +19,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/eth/downloader"
-	"go-smilo/src/blockchain/smilobft/les"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+
+	"go-smilo/src/blockchain/smilobft/eth/downloader"
+	"go-smilo/src/blockchain/smilobft/les"
 
 	"github.com/ethereum/go-ethereum/metrics"
 	"gopkg.in/urfave/cli.v1"

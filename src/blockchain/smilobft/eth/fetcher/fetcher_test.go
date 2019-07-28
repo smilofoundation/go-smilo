@@ -18,12 +18,13 @@ package fetcher
 
 import (
 	"errors"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

@@ -64,7 +64,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	// Ensure we have the same view with the PRE-PREPARE message
 	// If it is old message, see if we need to broadcast COMMIT
 	//SPORT:6
-	logger.Info("$$$ SmiloBFT, handlePreprepare, checkMessage, ","preprepare block hash", preprepare.BlockProposal.String(), "view", preprepare.View.String())
+	logger.Info("$$$ SmiloBFT, handlePreprepare, checkMessage, ", "preprepare block hash", preprepare.BlockProposal.String(), "view", preprepare.View.String())
 
 	if err := c.checkMessage(msgPreprepare, preprepare.View); err != nil {
 		if err == errOldMessage {

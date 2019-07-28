@@ -20,6 +20,8 @@ package graphql
 import (
 	"context"
 	"errors"
+	"time"
+
 	"go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -28,11 +30,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/eth"
 	"go-smilo/src/blockchain/smilobft/eth/filters"
 	"go-smilo/src/blockchain/smilobft/internal/ethapi"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
@@ -49,7 +51,7 @@ type Account struct {
 // getState fetches the StateDB object for an account.
 func (a *Account) getState(ctx context.Context) (*state.StateDB, *state.StateDB, error) {
 	state, _, err := a.backend.StateAndHeaderByNumber(ctx, a.blockNumber)
-	return state.(eth.EthAPIState).State,state.(eth.EthAPIState).VaultState, err
+	return state.(eth.EthAPIState).State, state.(eth.EthAPIState).VaultState, err
 }
 
 func (a *Account) Address(ctx context.Context) (common.Address, error) {
@@ -57,7 +59,7 @@ func (a *Account) Address(ctx context.Context) (common.Address, error) {
 }
 
 func (a *Account) Balance(ctx context.Context) (hexutil.Big, error) {
-	state,_, err := a.getState(ctx)
+	state, _, err := a.getState(ctx)
 	if err != nil {
 		return hexutil.Big{}, err
 	}
@@ -66,7 +68,7 @@ func (a *Account) Balance(ctx context.Context) (hexutil.Big, error) {
 }
 
 func (a *Account) TransactionCount(ctx context.Context) (hexutil.Uint64, error) {
-	state, _,err := a.getState(ctx)
+	state, _, err := a.getState(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +77,7 @@ func (a *Account) TransactionCount(ctx context.Context) (hexutil.Uint64, error) 
 }
 
 func (a *Account) Code(ctx context.Context) (hexutil.Bytes, error) {
-	state,_, err := a.getState(ctx)
+	state, _, err := a.getState(ctx)
 	if err != nil {
 		return hexutil.Bytes{}, err
 	}
@@ -84,7 +86,7 @@ func (a *Account) Code(ctx context.Context) (hexutil.Bytes, error) {
 }
 
 func (a *Account) Storage(ctx context.Context, args struct{ Slot common.Hash }) (common.Hash, error) {
-	state, _,err := a.getState(ctx)
+	state, _, err := a.getState(ctx)
 	if err != nil {
 		return common.Hash{}, err
 	}

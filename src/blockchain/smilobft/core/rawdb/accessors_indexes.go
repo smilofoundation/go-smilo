@@ -17,12 +17,14 @@
 package rawdb
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 )

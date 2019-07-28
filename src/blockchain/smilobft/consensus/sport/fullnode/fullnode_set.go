@@ -18,9 +18,10 @@
 package fullnode
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"reflect"
 	"sort"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 

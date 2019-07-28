@@ -19,10 +19,11 @@ package memorydb
 
 import (
 	"errors"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"sort"
 	"strings"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"
 )

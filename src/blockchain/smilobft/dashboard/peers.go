@@ -18,9 +18,10 @@ package dashboard
 
 import (
 	"container/list"
-	"go-smilo/src/blockchain/smilobft/p2p"
 	"strings"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p"
 
 	"github.com/ethereum/go-ethereum/metrics"
 

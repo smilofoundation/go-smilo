@@ -18,13 +18,14 @@ package backends_test
 
 import (
 	"context"
+	"math/big"
+	"testing"
+
 	"go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind/backends"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"math/big"
-	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

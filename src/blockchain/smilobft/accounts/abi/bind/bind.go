@@ -24,12 +24,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"go/format"
 	"regexp"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/accounts/abi"
 )

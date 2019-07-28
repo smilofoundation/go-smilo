@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/core"
@@ -563,7 +564,7 @@ func (api *PrivateDebugAPI) standardTraceBlockToFile(ctx context.Context, block 
 	if config != nil && config.Reexec != nil {
 		reexec = *config.Reexec
 	}
-	statedb,vaultstatedb, err := api.computeStateDB(parent, reexec)
+	statedb, vaultstatedb, err := api.computeStateDB(parent, reexec)
 	if err != nil {
 		return nil, err
 	}

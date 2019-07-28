@@ -17,9 +17,10 @@
 package eth
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"reflect"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"

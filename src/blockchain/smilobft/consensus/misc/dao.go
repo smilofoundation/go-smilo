@@ -19,11 +19,11 @@ package misc
 import (
 	"bytes"
 	"errors"
+	"math/big"
+
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-
 )
 
 var (

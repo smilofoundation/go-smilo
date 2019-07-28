@@ -18,9 +18,10 @@ package discover
 
 import (
 	"crypto/ecdsa"
+	"net"
+
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/p2p/netutil"
-	"net"
 
 	"github.com/ethereum/go-ethereum/log"
 )

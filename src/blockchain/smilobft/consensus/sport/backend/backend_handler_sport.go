@@ -69,14 +69,14 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 		}
 		sb.knownMessages.Add(hash, true)
 
-		go func(){
+		go func() {
 			err := sb.smilobftEventMux.Post(sport.MessageEvent{
 				Payload: data,
 			})
 			if err != nil {
 				log.Error("Could not send sb.smilobftEventMux.Post, sport.MessageEvent", "err", err)
 			} else {
-				log.Error("Sent sb.smilobftEventMux.Post, sport.MessageEvent", )
+				log.Error("Sent sb.smilobftEventMux.Post, sport.MessageEvent")
 			}
 		}()
 
@@ -121,7 +121,7 @@ func (sb *backend) NewChainHead() error {
 	if !sb.coreStarted {
 		return sport.ErrStoppedEngine
 	}
-	go func(){
+	go func() {
 		err := sb.smilobftEventMux.Post(sport.FinalCommittedEvent{})
 		if err != nil {
 			log.Error("NewChainHead, Could not send FinalCommittedEvent, ", "err", err)

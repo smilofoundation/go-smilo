@@ -19,9 +19,10 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

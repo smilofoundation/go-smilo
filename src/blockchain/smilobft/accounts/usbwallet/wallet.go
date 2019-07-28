@@ -20,11 +20,12 @@ package usbwallet
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"io"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

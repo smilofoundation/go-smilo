@@ -22,11 +22,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/bits"
 	"math/rand"
 	"net"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 )

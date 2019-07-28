@@ -19,11 +19,12 @@ package trie
 import (
 	"encoding/binary"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

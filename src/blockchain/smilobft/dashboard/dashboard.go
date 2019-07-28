@@ -35,9 +35,10 @@ import (
 	"io"
 
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"github.com/mohae/deepcopy"
 	"golang.org/x/net/websocket"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/params"

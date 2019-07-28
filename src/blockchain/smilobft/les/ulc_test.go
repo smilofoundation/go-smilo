@@ -19,15 +19,16 @@ package les
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
-	"go-smilo/src/blockchain/smilobft/light"
-	"go-smilo/src/blockchain/smilobft/p2p"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
 	"net"
 	"reflect"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/light"
+	"go-smilo/src/blockchain/smilobft/p2p"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/crypto"

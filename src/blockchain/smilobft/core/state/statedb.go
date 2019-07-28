@@ -20,10 +20,11 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/metrics"
 	"math/big"
 	"sort"
 	"time"
+
+	"github.com/ethereum/go-ethereum/metrics"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 

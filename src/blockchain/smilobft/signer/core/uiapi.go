@@ -22,10 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/keystore"
 	"io/ioutil"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/accounts/keystore"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"

@@ -19,13 +19,14 @@ package core
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 
@@ -432,7 +433,7 @@ func TestTransactionChainFork(t *testing.T) {
 		statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 		statedb.AddBalance(addr, big.NewInt(10000000000000000), big.NewInt(1))
 
-		pool.chain = &testBlockChain{statedb, statedb,1000000, new(event.Feed)}
+		pool.chain = &testBlockChain{statedb, statedb, 1000000, new(event.Feed)}
 		<-pool.requestReset(nil, nil)
 	}
 	resetState()
@@ -461,7 +462,7 @@ func TestTransactionDoubleNonce(t *testing.T) {
 		statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 		statedb.AddBalance(addr, big.NewInt(100000000000000), big.NewInt(1))
 
-		pool.chain = &testBlockChain{statedb,statedb, 1000000, new(event.Feed)}
+		pool.chain = &testBlockChain{statedb, statedb, 1000000, new(event.Feed)}
 		<-pool.requestReset(nil, nil)
 	}
 	resetState()

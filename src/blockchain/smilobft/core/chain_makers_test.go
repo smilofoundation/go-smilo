@@ -18,8 +18,9 @@ package core
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/crypto"
 

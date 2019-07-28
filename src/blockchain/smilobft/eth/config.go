@@ -17,13 +17,14 @@
 package eth
 
 import (
-	"go-smilo/src/blockchain/smilobft/miner"
 	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/miner"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

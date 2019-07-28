@@ -215,7 +215,7 @@ func TestSAR(t *testing.T) {
 // getResult is a convenience function to generate the expected values
 func getResult(args []*twoOperandParams, opFn executionFunc) []TwoOperandTestcase {
 	var (
-		env         = NewEVM(Context{}, nil,nil, params.TestChainConfig, Config{})
+		env         = NewEVM(Context{}, nil, nil, params.TestChainConfig, Config{})
 		stack       = newstack()
 		pc          = uint64(0)
 		interpreter = env.interpreter.(*EVMInterpreter)
@@ -265,7 +265,7 @@ func TestJsonTestcases(t *testing.T) {
 
 func opBenchmark(bench *testing.B, op func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error), args ...string) {
 	var (
-		env            = NewEVM(Context{}, nil,nil, params.TestChainConfig, Config{})
+		env            = NewEVM(Context{}, nil, nil, params.TestChainConfig, Config{})
 		stack          = newstack()
 		evmInterpreter = NewEVMInterpreter(env, env.vmConfig)
 	)

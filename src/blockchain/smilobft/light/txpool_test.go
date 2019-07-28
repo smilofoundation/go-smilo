@@ -18,11 +18,12 @@ package light
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math"
 	"math/big"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 

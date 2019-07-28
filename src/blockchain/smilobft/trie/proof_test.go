@@ -19,14 +19,14 @@ package trie
 import (
 	"bytes"
 	crand "crypto/rand"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	mrand "math/rand"
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
 )
 
 func init() {

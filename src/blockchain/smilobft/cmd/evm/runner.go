@@ -20,11 +20,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	goruntime "runtime"
 

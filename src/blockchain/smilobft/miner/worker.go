@@ -66,7 +66,7 @@ type Agent interface {
 type Work struct {
 	config      *Config
 	chainConfig *params.ChainConfig
-	signer types.Signer
+	signer      types.Signer
 
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
@@ -97,7 +97,7 @@ type Result struct {
 type worker struct {
 	config      *Config
 	chainConfig *params.ChainConfig
-	engine consensus.Engine
+	engine      consensus.Engine
 
 	mu sync.Mutex
 
@@ -118,7 +118,6 @@ type worker struct {
 	recv   chan *Result
 
 	resubmitIntervalCh chan time.Duration
-
 
 	eth     Backend
 	chain   *core.BlockChain
@@ -150,8 +149,8 @@ type worker struct {
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux, minBlocksEmptyMining *big.Int) *worker {
 	worker := &worker{
-		config:             config,
-		chainConfig:        chainConfig,
+		config:               config,
+		chainConfig:          chainConfig,
 		engine:               engine,
 		eth:                  eth,
 		mux:                  mux,
@@ -167,8 +166,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		agents:               make(map[Agent]struct{}),
 		unconfirmed:          newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		minBlocksEmptyMining: minBlocksEmptyMining,
-		resubmitIntervalCh: make(chan time.Duration),
-
+		resubmitIntervalCh:   make(chan time.Duration),
 	}
 
 	if _, ok := engine.(consensus.SmiloBFT); ok || !chainConfig.IsSmilo || chainConfig.Clique != nil {
@@ -196,7 +194,6 @@ func (self *worker) setEtherbase(addr common.Address) {
 func (self *worker) setRecommitInterval(interval time.Duration) {
 	self.resubmitIntervalCh <- interval
 }
-
 
 func (self *worker) setExtra(extra []byte) {
 	self.mu.Lock()
@@ -239,7 +236,7 @@ func (self *worker) start() {
 		log.Info("SmiloBFT consensus will start ...")
 		err := sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
 		if err != nil {
-			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v",err))
+			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}
 	}
 
@@ -431,16 +428,16 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 		return err
 	}
 	work := &Work{
-		config:     self.config,
-		chainConfig:self.chainConfig,
-		signer:     types.MakeSigner(self.chainConfig, header.Number),
-		state:      publicState,
-		ancestors:  mapset.NewSet(),
-		family:     mapset.NewSet(),
-		uncles:     mapset.NewSet(),
-		header:     header,
-		createdAt:  time.Now(),
-		vaultState: vaultState,
+		config:      self.config,
+		chainConfig: self.chainConfig,
+		signer:      types.MakeSigner(self.chainConfig, header.Number),
+		state:       publicState,
+		ancestors:   mapset.NewSet(),
+		family:      mapset.NewSet(),
+		uncles:      mapset.NewSet(),
+		header:      header,
+		createdAt:   time.Now(),
+		vaultState:  vaultState,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -561,11 +558,8 @@ func (self *worker) commitNewWork(timestamp int64) {
 	for _, hash := range badUncles {
 		delete(self.possibleUncles, hash)
 	}
-	// Create the new block to seal with the consensus engine
-	s := self.current.state.Copy()
-
 	log.Warn("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
-	work.Block, err = self.engine.Finalize(self.chain, self.current.header, s, self.current.txs, uncles, self.current.receipts)
+	work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.txs, uncles, work.receipts)
 
 	if err != nil {
 		log.Error("Failed to finalize block for sealing", "err", err)

@@ -18,13 +18,14 @@ package node
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"path/filepath"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/event"
-	"go-smilo/src/blockchain/smilobft/rpc"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
+	"github.com/ethereum/go-ethereum/event"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/ethdb"

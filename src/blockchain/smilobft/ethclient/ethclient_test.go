@@ -20,7 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -28,10 +34,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/eth"
 	"go-smilo/src/blockchain/smilobft/node"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-	"reflect"
-	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 

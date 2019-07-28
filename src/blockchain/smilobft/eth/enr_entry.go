@@ -18,6 +18,7 @@ package eth
 
 import (
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"

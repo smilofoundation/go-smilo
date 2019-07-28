@@ -18,15 +18,15 @@ package state
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	checker "gopkg.in/check.v1"
-
 )
 
 type StateSuite struct {

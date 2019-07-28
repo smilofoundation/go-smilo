@@ -19,15 +19,13 @@ package types
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math/big"
 	"reflect"
 	"sort"
 	"sync/atomic"
 	"time"
-	"unsafe"
-
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -115,7 +113,6 @@ func (h *Header) Hash() common.Hash {
 
 var headerSize = common.StorageSize(reflect.TypeOf(Header{}).Size())
 
-
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
 func (h *Header) HashNoNonce() common.Hash {
 	return rlpHash([]interface{}{
@@ -135,11 +132,10 @@ func (h *Header) HashNoNonce() common.Hash {
 	})
 }
 
-
 // Size returns the approximate memory used by all internal contents. It is used
 // to approximate and limit the memory consumption of various caches.
 func (h *Header) Size() common.StorageSize {
-	return common.StorageSize(unsafe.Sizeof(*h)) + common.StorageSize(len(h.Extra)+(h.Difficulty.BitLen()+h.Number.BitLen()+h.Time.BitLen())/8)
+	return headerSize + common.StorageSize(len(h.Extra)+(h.Difficulty.BitLen()+h.Number.BitLen())/8)
 }
 
 // SanityCheck checks a few basic things -- these checks are way beyond what
@@ -361,6 +357,10 @@ func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
+
+func (b *Block) HashNoNonce() common.Hash {
+	return b.header.HashNoNonce()
+}
 
 // Size returns the true RLP encoded storage size of the block, either by encoding
 // and returning it, or returning a previsouly cached value.

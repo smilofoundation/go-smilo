@@ -18,12 +18,14 @@ package types
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"

@@ -21,16 +21,18 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/rpc"
-	"go-smilo/src/blockchain/smilobft/graphql"
-	"go-smilo/src/blockchain/smilobft/miner"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
 	pcsclite "github.com/gballet/go-libpcsclite"
+
+	"go-smilo/src/blockchain/smilobft/graphql"
+	"go-smilo/src/blockchain/smilobft/miner"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -1787,11 +1789,11 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}
 	cache := &core.CacheConfig{
-		TrieCleanLimit:      eth.DefaultConfig.TrieCleanCache,
+		TrieCleanLimit: eth.DefaultConfig.TrieCleanCache,
 		//TrieCleanNoPrefetch: ctx.GlobalBool(CacheNoPrefetchFlag.Name),
-		TrieDirtyLimit:      eth.DefaultConfig.TrieDirtyCache,
+		TrieDirtyLimit: eth.DefaultConfig.TrieDirtyCache,
 		//TrieDirtyDisabled:   ctx.GlobalString(GCModeFlag.Name) == "archive",
-		TrieTimeLimit:       eth.DefaultConfig.TrieTimeout,
+		TrieTimeLimit: eth.DefaultConfig.TrieTimeout,
 	}
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheTrieFlag.Name) {
 		cache.TrieCleanLimit = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheTrieFlag.Name) / 100

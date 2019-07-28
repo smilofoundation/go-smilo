@@ -20,12 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/keystore"
-	"go-smilo/src/blockchain/smilobft/signer/core"
 	"io/ioutil"
 	"path"
 	"strings"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/accounts/keystore"
+	"go-smilo/src/blockchain/smilobft/signer/core"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

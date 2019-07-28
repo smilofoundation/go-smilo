@@ -22,8 +22,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -119,7 +120,7 @@ func (t *BlockTest) Run() error {
 	} else {
 		engine = ethash.NewShared()
 	}
-	chain, err := core.NewBlockChain(db, &core.CacheConfig{TrieTimeLimit: 0}, config, engine, vm.Config{},nil)
+	chain, err := core.NewBlockChain(db, &core.CacheConfig{TrieTimeLimit: 0}, config, engine, vm.Config{}, nil)
 	if err != nil {
 		return err
 	}

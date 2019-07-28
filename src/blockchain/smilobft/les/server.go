@@ -18,11 +18,13 @@ package les
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"go-smilo/src/blockchain/smilobft/rpc"
-	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

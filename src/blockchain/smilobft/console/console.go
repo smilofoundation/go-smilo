@@ -28,10 +28,11 @@ import (
 	"strings"
 	"syscall"
 
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/internal/jsre"
 	"go-smilo/src/blockchain/smilobft/internal/web3ext"

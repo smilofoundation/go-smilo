@@ -20,10 +20,11 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/crypto"
 

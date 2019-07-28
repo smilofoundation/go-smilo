@@ -17,11 +17,12 @@
 package fourbyte
 
 import (
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 )

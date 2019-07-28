@@ -20,11 +20,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/params"
 	"io"
 	"math/big"
 	"unsafe"
+
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

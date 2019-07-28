@@ -24,9 +24,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/usbwallet/trezor"
 	"io"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/usbwallet/trezor"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

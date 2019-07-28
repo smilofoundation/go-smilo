@@ -18,10 +18,11 @@ package main
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/internal/debug"
-	"go-smilo/src/blockchain/smilobft/params"
 	"os"
 	"path/filepath"
+
+	"go-smilo/src/blockchain/smilobft/internal/debug"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"gopkg.in/urfave/cli.v1"
 )

@@ -20,11 +20,12 @@ import (
 	crand "crypto/rand"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/state"
 	"math"
 	"math/big"
 	mrand "math/rand"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/state"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 

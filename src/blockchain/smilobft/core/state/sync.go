@@ -18,6 +18,7 @@ package state
 
 import (
 	"bytes"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"

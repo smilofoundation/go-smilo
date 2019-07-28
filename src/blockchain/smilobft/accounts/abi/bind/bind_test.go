@@ -18,7 +18,6 @@ package bind
 
 import (
 	"fmt"
-	"golang.org/x/tools/imports"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -26,6 +25,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"golang.org/x/tools/imports"
 
 	"github.com/ethereum/go-ethereum/common"
 )

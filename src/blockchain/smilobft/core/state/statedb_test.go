@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math"
 	"math/big"
 	"math/rand"
@@ -28,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"gopkg.in/check.v1"
 

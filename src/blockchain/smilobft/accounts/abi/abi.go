@@ -19,8 +19,9 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"io"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"bytes"
 )

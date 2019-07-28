@@ -19,9 +19,9 @@ package vm
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common/math"
 

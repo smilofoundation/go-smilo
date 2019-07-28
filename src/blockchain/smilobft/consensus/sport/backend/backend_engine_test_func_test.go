@@ -20,8 +20,9 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,7 +45,7 @@ func newBlockChain(n int) (*core.BlockChain, *backend) {
 	// Use the first key as private key
 	b, _ := New(config, nodeKeys[0], memDB).(*backend)
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{},nil)
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
 	if err != nil {
 		panic(err)
 	}

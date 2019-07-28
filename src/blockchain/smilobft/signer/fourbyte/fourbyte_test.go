@@ -18,10 +18,11 @@ package fourbyte
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 )

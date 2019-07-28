@@ -19,10 +19,11 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"github.com/ethereum/go-ethereum/metrics"
 	"io"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

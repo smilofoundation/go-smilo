@@ -19,15 +19,15 @@ package les
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"time"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/eth/downloader"
 	"go-smilo/src/blockchain/smilobft/light"
 )
-
 
 var errInvalidCheckpoint = errors.New("invalid advertised checkpoint")
 

@@ -20,9 +20,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"golang.org/x/crypto/sha3"
 

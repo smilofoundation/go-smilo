@@ -17,10 +17,11 @@
 package core
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"runtime"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"

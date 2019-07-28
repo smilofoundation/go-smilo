@@ -20,8 +20,9 @@ package main
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmd/utils"
 	"os"
+
+	"go-smilo/src/blockchain/smilobft/cmd/utils"
 
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/ethereum/go-ethereum/log"

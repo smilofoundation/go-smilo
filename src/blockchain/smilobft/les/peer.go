@@ -20,14 +20,16 @@ package les
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"go-smilo/src/blockchain/smilobft/core"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
+
+	"go-smilo/src/blockchain/smilobft/core"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"

@@ -18,13 +18,14 @@ package main
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/p2p/discover"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"go-smilo/src/blockchain/smilobft/params"
 	"net"
 	"sort"
 	"strings"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p/discover"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/urfave/cli.v1"

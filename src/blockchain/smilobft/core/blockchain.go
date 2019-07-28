@@ -38,6 +38,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/math"
 
+	"github.com/ethereum/go-ethereum/common/prque"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -46,7 +48,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/trie"
-	"github.com/ethereum/go-ethereum/common/prque"
 )
 
 var (
@@ -54,12 +55,10 @@ var (
 	headHeaderGauge    = metrics.NewRegisteredGauge("chain/head/header", nil)
 	headFastBlockGauge = metrics.NewRegisteredGauge("chain/head/receipt", nil)
 
-
 	blockInsertTimer     = metrics.NewRegisteredTimer("chain/inserts", nil)
 	blockValidationTimer = metrics.NewRegisteredTimer("chain/validation", nil)
 	blockExecutionTimer  = metrics.NewRegisteredTimer("chain/execution", nil)
 	blockWriteTimer      = metrics.NewRegisteredTimer("chain/write", nil)
-
 )
 
 const (
@@ -161,9 +160,9 @@ type BlockChain struct {
 	validator Validator // block and state validator interface
 	vmConfig  vm.Config
 
-	badBlocks      *lru.Cache              // Bad block cache
-	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
-	vaultStateCache state.Database // Vault state database to reuse between imports (contains state cache)
+	badBlocks       *lru.Cache              // Bad block cache
+	shouldPreserve  func(*types.Block) bool // Function used to determine whether should preserve the given block.
+	vaultStateCache state.Database          // Vault state database to reuse between imports (contains state cache)
 
 }
 
@@ -186,21 +185,21 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:  chainConfig,
-		cacheConfig:  cacheConfig,
-		db:           db,
-		triegc:         prque.New(nil),
-		stateCache:     state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:         make(chan struct{}),
-		shouldPreserve: shouldPreserve,
-		bodyCache:    bodyCache,
-		bodyRLPCache: bodyRLPCache,
-		receiptsCache:  receiptsCache,
-		blockCache:   blockCache,
-		futureBlocks: futureBlocks,
-		engine:       engine,
-		vmConfig:     vmConfig,
-		badBlocks:    badBlocks,
+		chainConfig:     chainConfig,
+		cacheConfig:     cacheConfig,
+		db:              db,
+		triegc:          prque.New(nil),
+		stateCache:      state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:            make(chan struct{}),
+		shouldPreserve:  shouldPreserve,
+		bodyCache:       bodyCache,
+		bodyRLPCache:    bodyRLPCache,
+		receiptsCache:   receiptsCache,
+		blockCache:      blockCache,
+		futureBlocks:    futureBlocks,
+		engine:          engine,
+		vmConfig:        vmConfig,
+		badBlocks:       badBlocks,
 		vaultStateCache: state.NewDatabase(db),
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
@@ -1141,12 +1140,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	// Set new head.
 	if status == CanonStatTy {
-
-		// warn for empty blocks
-		if block.Number().Int64() > 1 && len(block.Transactions()) == 0 {
-			log.Warn("************************* blockchain.WriteBlockWithState, Not enough transactions to seal a block ...", "number", block.Number().Int64(), "transactions", len(block.Transactions()))
-		}
-
 		bc.insert(block)
 	}
 	bc.futureBlocks.Remove(block.Hash())
@@ -1158,7 +1151,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 // ahead and was not added.
 func (bc *BlockChain) addFutureBlock(block *types.Block) error {
 	max := uint64(time.Now().Unix() + maxTimeFutureBlocks)
-	if block.Time().Uint64() > max  && !bc.chainConfig.IsSmilo {
+	if block.Time().Uint64() > max && !bc.chainConfig.IsSmilo {
 		return fmt.Errorf("future block timestamp %v > allowed %v", block.Time(), max)
 	}
 	bc.futureBlocks.Add(block.Hash(), block)
@@ -1296,7 +1289,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		// Retrieve the parent block and it's state to execute on top
 		start := time.Now()
 
-
 		// Create a new statedb using the parent block and report an
 		// error if it fails.
 		var parentBlock *types.Block
@@ -1314,8 +1306,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}
-
-
 
 		// Smilo
 		// alias state.New because we introduce a variable named state on the next line
@@ -1877,8 +1867,6 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
 }
-
-
 
 // Given a slice of public receipts and an overlapping (smaller) slice of
 // vault receipts, return a new slice where the default for each location is

@@ -18,10 +18,11 @@
 package runtime
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math"
 	"math/big"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

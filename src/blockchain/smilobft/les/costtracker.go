@@ -18,13 +18,14 @@ package les
 
 import (
 	"encoding/binary"
-	"go-smilo/src/blockchain/smilobft/eth"
-	"go-smilo/src/blockchain/smilobft/ethdb"
-	"go-smilo/src/blockchain/smilobft/les/flowcontrol"
 	"math"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/eth"
+	"go-smilo/src/blockchain/smilobft/ethdb"
+	"go-smilo/src/blockchain/smilobft/les/flowcontrol"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/log"

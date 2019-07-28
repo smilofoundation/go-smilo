@@ -22,10 +22,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 	"math/big"
 	"strings"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 
 	"encoding/json"
 	"net/http"
@@ -40,8 +41,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"go-smilo/src/blockchain/smilobft/rpc"
+
 	"go-smilo/src/blockchain/smilobft/p2p"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/accounts/keystore"

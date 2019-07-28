@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/core/types"

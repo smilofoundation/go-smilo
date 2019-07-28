@@ -21,10 +21,11 @@ package checkpointoracle
 
 import (
 	"errors"
+	"math/big"
+
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle/contract"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 )

@@ -19,10 +19,11 @@ package bind
 import (
 	"crypto/ecdsa"
 	"errors"
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/external"
 	"io"
 	"io/ioutil"
+
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/accounts/external"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

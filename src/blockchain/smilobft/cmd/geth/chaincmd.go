@@ -19,7 +19,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"io"
 	"os"
 	"path/filepath"
@@ -27,6 +26,8 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

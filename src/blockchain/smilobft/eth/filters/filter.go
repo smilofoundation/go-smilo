@@ -22,6 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"errors"

@@ -20,8 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/ethdb/leveldb"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -29,6 +27,9 @@ import (
 	"reflect"
 	"testing"
 	"testing/quick"
+
+	"go-smilo/src/blockchain/smilobft/ethdb/leveldb"
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"

@@ -19,8 +19,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"github.com/prometheus/tsdb/fileutil"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"net"
 	"os"
 	"path/filepath"
@@ -28,8 +26,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/prometheus/tsdb/fileutil"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"

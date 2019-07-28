@@ -17,6 +17,8 @@
 package main
 
 import (
+	"strconv"
+
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/accounts/external"
@@ -24,11 +26,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle"
 	"go-smilo/src/blockchain/smilobft/ethclient"
 	"go-smilo/src/blockchain/smilobft/params"
-	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"gopkg.in/urfave/cli.v1"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 // newClient creates a client with specified remote URL.

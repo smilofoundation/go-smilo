@@ -18,11 +18,12 @@ package usbwallet
 
 import (
 	"errors"
-	"github.com/karalabe/usb"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/karalabe/usb"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"

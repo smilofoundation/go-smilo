@@ -18,8 +18,9 @@ package rpc
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/p2p/netutil"
 	"net"
+
+	"go-smilo/src/blockchain/smilobft/p2p/netutil"
 
 	"github.com/ethereum/go-ethereum/log"
 )

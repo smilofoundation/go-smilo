@@ -21,9 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"mime"
 	"reflect"
@@ -32,6 +29,10 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
+	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

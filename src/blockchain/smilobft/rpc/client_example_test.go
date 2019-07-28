@@ -19,10 +19,10 @@ package rpc_test
 import (
 	"context"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 // In this example, our client wishes to track the latest 'block number'

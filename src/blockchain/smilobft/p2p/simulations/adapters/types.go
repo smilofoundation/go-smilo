@@ -21,14 +21,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"net"
 	"os"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
+
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/node"

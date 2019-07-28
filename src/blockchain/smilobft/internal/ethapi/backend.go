@@ -19,12 +19,15 @@ package ethapi
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/core/bloombits"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/core/bloombits"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"

@@ -18,13 +18,14 @@ package les
 
 import (
 	"fmt"
+	"math/big"
+	"testing"
+	"time"
+
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/light"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )

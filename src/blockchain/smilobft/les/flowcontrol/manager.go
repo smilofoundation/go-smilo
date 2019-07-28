@@ -18,10 +18,11 @@ package flowcontrol
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/prque"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common/prque"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 )

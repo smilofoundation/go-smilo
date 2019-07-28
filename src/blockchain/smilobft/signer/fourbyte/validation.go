@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/signer/core"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/signer/core"
 
 	"github.com/ethereum/go-ethereum/common"
 )

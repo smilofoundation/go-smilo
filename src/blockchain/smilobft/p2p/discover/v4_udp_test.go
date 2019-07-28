@@ -23,9 +23,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/internal/testlog"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"io"
 	"math/rand"
 	"net"
@@ -33,6 +30,11 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/internal/testlog"
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"

@@ -18,6 +18,7 @@ package rawdb
 
 import (
 	"encoding/json"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 
 	"github.com/ethereum/go-ethereum/common"

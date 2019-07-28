@@ -19,15 +19,16 @@ package les
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"math/rand"
+	"time"
+
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/les/flowcontrol"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-	"math/rand"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"

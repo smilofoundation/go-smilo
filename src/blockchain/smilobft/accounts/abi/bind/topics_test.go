@@ -17,9 +17,10 @@
 package bind
 
 import (
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"reflect"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 )

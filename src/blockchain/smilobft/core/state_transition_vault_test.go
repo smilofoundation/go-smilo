@@ -18,9 +18,10 @@ package core
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/stretchr/testify/require"
 

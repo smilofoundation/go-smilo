@@ -21,22 +21,24 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/cmd/utils"
 	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle"
 	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle/contract"
 	"go-smilo/src/blockchain/smilobft/ethclient"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"gopkg.in/urfave/cli.v1"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 var commandDeploy = cli.Command{

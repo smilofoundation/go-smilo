@@ -18,9 +18,11 @@ package shhclient
 
 import (
 	"context"
+
 	"go-smilo/src/blockchain/smilobft"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	whisper "go-smilo/src/blockchain/smilobft/whisper/whisperv6"

@@ -30,9 +30,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/crypto/sha3"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -135,7 +136,7 @@ var (
 
 // SignerFn is a signer callback function to request a hash to be signed by a
 // backing account.
-type SignerFn func(accounts.Account, []byte) ([]byte, error)
+type SignerFn func(accounts.Account, string, []byte) ([]byte, error)
 
 // sigHash returns the hash which is used as input for the proof-of-authority
 // signing. It is the hash of the entire header apart from the 65 byte signature
@@ -646,7 +647,7 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, stop <-ch
 	case <-time.After(delay):
 	}
 	// Sign all the things!
-	sighash, err := signFn(accounts.Account{Address: signer}, sigHash(header).Bytes())
+	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeClique, sigHash(header).Bytes())
 	if err != nil {
 		return nil, err
 	}

@@ -18,14 +18,14 @@ package trie
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 	"runtime"
 	"sync"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
 )
 
 func newEmptySecure() *SecureTrie {
