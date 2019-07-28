@@ -437,7 +437,7 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	defer clear()
 
 	// post block into Sport engine
-	go func(){
+	go func() {
 		requestEvent := sport.RequestEvent{
 			BlockProposal: block,
 		}

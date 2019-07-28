@@ -360,9 +360,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:db24bdcd60564a4214dfbc49a44d97f396cda26bd6bc67428de7ce43ed429f12"
+  digest = "1:752fd1c56fb23c890a527973affd5e4df4ab6c0e86273bfa69030c580cf2c270"
   name = "github.com/karalabe/usb"
-  packages = ["."]
+  packages = [
+    ".",
+    "hidapi/hidapi",
+    "hidapi/libusb",
+    "hidapi/mac",
+    "hidapi/windows",
+    "libusb/libusb",
+    "libusb/libusb/os",
+  ]
   pruneopts = "UT"
   revision = "9be757f914c0907b7ddd561ea86eec15313ac022"
 
@@ -827,7 +835,6 @@
     "github.com/ethereum/go-ethereum/metrics/exp",
     "github.com/ethereum/go-ethereum/metrics/influxdb",
     "github.com/ethereum/go-ethereum/rlp",
-    "github.com/ethereum/go-ethereum/rpc",
     "github.com/fatih/color",
     "github.com/fjl/memsize/memsizeui",
     "github.com/gballet/go-libpcsclite",
