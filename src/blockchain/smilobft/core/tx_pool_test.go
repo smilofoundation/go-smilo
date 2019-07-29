@@ -1094,8 +1094,7 @@ func testTransactionLimitingEquivalency(t *testing.T, origin uint64) {
 	}
 	pool2.AddRemotes(txs)
 
-	<- time.After(100 * time.Millisecond)
-
+	<-time.After(100 * time.Millisecond)
 
 	// Ensure the batch optimization honors the same pool mechanics
 	if len(pool1.pending) != len(pool2.pending) {

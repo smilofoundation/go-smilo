@@ -154,7 +154,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig, "config",config)
+	log.Info("Initialised chain configuration", "config", chainConfig, "config", config)
 
 	// changes to manipulate the chain id for migration from 2.0.2 and below version to 2.0.3
 	// version of Smilo  - this is applicable for v2.0.3 onwards
