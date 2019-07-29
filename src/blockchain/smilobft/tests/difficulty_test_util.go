@@ -52,7 +52,7 @@ func (test *DifficultyTest) Run(config *params.ChainConfig) error {
 	parentNumber := big.NewInt(int64(test.CurrentBlockNumber - 1))
 	parent := &types.Header{
 		Difficulty: test.ParentDifficulty,
-		Time:       test.ParentTimestamp,
+		Time:       test.ParentTimestamp.Uint64(),
 		Number:     parentNumber,
 		UncleHash:  test.UncleHash,
 	}

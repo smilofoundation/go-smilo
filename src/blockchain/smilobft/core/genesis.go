@@ -166,24 +166,24 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 		} else {
 			log.Info("Writing custom genesis block")
 		}
-
-		// Set default transaction size limit if not set in genesis
-		if genesis.Config.CustomTransactionSizeLimit == 0 {
-			genesis.Config.CustomTransactionSizeLimit = DefaultTxPoolConfig.CustomTransactionSizeLimit
-		}
-
-		// Check transaction size limit
-		err := genesis.Config.IsValid()
-		if err != nil {
-			return genesis.Config, common.Hash{}, err
-		}
-
 		block, err := genesis.Commit(db)
+		return genesis.Config, block.Hash(), err
+	}
 
-		hash := block.Hash()
-		log.Info("********** genesis **********", "hash", hash)
-
-		return genesis.Config, hash, err
+	// We have the genesis block in database(perhaps in ancient database)
+	// but the corresponding state is missing.
+	header := rawdb.ReadHeader(db, stored, 0)
+	if _, err := state.New(header.Root, state.NewDatabaseWithCache(db, 0)); err != nil {
+		if genesis == nil {
+			genesis = DefaultGenesisBlock()
+		}
+		// Ensure the stored genesis matches with the given one.
+		hash := genesis.ToBlock(nil).Hash()
+		if hash != stored {
+			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
+		}
+		block, err := genesis.Commit(db)
+		return genesis.Config, block.Hash(), err
 	}
 
 	// Check whether the genesis block is already written.
@@ -276,7 +276,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       new(big.Int).SetUint64(g.Timestamp),
+		Time:       g.Timestamp,
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,

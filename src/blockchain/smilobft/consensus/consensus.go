@@ -1,4 +1,3 @@
-// Copyright 2019 The go-smilo Authors
 // Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -19,18 +18,14 @@
 package consensus
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-
-	"go-smilo/src/blockchain/smilobft/rpc"
-
-	"go-smilo/src/blockchain/smilobft/p2p"
-
+	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
-
+	"go-smilo/src/blockchain/smilobft/p2p"
+	"go-smilo/src/blockchain/smilobft/params"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"math/big"
 
-	"go-smilo/src/blockchain/smilobft/core/state"
-	"go-smilo/src/blockchain/smilobft/params"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // ChainReader defines a small collection of methods needed to access the local
@@ -60,7 +55,7 @@ type ChainReader interface {
 
 // Engine is an algorithm agnostic consensus engine.
 type Engine interface {
-	// Author retrieves the Smilo address of the account that minted the given
+	// Author retrieves the Ethereum address of the account that minted the given
 	// block, which may be different from the header's coinbase if a consensus
 	// engine is based on signatures.
 	Author(header *types.Header) (common.Address, error)
@@ -89,22 +84,40 @@ type Engine interface {
 	Prepare(chain ChainReader, header *types.Header) error
 
 	// Finalize runs any post-transaction state modifications (e.g. block rewards)
-	// and assembles the final block.
+	// but does not assemble the block.
+	//
 	// Note: The block header and state database might be updated to reflect any
 	// consensus rules that happen at finalization (e.g. block rewards).
 	Finalize(chain ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
+		uncles []*types.Header)
+
+	// FinalizeAndAssemble runs any post-transaction state modifications (e.g. block
+	// rewards) and assembles the final block.
+	//
+	// Note: The block header and state database might be updated to reflect any
+	// consensus rules that happen at finalization (e.g. block rewards).
+	FinalizeAndAssemble(chain ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 		uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error)
+
+	// Seal generates a new sealing request for the given input block and pushes
+	// the result into the given channel.
+	//
+	// Note, the method returns immediately and will send the result async. More
+	// than one result may also be returned depending on the consensus algorithm.
+	Seal(chain ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error
+
+	// SealHash returns the hash of a block prior to it being sealed.
+	SealHash(header *types.Header) common.Hash
 
 	// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 	// that a new block should have.
 	CalcDifficulty(chain ChainReader, time uint64, parent *types.Header) *big.Int
 
-	// Seal generates a new block for the given input block with the local miner's
-	// seal place on top.
-	Seal(chain ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error)
-
 	// APIs returns the RPC APIs this consensus engine provides.
 	APIs(chain ChainReader) []rpc.API
+
+	// Close terminates any background threads maintained by the consensus engine.
+	Close() error
 
 	// Protocol returns the protocol for this consensus
 	Protocol() Protocol

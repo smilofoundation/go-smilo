@@ -20,6 +20,7 @@ package backend
 import (
 	"crypto/ecdsa"
 	"encoding/json"
+	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -41,19 +42,23 @@ type backend struct {
 	smilobftEventMux *event.TypeMux
 	privateKey       *ecdsa.PrivateKey
 	address          common.Address
-	core             smilobftcore.Engine
-	logger           log.Logger
-	db               ethdb.Database
-	chain            consensus.ChainReader
-	currentBlock     func() *types.Block
-	hasBadBlock      func(hash common.Hash) bool
+	signFn           clique.SignerFn // Signer function to authorize hashes with
+
+	core         smilobftcore.Engine
+	logger       log.Logger
+	db           ethdb.Database
+	chain        consensus.ChainReader
+	currentBlock func() *types.Block
+	hasBadBlock  func(hash common.Hash) bool
 
 	// the channels for smilobft engine notifications
 	commitChBlock     chan *types.Block
 	proposedBlockHash common.Hash
 	sealMu            sync.Mutex
-	coreStarted       bool
-	coreMu            sync.RWMutex
+	lock              sync.RWMutex // Protects the signer fields
+
+	coreStarted bool
+	coreMu      sync.RWMutex
 
 	// Current list of candidates we are pushing
 	candidates map[common.Address]bool

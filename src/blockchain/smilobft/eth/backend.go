@@ -20,10 +20,8 @@ package eth
 import (
 	"errors"
 	"fmt"
-
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	//"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"math/big"
 	"runtime"
 	"sync"
@@ -175,7 +173,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		chainConfig:    chainConfig,
 		eventMux:       ctx.EventMux,
 		accountManager: ctx.AccountManager,
-		engine:         CreateConsensusEngine(ctx, config, chainConfig, chainDb),
+		engine:         CreateConsensusEngine(ctx, config, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb),
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
 		gasPrice:       config.Miner.GasPrice,
@@ -211,12 +209,14 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 			EVMInterpreter:          config.EVMInterpreter,
 		}
 		cacheConfig = &core.CacheConfig{
-			TrieCleanLimit: config.TrieCleanCache,
-			TrieDirtyLimit: config.TrieDirtyCache,
-			TrieTimeLimit:  config.TrieTimeout,
+			TrieCleanLimit:      config.TrieCleanCache,
+			TrieCleanNoPrefetch: config.NoPrefetch,
+			TrieDirtyLimit:      config.TrieDirtyCache,
+			TrieDirtyDisabled:   config.NoPruning,
+			TrieTimeLimit:       config.TrieTimeout,
 		}
 	)
-	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
+	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
 	if err != nil {
 		return nil, err
 	}
@@ -279,8 +279,8 @@ func makeExtraData(extra []byte, isSmilo bool) []byte {
 	return extra
 }
 
-// CreateConsensusEngine creates the required type of consensus engine instance for an Smilo service
-func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
+// CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
+func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig *params.ChainConfig, configeth *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
 		return clique.New(chainConfig.Clique, db)
@@ -307,13 +307,21 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		return ethash.NewFaker()
 	case ModeTest:
 		log.Warn("Ethash used in test mode")
-		return ethash.NewTester()
+		return ethash.NewTester(nil, noverify)
 	case ModeShared:
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
-		log.Warn("Ethash used in full fake mode")
-		return ethash.NewFullFaker()
+		engine := ethash.New(ethash.Config{
+			CacheDir:       ctx.ResolvePath(configeth.CacheDir),
+			CachesInMem:    configeth.CachesInMem,
+			CachesOnDisk:   configeth.CachesOnDisk,
+			DatasetDir:     configeth.DatasetDir,
+			DatasetsInMem:  configeth.DatasetsInMem,
+			DatasetsOnDisk: configeth.DatasetsOnDisk,
+		}, notify, noverify)
+		engine.SetThreads(-1) // Disable CPU mining
+		return engine
 	}
 }
 
@@ -554,7 +562,7 @@ func (s *Smilo) EventMux() *event.TypeMux           { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
-func (s *Smilo) EthVersion() int                    { return int(ProtocolVersions[0]) }
+func (s *Smilo) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Smilo) NetVersion() uint64                 { return s.networkID }
 func (s *Smilo) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 func (s *Smilo) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
@@ -610,7 +618,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 func (s *Smilo) Stop() error {
 	s.bloomIndexer.Close()
 	s.blockchain.Stop()
-	//s.engine.Close()
+	s.engine.Close()
 	s.protocolManager.Stop()
 	if s.lesServer != nil {
 		s.lesServer.Stop()

@@ -79,7 +79,7 @@ func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Tr
 }
 
 func pricedTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key *ecdsa.PrivateKey) *types.Transaction {
-	tx, _ := types.SignTx(types.NewTransaction(nonce, common.Address{}, big.NewInt(9), gaslimit, gasprice, nil), types.HomesteadSigner{}, key)
+	tx, _ := types.SignTx(types.NewTransaction(nonce, common.Address{}, big.NewInt(100), gaslimit, gasprice, nil), types.HomesteadSigner{}, key)
 	return tx
 }
 
@@ -431,7 +431,7 @@ func TestTransactionChainFork(t *testing.T) {
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	resetState := func() {
 		statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
-		statedb.AddBalance(addr, big.NewInt(10000000000000000), big.NewInt(1))
+		statedb.AddBalance(addr, big.NewInt(100000000000000), big.NewInt(1))
 
 		pool.chain = &testBlockChain{statedb, statedb, 1000000, new(event.Feed)}
 		<-pool.requestReset(nil, nil)
@@ -1029,7 +1029,7 @@ func TestTransactionPendingLimiting(t *testing.T) {
 	defer pool.Stop()
 
 	account, _ := deriveSender(transaction(0, 0, key))
-	pool.currentState.AddBalance(account, big.NewInt(10000000000000000), big.NewInt(1))
+	pool.currentState.AddBalance(account, big.NewInt(1000000), big.NewInt(1))
 
 	// Keep track of transaction events to ensure all executables get announced
 	events := make(chan NewTxsEvent, testTxPoolConfig.AccountQueue+5)
@@ -1085,14 +1085,18 @@ func testTransactionLimitingEquivalency(t *testing.T, origin uint64) {
 	pool2, key2 := setupTxPool()
 	defer pool2.Stop()
 
+	<- time.After(50 * time.Millisecond)
+
 	account2, _ := deriveSender(transaction(0, 0, key2))
 	pool2.currentState.AddBalance(account2, big.NewInt(1000000), big.NewInt(1))
 
-	txs := []*types.Transaction{}
+	var txs []*types.Transaction
 	for i := uint64(0); i < testTxPoolConfig.AccountQueue+5; i++ {
 		txs = append(txs, transaction(origin+i, 100000, key2))
 	}
 	pool2.AddRemotes(txs)
+
+	<- time.After(50 * time.Millisecond)
 
 	// Ensure the batch optimization honors the same pool mechanics
 	if len(pool1.pending) != len(pool2.pending) {

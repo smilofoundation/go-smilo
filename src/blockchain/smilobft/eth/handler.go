@@ -28,7 +28,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/trie"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -229,7 +228,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		// the propagated block if the head is too old. Unfortunately there is a corner
 		// case when starting new networks, where the genesis might be ancient (0 unix)
 		// which would prevent full nodes from accepting it.
-		//if manager.blockchain.CurrentBlock().NumberU64() < manager.checkpointNumber {
+		//if manager.checkpointNumber > 1 && manager.blockchain.CurrentBlock().NumberU64() < manager.checkpointNumber {
 		//	log.Warn("Unsynced yet, discarded propagated block", "blocks[0].number", blocks[0].Number(), "blocks[0].hash", blocks[0].Hash(), "manager.blockchain.CurrentBlock.NumberU64",manager.blockchain.CurrentBlock().NumberU64(), "manager.checkpointNumber", manager.checkpointNumber)
 		//	return 0, nil
 		//}
@@ -757,10 +756,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&request); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
-		if err := request.sanityCheck(); err != nil {
-			log.Error("Block failed sanityCheck", "block hash", cmn.Bytes2Hex(request.Block.Hash().Bytes()))
-			return err
-		}
+		//if err := request.sanityCheck(); err != nil {
+		//	log.Error("Block failed sanityCheck", "block hash", cmn.Bytes2Hex(request.Block.Hash().Bytes()))
+		//	return err
+		//}
 		request.Block.ReceivedAt = msg.ReceivedAt
 		request.Block.ReceivedFrom = p
 
