@@ -467,8 +467,8 @@ func (self *worker) commitNewWork(timestamp int64) {
 	parent := self.chain.CurrentBlock()
 
 	tstamp := tstart.Unix()
-	if parent.Time().Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
-		tstamp = parent.Time().Int64() + 1
+	if new(big.Int).SetUint64(parent.Time()).Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
+		tstamp = int64(parent.Time()) + 1
 	}
 	// this will ensure we're not going off too far in the future
 	if now := time.Now().Unix(); tstamp > now+1 {
@@ -483,7 +483,7 @@ func (self *worker) commitNewWork(timestamp int64) {
 		Number:     num.Add(num, common.Big1),
 		GasLimit:   core.CalcGasLimit(parent, self.config.GasFloor, self.config.GasCeil),
 		Extra:      self.extra,
-		Time:       big.NewInt(tstamp),
+		Time:       uint64(timestamp),
 	}
 	// Only set the coinbase if we are mining (avoid spurious block rewards)
 	if atomic.LoadInt32(&self.mining) == 1 {

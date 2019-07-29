@@ -154,7 +154,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig)
+	log.Info("Initialised chain configuration", "config", chainConfig, "config",config)
 
 	// changes to manipulate the chain id for migration from 2.0.2 and below version to 2.0.3
 	// version of Smilo  - this is applicable for v2.0.3 onwards
@@ -554,7 +554,7 @@ func (s *Smilo) EventMux() *event.TypeMux           { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
-func (s *Smilo) EthVersion() int                    { return int(ProtocolVersions[0]) }
+func (s *Smilo) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Smilo) NetVersion() uint64                 { return s.networkID }
 func (s *Smilo) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 func (s *Smilo) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }

@@ -61,6 +61,8 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 		return errFailedDecodePreprepare
 	}
 
+	logger.Debug("*&*&*&*& handlePreprepare", "preprepare", preprepare)
+
 	// Ensure we have the same view with the PRE-PREPARE message
 	// If it is old message, see if we need to broadcast COMMIT
 	//SPORT:6

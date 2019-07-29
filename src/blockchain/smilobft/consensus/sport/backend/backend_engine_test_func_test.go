@@ -121,7 +121,7 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 		GasLimit:   core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807),
 		GasUsed:    0,
 		Extra:      parent.Extra(),
-		Time:       new(big.Int).Add(parent.Time(), new(big.Int).SetUint64(config.BlockPeriod)),
+		Time:       new(big.Int).Add(new(big.Int).SetUint64(parent.Time()), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
 		Difficulty: defaultDifficulty,
 	}
 	return header
