@@ -598,7 +598,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		} else {
 			err := pm.downloader.DeliverHeaders(p.id, resp.Headers)
 			if err != nil {
-				p.Log().Debug("$$$ LES, BlockHeadersMsg", "err",fmt.Sprint(err))
+				p.Log().Debug("$$$ LES, BlockHeadersMsg", "err", fmt.Sprint(err))
 			}
 		}
 

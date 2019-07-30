@@ -168,7 +168,7 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 		log.Warn("$$$ LES, Ultra light client is enabled", "servers", len(config.UltraLightServers), "fraction", config.UltraLightFraction)
 		leth.blockchain.DisableCheckFreq()
 	} else {
-		log.Debug("$$$ LES, Ultra light client NOT enabled", )
+		log.Debug("$$$ LES, Ultra light client NOT enabled")
 	}
 	return leth, nil
 }
