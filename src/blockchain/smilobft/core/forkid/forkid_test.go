@@ -27,6 +27,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+//FIXME: Fix test
+
 // TestCreation tests that different genesis and fork rule combinations result in
 // the correct fork ID.
 func TestCreation(t *testing.T) {
