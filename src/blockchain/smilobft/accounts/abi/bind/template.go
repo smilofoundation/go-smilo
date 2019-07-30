@@ -504,7 +504,7 @@ const tmplSourceJava = `
 
 package {{.Package}};
 
-import org.ethereum.geth.*;
+import org.smilo.geth.*;
 import java.util.*;
 
 {{range $contract := .Contracts}}

@@ -1273,7 +1273,7 @@ func TestGolangBindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed check for goimports symlink bug: %v", err)
 	}
-	if !strings.Contains(string(linkTestDeps), "go-ethereum") {
+	if !strings.Contains(string(linkTestDeps), "go-smilo") {
 		t.Skip("symlinked environment doesn't support bind (https://github.com/golang/go/issues/14845)")
 	}
 	// Create a temporary workspace for the test suite
@@ -1386,7 +1386,7 @@ func TestJavaBindings(t *testing.T) {
 
 package bindtest;
 
-import org.ethereum.geth.*;
+import org.smilo.geth.*;
 import java.util.*;
 
 

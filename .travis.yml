@@ -4,30 +4,22 @@ sudo: false
 matrix:
   include:
     - os: linux
-      dist: trusty
-      sudo: required
-      go: 1.10.x
+      dist: xenial
+      go: 1.11.x
       script:
-      - sudo modprobe fuse
-      - sudo chmod 666 /dev/fuse
-      - sudo chown root:$USER /etc/fuse.conf
       - go run src/blockchain/smilobft/build/ci.go install
       - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
 
     # These are the latest Go versions.
     - os: linux
-      dist: trusty
-      sudo: required
-      go: 1.11.x
+      dist: xenial
+      go: 1.12.x
       script:
-        - sudo modprobe fuse
-        - sudo chmod 666 /dev/fuse
-        - sudo chown root:$USER /etc/fuse.conf
         - go run src/blockchain/smilobft/build/ci.go install
         - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
 
     - os: osx
-      go: 1.11.x
+      go: 1.12.x
       script:
         - echo "Increase the maximum number of open file descriptors on macOS"
         - NOFILE=20480
@@ -43,8 +35,8 @@ matrix:
 
     # This builder only tests code linters on latest version of Go
     - os: linux
-      dist: trusty
-      go: 1.11.x
+      dist: xenial
+      go: 1.12.x
       env:
         - lint
       git:
@@ -54,8 +46,8 @@ matrix:
 
     # This builder only tests coveralls on latest version of Go
     - os: linux
-      dist: trusty
-      go: 1.11.x
+      dist: xenial
+      go: 1.12.x
       env:
         - COVERALLS_TOKEN
       git:
