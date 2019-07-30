@@ -112,7 +112,7 @@ func (pm *ProtocolManager) validateCheckpoint(peer *peer) error {
 	if !valid {
 		return errInvalidCheckpoint
 	}
-	log.Warn("Verified advertised checkpoint", "peer", peer.id, "signers", len(signers))
+	log.Warn("$$$ LES, Verified advertised checkpoint", "peer", peer.id, "signers", len(signers))
 	return nil
 }
 
@@ -157,16 +157,16 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	switch {
 	case checkpoint.Empty():
 		mode = lightSync
-		log.Debug("Disable checkpoint syncing", "reason", "empty checkpoint")
+		log.Debug("$$$ LES, Disable checkpoint syncing", "reason", "empty checkpoint")
 	case latest.Number.Uint64() >= (checkpoint.SectionIndex+1)*pm.iConfig.ChtSize-1:
 		mode = lightSync
-		log.Debug("Disable checkpoint syncing", "reason", "local chain beyond the checkpoint")
+		log.Debug("$$$ LES, Disable checkpoint syncing", "reason", "local chain beyond the checkpoint")
 	case hardcoded:
 		mode = legacyCheckpointSync
-		log.Debug("Disable checkpoint syncing", "reason", "checkpoint is hardcoded")
+		log.Debug("$$$ LES, Disable checkpoint syncing", "reason", "checkpoint is hardcoded")
 	case pm.reg == nil || !pm.reg.isRunning():
 		mode = legacyCheckpointSync
-		log.Debug("Disable checkpoint syncing", "reason", "checkpoint syncing is not activated")
+		log.Debug("$$$ LES, Disable checkpoint syncing", "reason", "checkpoint syncing is not activated")
 	}
 	// Notify testing framework if syncing has completed(for testing purpose).
 	defer func() {
@@ -187,7 +187,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 			}
 			pm.blockchain.(*light.LightChain).AddTrustedCheckpoint(checkpoint)
 		}
-		log.Debug("Checkpoint syncing start", "peer", peer.id, "checkpoint", checkpoint.SectionIndex)
+		log.Debug("$$$ LES, Checkpoint syncing start", "peer", peer.id, "checkpoint", checkpoint.SectionIndex)
 
 		// Fetch the start point block header.
 		//
@@ -199,15 +199,15 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 		if !checkpoint.Empty() && !pm.blockchain.(*light.LightChain).SyncCheckpoint(ctx, checkpoint) {
-			log.Debug("Sync checkpoint failed")
+			log.Debug("$$$ LES, Sync checkpoint failed")
 			pm.removePeer(peer.id)
 			return
 		}
 	}
 	// Fetch the remaining block headers based on the current chain header.
 	if err := pm.downloader.Synchronise(peer.id, peer.Head(), peer.Td(), downloader.LightSync); err != nil {
-		log.Debug("Synchronise failed", "reason", err)
+		log.Debug("$$$ LES, Synchronise failed", "reason", err)
 		return
 	}
-	log.Debug("Synchronise finished", "elapsed", common.PrettyDuration(time.Since(start)))
+	log.Debug("$$$ LES, Synchronise finished", "elapsed", common.PrettyDuration(time.Since(start)))
 }

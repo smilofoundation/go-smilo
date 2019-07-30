@@ -92,7 +92,7 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 	if _, isCompat := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !isCompat {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig)
+	log.Info("$$$ LES, Initialised chain configuration", "config", chainConfig)
 
 	peers := newPeerSet()
 	quitSync := make(chan struct{})
@@ -139,8 +139,11 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 
 	// Rewind the chain in case of an incompatible config upgrade.
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
-		log.Warn("Rewinding chain to upgrade configuration", "err", compat)
-		leth.blockchain.SetHead(compat.RewindTo)
+		log.Warn("$$$ LES, Rewinding chain to upgrade configuration", "err", compat)
+		err := leth.blockchain.SetHead(compat.RewindTo)
+		if err != nil {
+			log.Error("$$$ LES, Could not blockchain.SetHead", "err", err)
+		}
 		rawdb.WriteChainConfig(chainDb, genesisHash, chainConfig)
 	}
 
@@ -162,8 +165,10 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 		return nil, err
 	}
 	if leth.protocolManager.ulc != nil {
-		log.Warn("Ultra light client is enabled", "servers", len(config.UltraLightServers), "fraction", config.UltraLightFraction)
+		log.Warn("$$$ LES, Ultra light client is enabled", "servers", len(config.UltraLightServers), "fraction", config.UltraLightFraction)
 		leth.blockchain.DisableCheckFreq()
+	} else {
+		log.Debug("$$$ LES, Ultra light client NOT enabled", )
 	}
 	return leth, nil
 }
@@ -254,7 +259,7 @@ func (s *LightEthereum) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Ethereum protocol implementation.
 func (s *LightEthereum) Start(srvr *p2p.Server) error {
-	log.Warn("Light client mode is an experimental feature")
+	log.Warn("$$$ LES, Light client mode is an experimental feature")
 	s.startBloomHandlers(params.BloomBitsBlocksClient)
 	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.networkId)
 	// clients are searching for the first advertised protocol in the list

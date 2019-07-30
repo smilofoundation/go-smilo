@@ -75,6 +75,7 @@ type BlockChain interface {
 	GetHeaderByHash(hash common.Hash) *types.Header
 	CurrentHeader() *types.Header
 	GetTd(hash common.Hash, number uint64) *big.Int
+	State() (*state.StateDB, *state.StateDB, error)
 	StateCache() state.Database
 	InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error)
 	Rollback(chain []common.Hash)
@@ -160,13 +161,15 @@ func NewProtocolManager(chainConfig *params.ChainConfig, checkpoint *params.Trus
 	if ulcServers != nil {
 		ulc, err := newULC(ulcServers, ulcFraction)
 		if err != nil {
-			log.Warn("Failed to initialize ultra light client", "err", err)
+			log.Warn("$$$ LES, Failed to initialize ultra light client", "err", err)
 		} else {
+			log.Debug("$$$ LES, initializing ultra light client", "err", err)
 			manager.ulc = ulc
 		}
 	}
 	removePeer := manager.removePeer
 	if disableClientRemovePeer {
+		log.Debug("$$$ LES, disableClientRemovePeer")
 		removePeer = func(id string) {}
 	}
 	if client {
@@ -177,6 +180,7 @@ func NewProtocolManager(chainConfig *params.ChainConfig, checkpoint *params.Trus
 		manager.downloader = downloader.New(checkpointNumber, chainDb, nil, manager.eventMux, nil, blockchain, removePeer)
 		manager.peers.notify((*downloaderPeerNotify)(manager))
 		manager.fetcher = newLightFetcher(manager)
+		log.Debug("$$$ LES, disableClientRemovePeer, client, configuring: manager.downloader, manager.peers.notify, manager.fetcher ")
 	}
 	return manager, nil
 }
@@ -201,7 +205,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 func (pm *ProtocolManager) Stop() {
 	// Showing a log message. During download / process this could actually
 	// take between 5 to 10 seconds and therefor feedback is required.
-	log.Info("Stopping light Ethereum protocol")
+	log.Info("$$$ LES, Stopping light Smilo protocol")
 
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
@@ -222,7 +226,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for any process action
 	pm.wg.Wait()
 
-	log.Info("Light Ethereum protocol stopped")
+	log.Info("$$$ LES, Light Smilo protocol stopped")
 }
 
 // runPeer is the p2p protocol run function for the given version.
@@ -594,7 +598,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		} else {
 			err := pm.downloader.DeliverHeaders(p.id, resp.Headers)
 			if err != nil {
-				log.Debug(fmt.Sprint(err))
+				p.Log().Debug("$$$ LES, BlockHeadersMsg", "err",fmt.Sprint(err))
 			}
 		}
 
@@ -788,7 +792,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					}
 					// If known, encode and queue for response packet
 					if encoded, err := rlp.EncodeToBytes(results); err != nil {
-						log.Error("Failed to encode receipt", "err", err)
+						p.Log().Error("$$$ LES, Failed to encode receipt", "err", err)
 					} else {
 						receipts = append(receipts, encoded)
 						bytes += len(encoded)

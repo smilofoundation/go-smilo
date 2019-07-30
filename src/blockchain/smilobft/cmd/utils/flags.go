@@ -1145,6 +1145,13 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	lightClient := ctx.GlobalString(SyncModeFlag.Name) == "light"
 	lightServer := (ctx.GlobalInt(LightLegacyServFlag.Name) != 0 || ctx.GlobalInt(LightServeFlag.Name) != 0)
 
+	if lightServer {
+		log.Debug("flags.SetP2PConfig lightServer, ", "cfg", cfg)
+	}
+	if lightClient {
+		log.Debug("flags.SetP2PConfig lightClient, ", "cfg", cfg)
+	}
+
 	lightPeers := ctx.GlobalInt(LightLegacyPeersFlag.Name)
 	if ctx.GlobalIsSet(LightMaxPeersFlag.Name) {
 		lightPeers = ctx.GlobalInt(LightMaxPeersFlag.Name)
@@ -1615,7 +1622,7 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	var err error
 	if cfg.SyncMode == downloader.LightSync {
-		log.Info("Going to register a Smilo light Client to the stack")
+		log.Info("Going to register a Smilo light Client to the stack", "cfg", cfg)
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 			return les.New(ctx, cfg)
 		})
@@ -1735,6 +1742,7 @@ func MakeChainDatabase(ctx *cli.Context, stack *node.Node) ethdb.Database {
 	)
 	name := "chaindata"
 	if ctx.GlobalString(SyncModeFlag.Name) == "light" {
+		log.Debug("flags.MakeChainDatabase, light, ", "stack", stack)
 		name = "lightchaindata"
 	}
 	chainDb, err := stack.OpenDatabaseWithFreezer(name, cache, handles, ctx.GlobalString(AncientFlag.Name), "")

@@ -76,7 +76,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	}
 	// warn for empty blocks
 	if block.Number().Int64() > 1 && len(block.Transactions()) == 0 {
-		log.Warn("************************* block_validator.ValidateBody, Not enough transactions to seal a block ...", "number", block.Number().Int64(), "transactions", len(block.Transactions()))
+		log.Debug("************************* block_validator.ValidateBody, empty block", "number", block.Number().Int64(), "transactions", len(block.Transactions()))
 	}
 
 	return nil

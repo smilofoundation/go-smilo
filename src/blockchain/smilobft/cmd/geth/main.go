@@ -368,6 +368,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	// Set contract backend for les service if local node is
 	// running as a light client.
 	if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
+		log.Debug("Set LightEthereum contract backend for les service")
 		var lesService *les.LightEthereum
 		if err := stack.Service(&lesService); err != nil {
 			utils.Fatalf("Failed to retrieve light ethereum service: %v", err)

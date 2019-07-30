@@ -558,7 +558,7 @@ func (self *worker) commitNewWork(timestamp int64) {
 	for _, hash := range badUncles {
 		delete(self.possibleUncles, hash)
 	}
-	log.Warn("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
+	log.Debug("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
 	work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.txs, uncles, work.receipts)
 
 	if err != nil {
