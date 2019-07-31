@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"math"
@@ -71,6 +73,7 @@ func (fullnodeSet *fullnodeSet) CalcSpeaker(lastSpeaker common.Address, round ui
 	fullnodeSet.fullnodeMu.RLock()
 	defer fullnodeSet.fullnodeMu.RUnlock()
 	fullnodeSet.speaker = fullnodeSet.selector(fullnodeSet, lastSpeaker, round)
+	log.Debug("CalcSpeaker, Selected speaker ", "speaker", fullnodeSet.speaker)
 }
 
 func (fullnodeSet *fullnodeSet) AddFullnode(address common.Address) bool {

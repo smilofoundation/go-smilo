@@ -59,4 +59,5 @@ type Broadcaster interface {
 type Peer interface {
 	// Send sends the message to this peer
 	Send(msgcode uint64, data interface{}) error
+	String() string
 }

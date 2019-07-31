@@ -20,15 +20,15 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/ethdb/memorydb"
 
-	"go-smilo/src/blockchain/smilobft/ethdb"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // makeTestTrie create a sample test trie to test node-wise reconstruction.
 func makeTestTrie() (*Database, *Trie, map[string][]byte) {
 	// Create an empty trie
-	triedb := NewDatabase(ethdb.NewMemDatabase())
+	triedb := NewDatabase(memorydb.New())
 	trie, _ := New(common.Hash{}, triedb)
 
 	// Fill it with some arbitrary data
@@ -89,13 +89,13 @@ func checkTrieConsistency(db *Database, root common.Hash) error {
 
 // Tests that an empty trie is not scheduled for syncing.
 func TestEmptySync(t *testing.T) {
-	dbA := NewDatabase(ethdb.NewMemDatabase())
-	dbB := NewDatabase(ethdb.NewMemDatabase())
+	dbA := NewDatabase(memorydb.New())
+	dbB := NewDatabase(memorydb.New())
 	emptyA, _ := New(common.Hash{}, dbA)
 	emptyB, _ := New(emptyRoot, dbB)
 
 	for i, trie := range []*Trie{emptyA, emptyB} {
-		if req := NewSync(trie.Hash(), ethdb.NewMemDatabase(), nil).Missing(1); len(req) != 0 {
+		if req := NewSync(trie.Hash(), memorydb.New(), nil, NewSyncBloom(1, memorydb.New())).Missing(1); len(req) != 0 {
 			t.Errorf("test %d: content requested for empty trie: %v", i, req)
 		}
 	}
@@ -111,9 +111,9 @@ func testIterativeSync(t *testing.T, batch int) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
 	queue := append([]common.Hash{}, sched.Missing(batch)...)
 	for len(queue) > 0 {
@@ -134,7 +134,7 @@ func testIterativeSync(t *testing.T, batch int) {
 		queue = append(queue[:0], sched.Missing(batch)...)
 	}
 	// Cross check that the two tries are in sync
-	checkTrieContents(t, triedb, srcTrie.Root(), srcData)
+	checkTrieContents(t, triedb, srcTrie.Hash().Bytes(), srcData)
 }
 
 // Tests that the trie scheduler can correctly reconstruct the state even if only
@@ -144,9 +144,9 @@ func TestIterativeDelayedSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
 	queue := append([]common.Hash{}, sched.Missing(10000)...)
 	for len(queue) > 0 {
@@ -168,7 +168,7 @@ func TestIterativeDelayedSync(t *testing.T) {
 		queue = append(queue[len(results):], sched.Missing(10000)...)
 	}
 	// Cross check that the two tries are in sync
-	checkTrieContents(t, triedb, srcTrie.Root(), srcData)
+	checkTrieContents(t, triedb, srcTrie.Hash().Bytes(), srcData)
 }
 
 // Tests that given a root hash, a trie can sync iteratively on a single thread,
@@ -182,9 +182,9 @@ func testIterativeRandomSync(t *testing.T, batch int) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
 	queue := make(map[common.Hash]struct{})
 	for _, hash := range sched.Missing(batch) {
@@ -213,7 +213,7 @@ func testIterativeRandomSync(t *testing.T, batch int) {
 		}
 	}
 	// Cross check that the two tries are in sync
-	checkTrieContents(t, triedb, srcTrie.Root(), srcData)
+	checkTrieContents(t, triedb, srcTrie.Hash().Bytes(), srcData)
 }
 
 // Tests that the trie scheduler can correctly reconstruct the state even if only
@@ -223,9 +223,9 @@ func TestIterativeRandomDelayedSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
 	queue := make(map[common.Hash]struct{})
 	for _, hash := range sched.Missing(10000) {
@@ -260,7 +260,7 @@ func TestIterativeRandomDelayedSync(t *testing.T) {
 		}
 	}
 	// Cross check that the two tries are in sync
-	checkTrieContents(t, triedb, srcTrie.Root(), srcData)
+	checkTrieContents(t, triedb, srcTrie.Hash().Bytes(), srcData)
 }
 
 // Tests that a trie sync will not request nodes multiple times, even if they
@@ -270,9 +270,9 @@ func TestDuplicateAvoidanceSync(t *testing.T) {
 	srcDb, srcTrie, srcData := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
 	queue := append([]common.Hash{}, sched.Missing(0)...)
 	requested := make(map[common.Hash]struct{})
@@ -300,7 +300,7 @@ func TestDuplicateAvoidanceSync(t *testing.T) {
 		queue = append(queue[:0], sched.Missing(0)...)
 	}
 	// Cross check that the two tries are in sync
-	checkTrieContents(t, triedb, srcTrie.Root(), srcData)
+	checkTrieContents(t, triedb, srcTrie.Hash().Bytes(), srcData)
 }
 
 // Tests that at any point in time during a sync, only complete sub-tries are in
@@ -310,11 +310,11 @@ func TestIncompleteSync(t *testing.T) {
 	srcDb, srcTrie, _ := makeTestTrie()
 
 	// Create a destination trie and sync with the scheduler
-	diskdb := ethdb.NewMemDatabase()
+	diskdb := memorydb.New()
 	triedb := NewDatabase(diskdb)
-	sched := NewSync(srcTrie.Hash(), diskdb, nil)
+	sched := NewSync(srcTrie.Hash(), diskdb, nil, NewSyncBloom(1, diskdb))
 
-	added := []common.Hash{}
+	var added []common.Hash
 	queue := append([]common.Hash{}, sched.Missing(1)...)
 	for len(queue) > 0 {
 		// Fetch a batch of trie nodes

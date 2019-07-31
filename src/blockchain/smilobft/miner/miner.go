@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"math/big"
 	"sync/atomic"
+	"time"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -44,6 +47,18 @@ type Backend interface {
 	ChainDb() ethdb.Database
 }
 
+// Config is the configuration parameters of mining.
+type Config struct {
+	Etherbase common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
+	Notify    []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages(only useful in ethash).
+	ExtraData hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
+	GasFloor  uint64         // Target gas floor for mined blocks.
+	GasCeil   uint64         // Target gas ceiling for mined blocks.
+	GasPrice  *big.Int       // Minimum gas price for mining a transaction
+	Recommit  time.Duration  // The time interval for miner to re-create mining work.
+	Noverify  bool           // Disable remote mining solution verification(only useful in ethash).
+}
+
 // Miner creates blocks and searches for proof-of-work values.
 type Miner struct {
 	mux *event.TypeMux
@@ -59,14 +74,15 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, minBlocksEmptyMining *big.Int) *Miner {
+func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, isLocalBlock func(block *types.Block) bool, minBlocksEmptyMining *big.Int) *Miner {
 	miner := &Miner{
 		eth:      eth,
 		mux:      mux,
 		engine:   engine,
-		worker:   newWorker(config, engine, common.Address{}, eth, mux, minBlocksEmptyMining),
+		worker:   newWorker(config, chainConfig, engine, common.Address{}, eth, mux, minBlocksEmptyMining),
 		canStart: 1,
 	}
+	log.Info("$$$$$$$ Going to register and update new miner instance")
 	miner.Register(NewCpuAgent(eth.BlockChain(), engine))
 	go miner.update()
 
@@ -117,7 +133,7 @@ func (self *Miner) Start(coinbase common.Address) {
 
 	log.Info("Starting mining operation")
 	self.worker.start()
-	self.worker.commitNewWork()
+	self.worker.commitNewWork(time.Now().Unix())
 }
 
 func (self *Miner) Stop() {
@@ -162,6 +178,11 @@ func (self *Miner) SetExtra(extra []byte) error {
 	}
 	self.worker.setExtra(extra)
 	return nil
+}
+
+// SetRecommitInterval sets the interval for sealing work resubmitting.
+func (self *Miner) SetRecommitInterval(interval time.Duration) {
+	self.worker.setRecommitInterval(interval)
 }
 
 // Pending returns the currently pending block and associated state.

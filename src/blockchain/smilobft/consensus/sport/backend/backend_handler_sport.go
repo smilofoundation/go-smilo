@@ -40,6 +40,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	defer sb.coreMu.Unlock()
 
 	if msg.Code == smilobftMsg {
+		//log.Debug("HandleMsg, Gossip, smilobftMsg message, GOT IT!!! ", "msg", msg.String())
 		if !sb.coreStarted {
 			return true, sport.ErrStoppedEngine
 		}
@@ -68,9 +69,16 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 		}
 		sb.knownMessages.Add(hash, true)
 
-		go sb.smilobftEventMux.Post(sport.MessageEvent{
-			Payload: data,
-		})
+		go func() {
+			err := sb.smilobftEventMux.Post(sport.MessageEvent{
+				Payload: data,
+			})
+			if err != nil {
+				log.Error("Could not send sb.smilobftEventMux.Post, sport.MessageEvent", "err", err)
+			} else {
+				log.Error("Sent sb.smilobftEventMux.Post, sport.MessageEvent")
+			}
+		}()
 
 		return true, nil
 	}
@@ -113,6 +121,12 @@ func (sb *backend) NewChainHead() error {
 	if !sb.coreStarted {
 		return sport.ErrStoppedEngine
 	}
-	go sb.smilobftEventMux.Post(sport.FinalCommittedEvent{})
+	go func() {
+		err := sb.smilobftEventMux.Post(sport.FinalCommittedEvent{})
+		if err != nil {
+			log.Error("NewChainHead, Could not send FinalCommittedEvent, ", "err", err)
+		}
+
+	}()
 	return nil
 }

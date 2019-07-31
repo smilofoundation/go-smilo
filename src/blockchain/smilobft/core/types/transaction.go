@@ -19,16 +19,16 @@ package types
 import (
 	"container/heap"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
 
-	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -265,7 +265,9 @@ func (tx *Transaction) Cost() *big.Int {
 	return total
 }
 
-func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
+// RawSignatureValues returns the V, R, S signature values of the transaction.
+// The return values should not be modified by the caller.
+func (tx *Transaction) RawSignatureValues() (v, r, s *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
 }
 
@@ -407,7 +409,7 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 			heads = append(heads, accTxs[0])
 			txs[acc] = accTxs[1:]
 		} else {
-			log.Info("Failed to recovered sender address, this transaction is skipped", "from", from, "nonce", accTxs[0].data.AccountNonce, "err", err)
+			log.Error("Failed to recovered sender address, this transaction is skipped", "from", from, "nonce", accTxs[0].data.AccountNonce, "err", err)
 		}
 		if from != acc {
 			delete(txs, from)

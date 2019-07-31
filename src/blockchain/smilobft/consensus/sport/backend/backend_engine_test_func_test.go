@@ -22,6 +22,8 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -30,7 +32,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
@@ -39,12 +40,12 @@ import (
 // other fake events to process Sport.
 func newBlockChain(n int) (*core.BlockChain, *backend) {
 	genesis, nodeKeys := getGenesisAndKeys(n)
-	memDB := ethdb.NewMemDatabase()
+	memDB := rawdb.NewMemoryDatabase()
 	config := sport.DefaultConfig
 	// Use the first key as private key
 	b, _ := New(config, nodeKeys[0], memDB).(*backend)
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{})
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -117,10 +118,10 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     parent.Number().Add(parent.Number(), common.Big1),
-		GasLimit:   core.CalcGasLimit(parent),
+		GasLimit:   core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807),
 		GasUsed:    0,
 		Extra:      parent.Extra(),
-		Time:       new(big.Int).Add(parent.Time(), new(big.Int).SetUint64(config.BlockPeriod)),
+		Time:       new(big.Int).Add(new(big.Int).SetUint64(parent.Time()), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
 		Difficulty: defaultDifficulty,
 	}
 	return header

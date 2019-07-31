@@ -21,8 +21,9 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"gopkg.in/urfave/cli.v1"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"fmt"
 	"path/filepath"
@@ -81,7 +82,7 @@ func localConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
 	node := makeFullNode(ctx)
 	startNode(ctx, node)
-	defer node.Stop()
+	defer node.Close()
 
 	// Attach to the newly started node and start the JavaScript console
 	client, err := node.Attach()
@@ -184,7 +185,7 @@ func ephemeralConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
 	node := makeFullNode(ctx)
 	startNode(ctx, node)
-	defer node.Stop()
+	defer node.Close()
 
 	// Attach to the newly started node and start the JavaScript console
 	client, err := node.Attach()

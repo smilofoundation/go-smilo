@@ -23,7 +23,8 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/internal/ethapi"

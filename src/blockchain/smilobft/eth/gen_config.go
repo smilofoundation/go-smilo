@@ -5,10 +5,12 @@ package eth
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"go-smilo/src/blockchain/smilobft/miner"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
@@ -17,8 +19,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/eth/gasprice"
 )
 
-var _ = (*configMarshaling)(nil)
-
 // MarshalTOML marshals as TOML.
 func (c Config) MarshalTOML() (interface{}, error) {
 	type Config struct {
@@ -26,22 +26,23 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		NetworkId               uint64
 		SyncMode                downloader.SyncMode
 		NoPruning               bool
-		LightServ               int  `toml:",omitempty"`
-		LightPeers              int  `toml:",omitempty"`
-		SkipBcVersionCheck      bool `toml:"-"`
-		DatabaseHandles         int  `toml:"-"`
+		NoPrefetch              bool
+		Whitelist               map[uint64]common.Hash `toml:"-"`
+		LightServ               int                    `toml:",omitempty"`
+		LightIngress            int                    `toml:",omitempty"`
+		LightEgress             int                    `toml:",omitempty"`
+		LightPeers              int                    `toml:",omitempty"`
+		UltraLightServers       []string               `toml:",omitempty"`
+		UltraLightFraction      int                    `toml:",omitempty"`
+		UltraLightOnlyAnnounce  bool                   `toml:",omitempty"`
+		SkipBcVersionCheck      bool                   `toml:"-"`
+		DatabaseHandles         int                    `toml:"-"`
 		DatabaseCache           int
+		DatabaseFreezer         string
 		TrieCleanCache          int
 		TrieDirtyCache          int
 		TrieTimeout             time.Duration
-		Etherbase               common.Address `toml:",omitempty"`
-		MinerNotify             []string       `toml:",omitempty"`
-		MinerExtraData          hexutil.Bytes  `toml:",omitempty"`
-		MinerGasFloor           uint64
-		MinerGasCeil            uint64
-		MinerGasPrice           *big.Int
-		MinerRecommit           time.Duration
-		MinerNoverify           bool
+		Miner                   miner.Config
 		Ethash                  ethash.Config
 		TxPool                  core.TxPoolConfig
 		GPO                     gasprice.Config
@@ -50,28 +51,32 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		DocRoot                 string `toml:"-"`
 		EWASMInterpreter        string
 		EVMInterpreter          string
+		RPCGasCap               *big.Int `toml:",omitempty"`
+		Checkpoint              *params.TrustedCheckpoint
+		CheckpointOracle        *params.CheckpointOracleConfig
 	}
 	var enc Config
 	enc.Genesis = c.Genesis
 	enc.NetworkId = c.NetworkId
 	enc.SyncMode = c.SyncMode
 	enc.NoPruning = c.NoPruning
+	enc.NoPrefetch = c.NoPrefetch
+	enc.Whitelist = c.Whitelist
 	enc.LightServ = c.LightServ
+	enc.LightIngress = c.LightIngress
+	enc.LightEgress = c.LightEgress
 	enc.LightPeers = c.LightPeers
+	enc.UltraLightServers = c.UltraLightServers
+	enc.UltraLightFraction = c.UltraLightFraction
+	enc.UltraLightOnlyAnnounce = c.UltraLightOnlyAnnounce
 	enc.SkipBcVersionCheck = c.SkipBcVersionCheck
 	enc.DatabaseHandles = c.DatabaseHandles
 	enc.DatabaseCache = c.DatabaseCache
+	enc.DatabaseFreezer = c.DatabaseFreezer
 	enc.TrieCleanCache = c.TrieCleanCache
 	enc.TrieDirtyCache = c.TrieDirtyCache
 	enc.TrieTimeout = c.TrieTimeout
-	enc.Etherbase = c.Etherbase
-	enc.MinerNotify = c.MinerNotify
-	enc.MinerExtraData = c.MinerExtraData
-	enc.MinerGasFloor = c.MinerGasFloor
-	enc.MinerGasCeil = c.MinerGasCeil
-	enc.MinerGasPrice = c.MinerGasPrice
-	enc.MinerRecommit = c.MinerRecommit
-	enc.MinerNoverify = c.MinerNoverify
+	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
@@ -80,6 +85,9 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.DocRoot = c.DocRoot
 	enc.EWASMInterpreter = c.EWASMInterpreter
 	enc.EVMInterpreter = c.EVMInterpreter
+	enc.RPCGasCap = c.RPCGasCap
+	enc.Checkpoint = c.Checkpoint
+	enc.CheckpointOracle = c.CheckpointOracle
 	return &enc, nil
 }
 
@@ -90,22 +98,23 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		NetworkId               *uint64
 		SyncMode                *downloader.SyncMode
 		NoPruning               *bool
-		LightServ               *int  `toml:",omitempty"`
-		LightPeers              *int  `toml:",omitempty"`
-		SkipBcVersionCheck      *bool `toml:"-"`
-		DatabaseHandles         *int  `toml:"-"`
+		NoPrefetch              *bool
+		Whitelist               map[uint64]common.Hash `toml:"-"`
+		LightServ               *int                   `toml:",omitempty"`
+		LightIngress            *int                   `toml:",omitempty"`
+		LightEgress             *int                   `toml:",omitempty"`
+		LightPeers              *int                   `toml:",omitempty"`
+		UltraLightServers       []string               `toml:",omitempty"`
+		UltraLightFraction      *int                   `toml:",omitempty"`
+		UltraLightOnlyAnnounce  *bool                  `toml:",omitempty"`
+		SkipBcVersionCheck      *bool                  `toml:"-"`
+		DatabaseHandles         *int                   `toml:"-"`
 		DatabaseCache           *int
+		DatabaseFreezer         *string
 		TrieCleanCache          *int
 		TrieDirtyCache          *int
 		TrieTimeout             *time.Duration
-		Etherbase               *common.Address `toml:",omitempty"`
-		MinerNotify             []string        `toml:",omitempty"`
-		MinerExtraData          *hexutil.Bytes  `toml:",omitempty"`
-		MinerGasFloor           *uint64
-		MinerGasCeil            *uint64
-		MinerGasPrice           *big.Int
-		MinerRecommit           *time.Duration
-		MinerNoverify           *bool
+		Miner                   *miner.Config
 		Ethash                  *ethash.Config
 		TxPool                  *core.TxPoolConfig
 		GPO                     *gasprice.Config
@@ -114,6 +123,9 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		DocRoot                 *string `toml:"-"`
 		EWASMInterpreter        *string
 		EVMInterpreter          *string
+		RPCGasCap               *big.Int `toml:",omitempty"`
+		Checkpoint              *params.TrustedCheckpoint
+		CheckpointOracle        *params.CheckpointOracleConfig
 	}
 	var dec Config
 	if err := unmarshal(&dec); err != nil {
@@ -131,11 +143,32 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.NoPruning != nil {
 		c.NoPruning = *dec.NoPruning
 	}
+	if dec.NoPrefetch != nil {
+		c.NoPrefetch = *dec.NoPrefetch
+	}
+	if dec.Whitelist != nil {
+		c.Whitelist = dec.Whitelist
+	}
 	if dec.LightServ != nil {
 		c.LightServ = *dec.LightServ
 	}
+	if dec.LightIngress != nil {
+		c.LightIngress = *dec.LightIngress
+	}
+	if dec.LightEgress != nil {
+		c.LightEgress = *dec.LightEgress
+	}
 	if dec.LightPeers != nil {
 		c.LightPeers = *dec.LightPeers
+	}
+	if dec.UltraLightServers != nil {
+		c.UltraLightServers = dec.UltraLightServers
+	}
+	if dec.UltraLightFraction != nil {
+		c.UltraLightFraction = *dec.UltraLightFraction
+	}
+	if dec.UltraLightOnlyAnnounce != nil {
+		c.UltraLightOnlyAnnounce = *dec.UltraLightOnlyAnnounce
 	}
 	if dec.SkipBcVersionCheck != nil {
 		c.SkipBcVersionCheck = *dec.SkipBcVersionCheck
@@ -146,6 +179,9 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.DatabaseCache != nil {
 		c.DatabaseCache = *dec.DatabaseCache
 	}
+	if dec.DatabaseFreezer != nil {
+		c.DatabaseFreezer = *dec.DatabaseFreezer
+	}
 	if dec.TrieCleanCache != nil {
 		c.TrieCleanCache = *dec.TrieCleanCache
 	}
@@ -155,29 +191,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.TrieTimeout != nil {
 		c.TrieTimeout = *dec.TrieTimeout
 	}
-	if dec.Etherbase != nil {
-		c.Etherbase = *dec.Etherbase
-	}
-	if dec.MinerNotify != nil {
-		c.MinerNotify = dec.MinerNotify
-	}
-	if dec.MinerExtraData != nil {
-		c.MinerExtraData = *dec.MinerExtraData
-	}
-	if dec.MinerGasFloor != nil {
-		c.MinerGasFloor = *dec.MinerGasFloor
-	}
-	if dec.MinerGasCeil != nil {
-		c.MinerGasCeil = *dec.MinerGasCeil
-	}
-	if dec.MinerGasPrice != nil {
-		c.MinerGasPrice = dec.MinerGasPrice
-	}
-	if dec.MinerRecommit != nil {
-		c.MinerRecommit = *dec.MinerRecommit
-	}
-	if dec.MinerNoverify != nil {
-		c.MinerNoverify = *dec.MinerNoverify
+	if dec.Miner != nil {
+		c.Miner = *dec.Miner
 	}
 	if dec.Ethash != nil {
 		c.Ethash = *dec.Ethash
@@ -202,6 +217,15 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.EVMInterpreter != nil {
 		c.EVMInterpreter = *dec.EVMInterpreter
+	}
+	if dec.RPCGasCap != nil {
+		c.RPCGasCap = dec.RPCGasCap
+	}
+	if dec.Checkpoint != nil {
+		c.Checkpoint = dec.Checkpoint
+	}
+	if dec.CheckpointOracle != nil {
+		c.CheckpointOracle = dec.CheckpointOracle
 	}
 	return nil
 }

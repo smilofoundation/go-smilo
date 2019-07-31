@@ -64,8 +64,9 @@ type Agent interface {
 // Work is the workers current environment and holds
 // all of the current state information
 type Work struct {
-	config *params.ChainConfig
-	signer types.Signer
+	config      *Config
+	chainConfig *params.ChainConfig
+	signer      types.Signer
 
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
@@ -94,8 +95,9 @@ type Result struct {
 
 // worker is the main object which takes care of applying messages to the new state
 type worker struct {
-	config *params.ChainConfig
-	engine consensus.Engine
+	config      *Config
+	chainConfig *params.ChainConfig
+	engine      consensus.Engine
 
 	mu sync.Mutex
 
@@ -114,6 +116,8 @@ type worker struct {
 
 	agents map[Agent]struct{}
 	recv   chan *Result
+
+	resubmitIntervalCh chan time.Duration
 
 	eth     Backend
 	chain   *core.BlockChain
@@ -140,11 +144,13 @@ type worker struct {
 	atWork int32
 
 	minBlocksEmptyMining *big.Int // Min Blocks to mine before Stop Mining Empty Blocks
+
 }
 
-func newWorker(config *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux, minBlocksEmptyMining *big.Int) *worker {
+func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux, minBlocksEmptyMining *big.Int) *worker {
 	worker := &worker{
 		config:               config,
+		chainConfig:          chainConfig,
 		engine:               engine,
 		eth:                  eth,
 		mux:                  mux,
@@ -160,9 +166,10 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, coinbase com
 		agents:               make(map[Agent]struct{}),
 		unconfirmed:          newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		minBlocksEmptyMining: minBlocksEmptyMining,
+		resubmitIntervalCh:   make(chan time.Duration),
 	}
 
-	if _, ok := engine.(consensus.SmiloBFT); ok || !config.IsSmilo || config.Clique != nil {
+	if _, ok := engine.(consensus.SmiloBFT); ok || !chainConfig.IsSmilo || chainConfig.Clique != nil {
 		// Subscribe TxPreEvent for tx pool
 		worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 		// Subscribe events for blockchain
@@ -171,7 +178,7 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, coinbase com
 		go worker.update()
 
 		go worker.wait()
-		worker.commitNewWork()
+		worker.commitNewWork(time.Now().Unix())
 	}
 
 	return worker
@@ -181,6 +188,11 @@ func (self *worker) setEtherbase(addr common.Address) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.coinbase = addr
+}
+
+// setRecommitInterval updates the interval for miner sealing work recommitting.
+func (self *worker) setRecommitInterval(interval time.Duration) {
+	self.resubmitIntervalCh <- interval
 }
 
 func (self *worker) setExtra(extra []byte) {
@@ -221,7 +233,11 @@ func (self *worker) start() {
 
 	atomic.StoreInt32(&self.mining, 1)
 	if sport, ok := self.engine.(consensus.SmiloBFT); ok {
-		sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+		log.Info("SmiloBFT consensus will start ...")
+		err := sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+		if err != nil {
+			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
+		}
 	}
 
 	// spin up agents
@@ -275,7 +291,7 @@ func (self *worker) update() {
 			if h, ok := self.engine.(consensus.Handler); ok {
 				h.NewChainHead()
 			}
-			self.commitNewWork()
+			self.commitNewWork(time.Now().Unix())
 
 			// Handle ChainSideEvent
 		case ev := <-self.chainSideCh:
@@ -303,9 +319,9 @@ func (self *worker) update() {
 				self.currentMu.Unlock()
 			} else {
 				// If we're mining, but nothing is being processed, wake on new transactions
-				log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksMining", self.minBlocksEmptyMining, "IsSport", self.config.Sport != nil, "BlockNum Cmp MinBlocksMining", self.current.Block.Number().Cmp(self.minBlocksEmptyMining))
-				if self.config.Sport != nil && self.current.Block.Number().Cmp(self.minBlocksEmptyMining) >= 0 {
-					self.commitNewWork()
+				log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksMining", self.minBlocksEmptyMining, "IsSport", self.chainConfig.Sport != nil, "BlockNum Cmp MinBlocksMining", self.current.Block.Number().Cmp(self.minBlocksEmptyMining))
+				if self.chainConfig.Sport != nil && self.current.Block.Number().Cmp(self.minBlocksEmptyMining) >= 0 {
+					self.commitNewWork(time.Now().Unix())
 				}
 			}
 
@@ -344,7 +360,7 @@ func (self *worker) wait() {
 			}
 
 			// write private transacions
-			vaultStateRoot, _ := work.vaultState.Commit(self.config.IsEIP158(block.Number()))
+			vaultStateRoot, _ := work.vaultState.Commit(self.chainConfig.IsEIP158(block.Number()))
 			core.WriteVaultStateRoot(self.chainDb, block.Root(), vaultStateRoot)
 			allReceipts := mergeReceipts(work.receipts, work.vaultReceipts)
 
@@ -412,15 +428,16 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 		return err
 	}
 	work := &Work{
-		config:     self.config,
-		signer:     types.MakeSigner(self.config, header.Number),
-		state:      publicState,
-		ancestors:  mapset.NewSet(),
-		family:     mapset.NewSet(),
-		uncles:     mapset.NewSet(),
-		header:     header,
-		createdAt:  time.Now(),
-		vaultState: vaultState,
+		config:      self.config,
+		chainConfig: self.chainConfig,
+		signer:      types.MakeSigner(self.chainConfig, header.Number),
+		state:       publicState,
+		ancestors:   mapset.NewSet(),
+		family:      mapset.NewSet(),
+		uncles:      mapset.NewSet(),
+		header:      header,
+		createdAt:   time.Now(),
+		vaultState:  vaultState,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -438,7 +455,7 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 	return nil
 }
 
-func (self *worker) commitNewWork() {
+func (self *worker) commitNewWork(timestamp int64) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.uncleMu.Lock()
@@ -450,8 +467,8 @@ func (self *worker) commitNewWork() {
 	parent := self.chain.CurrentBlock()
 
 	tstamp := tstart.Unix()
-	if parent.Time().Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
-		tstamp = parent.Time().Int64() + 1
+	if new(big.Int).SetUint64(parent.Time()).Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
+		tstamp = int64(parent.Time()) + 1
 	}
 	// this will ensure we're not going off too far in the future
 	if now := time.Now().Unix(); tstamp > now+1 {
@@ -464,9 +481,9 @@ func (self *worker) commitNewWork() {
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),
-		GasLimit:   core.CalcGasLimit(parent),
+		GasLimit:   core.CalcGasLimit(parent, self.config.GasFloor, self.config.GasCeil),
 		Extra:      self.extra,
-		Time:       big.NewInt(tstamp),
+		Time:       uint64(timestamp),
 	}
 	// Only set the coinbase if we are mining (avoid spurious block rewards)
 	if atomic.LoadInt32(&self.mining) == 1 {
@@ -477,12 +494,12 @@ func (self *worker) commitNewWork() {
 		return
 	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
-	if daoBlock := self.config.DAOForkBlock; daoBlock != nil {
+	if daoBlock := self.chainConfig.DAOForkBlock; daoBlock != nil {
 		// Check whether the block is among the fork extra-override range
 		limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
 		if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
 			// Depending whether we support or oppose the fork, override differently
-			if self.config.DAOForkSupport {
+			if self.chainConfig.DAOForkSupport {
 				header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
 			} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
 				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
@@ -497,7 +514,7 @@ func (self *worker) commitNewWork() {
 	}
 	// Create the current work task and check any fork transitions needed
 	work := self.current
-	if self.config.DAOForkSupport && self.config.DAOForkBlock != nil && self.config.DAOForkBlock.Cmp(header.Number) == 0 {
+	if self.chainConfig.DAOForkSupport && self.chainConfig.DAOForkBlock != nil && self.chainConfig.DAOForkBlock.Cmp(header.Number) == 0 {
 		misc.ApplyDAOHardFork(work.state, header.Number)
 	}
 
@@ -541,9 +558,10 @@ func (self *worker) commitNewWork() {
 	for _, hash := range badUncles {
 		delete(self.possibleUncles, hash)
 	}
-	// Create the new block to seal with the consensus engine
-	log.Warn("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
-	if work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.txs, uncles, work.receipts); err != nil {
+	log.Debug("****************** worker.commitNewWork, Create the new block to seal with the consensus engine", "txs", len(work.txs))
+	work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.txs, uncles, work.receipts)
+
+	if err != nil {
 		log.Error("Failed to finalize block for sealing", "err", err)
 		return
 	}
@@ -610,8 +628,8 @@ func (env *Work) commitTransactions(mux *event.TypeMux, txs *types.TransactionsB
 		from, _ := types.Sender(env.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !env.config.IsEIP155(env.header.Number) && !tx.IsVault() {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", env.config.EIP155Block)
+		if tx.Protected() && !env.chainConfig.IsEIP155(env.header.Number) && !tx.IsVault() {
+			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", env.chainConfig.EIP155Block)
 
 			txs.Pop()
 			continue
@@ -675,7 +693,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, c
 	snap := env.state.Snapshot()
 	vaultSnap := env.vaultState.Snapshot()
 
-	receipt, vaultReceipt, _, err := core.ApplyTransaction(env.config, bc, &coinbase, gp, env.state, env.vaultState, env.header, tx, &env.header.GasUsed, vm.Config{})
+	receipt, vaultReceipt, _, err := core.ApplyTransaction(env.chainConfig, bc, &coinbase, gp, env.state, env.vaultState, env.header, tx, &env.header.GasUsed, vm.Config{})
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		env.vaultState.RevertToSnapshot(vaultSnap)

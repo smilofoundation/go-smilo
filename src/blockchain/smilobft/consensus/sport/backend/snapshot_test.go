@@ -24,6 +24,8 @@ import (
 	"reflect"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -35,7 +37,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 )
 
 type testerVote struct {
@@ -347,7 +348,7 @@ func TestVoting(t *testing.T) {
 			extra, _ := prepareExtra(b.Header(), fullnodes)
 			genesis.ExtraData = extra
 			// Create a pristine blockchain with the genesis injected
-			db := ethdb.NewMemDatabase()
+			db := rawdb.NewMemoryDatabase()
 			genesis.Commit(db)
 
 			config := sport.DefaultConfig
@@ -355,14 +356,14 @@ func TestVoting(t *testing.T) {
 				config.Epoch = tt.epoch
 			}
 			engine := New(config, accounts.accounts[tt.fullnodes[0]], db).(*backend)
-			chain, err := core.NewBlockChain(db, nil, genesis.Config, engine, vm.Config{})
+			chain, err := core.NewBlockChain(db, nil, genesis.Config, engine, vm.Config{}, nil)
 
 			// Assemble a chain of headers from the cast votes
 			headers := make([]*types.Header, len(tt.votes))
 			for j, vote := range tt.votes {
 				headers[j] = &types.Header{
 					Number:     big.NewInt(int64(j) + 1),
-					Time:       big.NewInt(int64(j) * int64(config.BlockPeriod)),
+					Time:       uint64(j) * uint64(config.BlockPeriod),
 					Coinbase:   accounts.address(vote.voted),
 					Difficulty: defaultDifficulty,
 					MixDigest:  types.SportDigest,
@@ -437,7 +438,7 @@ func TestSaveAndLoad(t *testing.T) {
 			cmn.StringToAddress("1234567895"),
 		}, sport.RoundRobin),
 	}
-	db := ethdb.NewMemDatabase()
+	db := rawdb.NewMemoryDatabase()
 	err := snap.store(db)
 	if err != nil {
 		t.Errorf("store snapshot failed: %v", err)

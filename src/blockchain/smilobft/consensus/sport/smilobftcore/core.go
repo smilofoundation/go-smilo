@@ -142,7 +142,7 @@ func (c *core) startNewRound(round *big.Int) {
 	// Try to get last proposal
 	lastBlockProposal, lastSpeaker := c.backend.LastBlockProposal()
 	if c.current == nil {
-		logger.Debug("Start to the initial round")
+		logger.Debug("startNewRound, lastBlockProposal not found, Start to the initial round")
 	} else if lastBlockProposal.Number().Cmp(c.current.Sequence()) >= 0 {
 		diff := new(big.Int).Sub(lastBlockProposal.Number(), c.current.Sequence())
 		c.sequenceMeter.Mark(new(big.Int).Add(diff, common.Big1).Int64())
@@ -197,8 +197,10 @@ func (c *core) startNewRound(round *big.Int) {
 			r := &sport.Request{
 				BlockProposal: c.current.BlockProposal(), //c.current.BlockProposal would be the locked proposal by previous speaker, see updateRoundState
 			}
+			logger.Debug("startNewRound, I'm the speaker, IsHashLocked, sendPreprepare", "BlockProposal", r.BlockProposal.String())
 			c.sendPreprepare(r)
 		} else if c.current.pendingRequest != nil {
+			logger.Debug("startNewRound, I'm the speaker, pendingRequest, sendPreprepare", "BlockProposal", c.current.pendingRequest.BlockProposal.String())
 			c.sendPreprepare(c.current.pendingRequest)
 		}
 	}

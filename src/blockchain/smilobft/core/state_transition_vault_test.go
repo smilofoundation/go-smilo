@@ -21,11 +21,12 @@ import (
 	"math/big"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/stretchr/testify/require"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/vault"
 
@@ -45,7 +46,7 @@ func verifyGasPoolCalculation(t *testing.T, pm vault.BlackboxVault) {
 	arbitraryEncryptedPayload := "4ab80888354582b92ab442a317828386e4bf21ea4a38d1a9183fbb715f199475269d7686939017f4a6b28310d5003ebd8e012eade530b79e157657ce8dd9692a"
 	expectedGasPool := new(GasPool).AddGas(174712) // only intrinsic gas is deducted
 
-	db := ethdb.NewMemDatabase()
+	db := rawdb.NewMemoryDatabase()
 	privateState, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	publicState, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	msg := vaultMessage{

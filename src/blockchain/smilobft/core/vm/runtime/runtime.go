@@ -22,12 +22,13 @@ import (
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
@@ -43,7 +44,6 @@ type Config struct {
 	GasLimit    uint64
 	GasPrice    *big.Int
 	Value       *big.Int
-	DisableJit  bool // "disable" so it's enabled by default
 	Debug       bool
 	EVMConfig   vm.Config
 
@@ -102,7 +102,7 @@ func Execute(code, input []byte, cfg *Config, isVault bool) ([]byte, *state.Stat
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(ethdb.NewMemDatabase()))
+		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 	}
 	var (
 		address = common.BytesToAddress([]byte("contract"))
@@ -133,7 +133,7 @@ func Create(input []byte, cfg *Config, isVault bool) ([]byte, common.Address, ui
 	setDefaults(cfg)
 
 	if cfg.State == nil {
-		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(ethdb.NewMemDatabase()))
+		cfg.State, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
 	}
 	var (
 		vmenv  = NewEnv(cfg)

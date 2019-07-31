@@ -18,12 +18,14 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/core"
@@ -40,8 +42,9 @@ import (
 
 // EthAPIBackend implements ethapi.Backend for full nodes
 type EthAPIBackend struct {
-	eth *Smilo
-	gpo *gasprice.Oracle
+	extRPCEnabled bool
+	eth           *Smilo
+	gpo           *gasprice.Oracle
 }
 
 // ChainConfig returns the active chain configuration.
@@ -96,8 +99,11 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.
 	}
 	// Otherwise resolve the block number and return its state
 	header, err := b.HeaderByNumber(ctx, blockNr)
-	if header == nil || err != nil {
+	if err != nil {
 		return nil, nil, err
+	}
+	if header == nil {
+		return nil, nil, errors.New("header not found")
 	}
 	stateDb, vaultState, err := b.eth.BlockChain().StateAt(header.Root)
 	return EthAPIState{stateDb, vaultState}, header, err
@@ -108,18 +114,11 @@ func (b *EthAPIBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.
 }
 
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-	if number := rawdb.ReadHeaderNumber(b.eth.chainDb, hash); number != nil {
-		return rawdb.ReadReceipts(b.eth.chainDb, hash, *number), nil
-	}
-	return nil, nil
+	return b.eth.blockchain.GetReceiptsByHash(hash), nil
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
-	number := rawdb.ReadHeaderNumber(b.eth.chainDb, hash)
-	if number == nil {
-		return nil, nil
-	}
-	receipts := rawdb.ReadReceipts(b.eth.chainDb, hash, *number)
+	receipts := b.eth.blockchain.GetReceiptsByHash(hash)
 	if receipts == nil {
 		return nil, nil
 	}
@@ -136,7 +135,7 @@ func (b *EthAPIBackend) GetTd(blockHash common.Hash) *big.Int {
 
 func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state vm.SmiloAPIState, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error) {
 	statedb := state
-	from := statedb.(EthAPIState).state.GetOrNewStateObject(msg.From())
+	from := statedb.(EthAPIState).State.GetOrNewStateObject(msg.From())
 	from.SetBalance(math.MaxBig256, header.Number)
 	from.SetSmiloPay(math.MaxBig256)
 	vmError := func() error { return nil }
@@ -149,12 +148,12 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state vm.S
 	}
 
 	// Should be public, if address is not present in private state
-	privateState := statedb.(EthAPIState).vaultState
+	privateState := statedb.(EthAPIState).VaultState
 	if !privateState.Exist(to) {
-		privateState = statedb.(EthAPIState).state
+		privateState = statedb.(EthAPIState).State
 	}
 
-	return vm.NewEVM(context, statedb.(EthAPIState).state, statedb.(EthAPIState).vaultState, b.eth.chainConfig, vmCfg), vmError, nil
+	return vm.NewEVM(context, statedb.(EthAPIState).State, statedb.(EthAPIState).VaultState, b.eth.chainConfig, vmCfg), vmError, nil
 }
 
 func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
@@ -197,8 +196,13 @@ func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction 
 	return b.eth.txPool.Get(hash)
 }
 
+func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(b.eth.ChainDb(), txHash)
+	return tx, blockHash, blockNumber, index, nil
+}
+
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	return b.eth.txPool.State().GetNonce(addr), nil
+	return b.eth.txPool.Nonce(addr), nil
 }
 
 func (b *EthAPIBackend) Stats() (pending int, queued int) {
@@ -242,6 +246,14 @@ func (b *EthAPIBackend) AccountManager() *accounts.Manager {
 	return b.eth.AccountManager()
 }
 
+func (b *EthAPIBackend) ExtRPCEnabled() bool {
+	return b.extRPCEnabled
+}
+
+func (b *EthAPIBackend) RPCGasCap() *big.Int {
+	return b.eth.config.RPCGasCap
+}
+
 func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
 	sections, _, _ := b.eth.bloomIndexer.Sections()
 	return params.BloomBitsBlocks, sections
@@ -264,112 +276,112 @@ func (b *EthAPIBackend) GetSmiloCodeAnalysisPath() string {
 }
 
 type EthAPIState struct {
-	state, vaultState *state.StateDB
+	State, VaultState *state.StateDB
 }
 
 func (ethApiState EthAPIState) GetBalance(addr common.Address) *big.Int {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetBalance(addr)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetBalance(addr)
 	}
-	return ethApiState.state.GetBalance(addr)
+	return ethApiState.State.GetBalance(addr)
 }
 
 // AddBalance implemented to satisfy SmiloAPIState
 func (ethApiState EthAPIState) AddBalance(addr common.Address, amount *big.Int, blockNumber *big.Int) {
-	if ethApiState.vaultState.Exist(addr) {
-		ethApiState.vaultState.AddBalance(addr, amount, blockNumber)
+	if ethApiState.VaultState.Exist(addr) {
+		ethApiState.VaultState.AddBalance(addr, amount, blockNumber)
 	} else {
-		ethApiState.state.AddBalance(addr, amount, blockNumber)
+		ethApiState.State.AddBalance(addr, amount, blockNumber)
 	}
 }
 
 // SubSmiloPay implemented to satisfy SmiloAPIState
 func (ethApiState EthAPIState) SubSmiloPay(addr common.Address, amount *big.Int, blockNumber *big.Int) {
-	if ethApiState.vaultState.Exist(addr) {
-		ethApiState.vaultState.SubSmiloPay(addr, amount, blockNumber)
+	if ethApiState.VaultState.Exist(addr) {
+		ethApiState.VaultState.SubSmiloPay(addr, amount, blockNumber)
 	} else {
-		ethApiState.state.SubSmiloPay(addr, amount, blockNumber)
+		ethApiState.State.SubSmiloPay(addr, amount, blockNumber)
 	}
 }
 
 // AddSmiloPay implemented to satisfy SmiloAPIState
 func (ethApiState EthAPIState) AddSmiloPay(addr common.Address, amount *big.Int) {
-	if ethApiState.vaultState.Exist(addr) {
-		ethApiState.vaultState.AddSmiloPay(addr, amount)
+	if ethApiState.VaultState.Exist(addr) {
+		ethApiState.VaultState.AddSmiloPay(addr, amount)
 	} else {
-		ethApiState.state.AddSmiloPay(addr, amount)
+		ethApiState.State.AddSmiloPay(addr, amount)
 	}
 }
 
 // GetSmiloPay implemented to satisfy SmiloAPIState
 func (ethApiState EthAPIState) GetSmiloPay(addr common.Address, blockNumber *big.Int) *big.Int {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetSmiloPay(addr, blockNumber)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetSmiloPay(addr, blockNumber)
 	}
-	return ethApiState.state.GetSmiloPay(addr, blockNumber)
+	return ethApiState.State.GetSmiloPay(addr, blockNumber)
 }
 
 // SubBalance implemented to satisfy SmiloAPIState
 func (ethApiState EthAPIState) SubBalance(addr common.Address, amount, blockNumber *big.Int) {
-	if ethApiState.vaultState.Exist(addr) {
-		ethApiState.vaultState.SubBalance(addr, amount, blockNumber)
+	if ethApiState.VaultState.Exist(addr) {
+		ethApiState.VaultState.SubBalance(addr, amount, blockNumber)
 	} else {
-		ethApiState.state.SubBalance(addr, amount, blockNumber)
+		ethApiState.State.SubBalance(addr, amount, blockNumber)
 	}
 }
 
 func (ethApiState EthAPIState) GetCode(addr common.Address) []byte {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetCode(addr)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetCode(addr)
 	}
-	return ethApiState.state.GetCode(addr)
+	return ethApiState.State.GetCode(addr)
 }
 
 func (ethApiState EthAPIState) GetState(a common.Address, b common.Hash) common.Hash {
-	if ethApiState.vaultState.Exist(a) {
-		return ethApiState.vaultState.GetState(a, b)
+	if ethApiState.VaultState.Exist(a) {
+		return ethApiState.VaultState.GetState(a, b)
 	}
-	return ethApiState.state.GetState(a, b)
+	return ethApiState.State.GetState(a, b)
 }
 
 func (ethApiState EthAPIState) GetNonce(addr common.Address) uint64 {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetNonce(addr)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetNonce(addr)
 	}
-	return ethApiState.state.GetNonce(addr)
+	return ethApiState.State.GetNonce(addr)
 }
 
 func (ethApiState EthAPIState) GetProof(addr common.Address) ([][]byte, error) {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetProof(addr)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetProof(addr)
 	}
-	return ethApiState.state.GetProof(addr)
+	return ethApiState.State.GetProof(addr)
 }
 
 func (ethApiState EthAPIState) GetStorageProof(addr common.Address, h common.Hash) ([][]byte, error) {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.GetStorageProof(addr, h)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetStorageProof(addr, h)
 	}
-	return ethApiState.state.GetStorageProof(addr, h)
+	return ethApiState.State.GetStorageProof(addr, h)
 }
 
 func (ethApiState EthAPIState) StorageTrie(addr common.Address) state.Trie {
-	if ethApiState.vaultState.Exist(addr) {
-		return ethApiState.vaultState.StorageTrie(addr)
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.StorageTrie(addr)
 	}
-	return ethApiState.state.StorageTrie(addr)
+	return ethApiState.State.StorageTrie(addr)
 }
 
-func (s EthAPIState) Error() error {
-	if s.vaultState.Error() != nil {
-		return s.vaultState.Error()
+func (ethApiState EthAPIState) Error() error {
+	if ethApiState.VaultState.Error() != nil {
+		return ethApiState.VaultState.Error()
 	}
-	return s.state.Error()
+	return ethApiState.State.Error()
 }
 
-func (s EthAPIState) GetCodeHash(addr common.Address) common.Hash {
-	if s.vaultState.Exist(addr) {
-		return s.vaultState.GetCodeHash(addr)
+func (ethApiState EthAPIState) GetCodeHash(addr common.Address) common.Hash {
+	if ethApiState.VaultState.Exist(addr) {
+		return ethApiState.VaultState.GetCodeHash(addr)
 	}
-	return s.state.GetCodeHash(addr)
+	return ethApiState.State.GetCodeHash(addr)
 }

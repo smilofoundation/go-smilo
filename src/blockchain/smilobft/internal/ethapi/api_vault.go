@@ -65,7 +65,7 @@ func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, 
 		return common.Hash{}, fmt.Errorf("transaction is not vault type")
 	}
 
-	return submitTransaction(ctx, s.b, tx, isVault)
+	return SubmitTransaction(ctx, s.b, tx, isVault)
 }
 
 // Get the Vault Transaction content

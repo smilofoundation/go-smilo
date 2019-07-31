@@ -21,7 +21,8 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft"
 )

@@ -34,8 +34,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
 	"golang.org/x/net/websocket"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core"
@@ -174,7 +175,7 @@ func (s *Service) loop() {
 				default:
 				}
 
-				// Notify of new transaction events, but drop if too frequent
+			// Notify of new transaction events, but drop if too frequent
 			case <-txEventCh:
 				if time.Duration(mclock.Now()-lastTx) < time.Second {
 					continue
@@ -186,7 +187,7 @@ func (s *Service) loop() {
 				default:
 				}
 
-				// node stopped
+			// node stopped
 			case <-txSub.Err():
 				break HandleLoop
 			case <-headSub.Err():
@@ -560,7 +561,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		Number:     header.Number,
 		Hash:       header.Hash(),
 		ParentHash: header.ParentHash,
-		Timestamp:  header.Time,
+		Timestamp:  big.NewInt(0).SetUint64(header.Time),
 		Miner:      author,
 		GasUsed:    header.GasUsed,
 		GasLimit:   header.GasLimit,

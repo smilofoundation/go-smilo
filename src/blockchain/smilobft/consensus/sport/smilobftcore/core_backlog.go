@@ -101,8 +101,8 @@ func (c *core) storeBacklog(msg *message, src sport.Fullnode) {
 		if err == nil {
 			backlog.Push(msg, toPriority(msg.Code, p.View))
 		}
-		// for msgRoundChange, msgPrepare and msgCommit cases
 	default:
+		// for msgRoundChange, msgPrepare and msgCommit cases
 		var p *sport.Subject
 		err := msg.Decode(&p)
 		if err == nil {

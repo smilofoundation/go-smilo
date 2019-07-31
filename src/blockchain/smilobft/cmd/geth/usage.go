@@ -71,21 +71,34 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
+			utils.AncientFlag,
 			utils.KeyStoreDirFlag,
 			utils.NoUSBFlag,
+			utils.SmartCardDaemonPathFlag,
 			utils.NetworkIdFlag,
 			utils.TestnetFlag,
 			utils.RinkebyFlag,
 			utils.SportFlag,
 			utils.DeveloperFlag,
 			utils.SyncModeFlag,
+			utils.ExitWhenSyncedFlag,
 			utils.GCModeFlag,
 			utils.EthStatsURLFlag,
 			utils.IdentityFlag,
-			utils.LightServFlag,
-			utils.LightPeersFlag,
 			utils.LightKDFFlag,
 			utils.WhitelistFlag,
+		},
+	},
+	{
+		Name: "LIGHT CLIENT",
+		Flags: []cli.Flag{
+			utils.LightServeFlag,
+			utils.LightIngressFlag,
+			utils.LightEgressFlag,
+			utils.LightMaxPeersFlag,
+			utils.UltraLightServersFlag,
+			utils.UltraLightFractionFlag,
+			utils.UltraLightOnlyAnnounceFlag,
 		},
 	},
 	{
@@ -133,24 +146,13 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
-		Name: "ETHASH",
-		Flags: []cli.Flag{
-			utils.EthashCacheDirFlag,
-			utils.EthashCachesInMemoryFlag,
-			utils.EthashCachesOnDiskFlag,
-			utils.EthashDatasetDirFlag,
-			utils.EthashDatasetsInMemoryFlag,
-			utils.EthashDatasetsOnDiskFlag,
-		},
-	},
-	{
 		Name: "PERFORMANCE TUNING",
 		Flags: []cli.Flag{
 			utils.CacheFlag,
 			utils.CacheDatabaseFlag,
 			utils.CacheTrieFlag,
 			utils.CacheGCFlag,
-			utils.TrieCacheGenFlag,
+			utils.CacheNoPrefetchFlag,
 		},
 	},
 	{
@@ -164,24 +166,32 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.UnlockedAccountFlag,
 			utils.PasswordFileFlag,
+			utils.ExternalSignerFlag,
+			utils.InsecureUnlockAllowedFlag,
 		},
 	},
 	{
 		Name: "API AND CONSOLE",
 		Flags: []cli.Flag{
+			utils.IPCDisabledFlag,
+			utils.IPCPathFlag,
 			utils.RPCEnabledFlag,
 			utils.RPCListenAddrFlag,
 			utils.RPCPortFlag,
 			utils.RPCApiFlag,
+			utils.RPCGlobalGasCap,
+			utils.RPCCORSDomainFlag,
+			utils.RPCVirtualHostsFlag,
 			utils.WSEnabledFlag,
 			utils.WSListenAddrFlag,
 			utils.WSPortFlag,
 			utils.WSApiFlag,
 			utils.WSAllowedOriginsFlag,
-			utils.IPCDisabledFlag,
-			utils.IPCPathFlag,
-			utils.RPCCORSDomainFlag,
-			utils.RPCVirtualHostsFlag,
+			utils.GraphQLEnabledFlag,
+			utils.GraphQLListenAddrFlag,
+			utils.GraphQLPortFlag,
+			utils.GraphQLCORSDomainFlag,
+			utils.GraphQLVirtualHostsFlag,
 			utils.JSpathFlag,
 			utils.ExecFlag,
 			utils.PreloadJSFlag,
@@ -242,16 +252,8 @@ var AppHelpFlagGroups = []flagGroup{
 		}, debug.Flags...),
 	},
 	{
-		Name: "METRICS AND STATS",
-		Flags: []cli.Flag{
-			utils.MetricsEnabledFlag,
-			utils.MetricsEnableInfluxDBFlag,
-			utils.MetricsInfluxDBEndpointFlag,
-			utils.MetricsInfluxDBDatabaseFlag,
-			utils.MetricsInfluxDBUsernameFlag,
-			utils.MetricsInfluxDBPasswordFlag,
-			utils.MetricsInfluxDBTagsFlag,
-		},
+		Name:  "METRICS AND STATS",
+		Flags: metricsFlags,
 	},
 	{
 		Name:  "WHISPER (EXPERIMENTAL)",
@@ -260,6 +262,8 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "DEPRECATED",
 		Flags: []cli.Flag{
+			utils.LightLegacyServFlag,
+			utils.LightLegacyPeersFlag,
 			utils.MinerLegacyThreadsFlag,
 			utils.MinerLegacyGasTargetFlag,
 			utils.MinerLegacyGasPriceFlag,
@@ -341,7 +345,7 @@ func init() {
 					categorized[flag.String()] = struct{}{}
 				}
 			}
-			uncategorized := []cli.Flag{}
+			var uncategorized []cli.Flag
 			for _, flag := range data.(*cli.App).Flags {
 				if _, ok := categorized[flag.String()]; !ok {
 					if strings.HasPrefix(flag.GetName(), "dashboard") {

@@ -59,8 +59,6 @@ type Contract struct {
 
 	Gas   uint64
 	value *big.Int
-
-	Args []byte
 }
 
 // NewContract returns a new contract environment for the execution of EVM.
@@ -167,12 +165,6 @@ func (c *Contract) Address() common.Address {
 // Value returns the contracts value (sent to it from it's caller)
 func (c *Contract) Value() *big.Int {
 	return c.value
-}
-
-// SetCode sets the code to the contract
-func (c *Contract) SetCode(hash common.Hash, code []byte) {
-	c.Code = code
-	c.CodeHash = hash
 }
 
 // SetCallCode sets the code of the contract and address of the backing data

@@ -19,11 +19,13 @@ package shhclient
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
+	"go-smilo/src/blockchain/smilobft"
 
-	whisper "go-smilo/src/blockchain/smilobft/whisper/whisperv5"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
+
+	whisper "go-smilo/src/blockchain/smilobft/whisper/whisperv6"
 )
 
 // Client defines typed wrappers for the Whisper v6 RPC API.
@@ -168,7 +170,7 @@ func (sc *Client) Post(ctx context.Context, message whisper.NewMessage) (string,
 // SubscribeMessages subscribes to messages that match the given criteria. This method
 // is only supported on bi-directional connections such as websockets and IPC.
 // NewMessageFilter uses polling and is supported over HTTP.
-func (sc *Client) SubscribeMessages(ctx context.Context, criteria whisper.Criteria, ch chan<- *whisper.Message) (ethereum.Subscription, error) {
+func (sc *Client) SubscribeMessages(ctx context.Context, criteria whisper.Criteria, ch chan<- *whisper.Message) (smilobft.Subscription, error) {
 	return sc.c.ShhSubscribe(ctx, ch, "messages", criteria)
 }
 

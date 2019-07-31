@@ -131,6 +131,7 @@ swarm: clean
 	@echo "Run \"$(GOBIN)/swarm\" to launch swarm."
 
 android: clean
+	export ANDROID_NDK_HOME=~/Downloads/android-studio/plugins/android-ndk/ # or replace it with your NDK_HOME, see: https://developer.android.com/ndk/guides/index.html
 	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go aar --local
 	@echo "Done building."
 	@echo "Import \"$(GOBIN)/geth.aar\" to use the library."
@@ -167,7 +168,7 @@ generate:
 
 
 # Cross Compilation Targets (xgo)
-geth-cross: geth-linux geth-darwin geth-windows geth-android geth-ios
+geth-cross: geth-linux geth-darwin geth-windows android ios
 	@echo "Full cross compilation done:"
 	@ls -ld $(GOBIN)/geth-*
 

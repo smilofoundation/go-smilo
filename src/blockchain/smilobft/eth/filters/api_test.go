@@ -22,7 +22,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 func TestUnmarshalJSONNewFilterArgs(t *testing.T) {

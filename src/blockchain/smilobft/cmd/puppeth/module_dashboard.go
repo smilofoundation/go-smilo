@@ -259,7 +259,7 @@ var dashboardContent = `
 										<p>The stable Android archives are distributed via Maven Central, and the develop snapshots via the Sonatype repositories. Before proceeding, please ensure you have a recent version configured in your Android project. You can find details in <a href="https://github.com/ethereum/go-ethereum/wiki/Mobile:-Introduction#android-archive" target="about:blank">Mobile: Introduction &ndash; Android archive</a>.
 										<p>Before connecting to the Ethereum network, download the <a href="/{{.GethGenesis}}"><code>{{.GethGenesis}}</code></a> genesis json file and either store it in your Android project as a resource file you can access, or save it as a string in a variable. You're going to need to to initialize your client.</p>
 										<p>Inside your Java code you can now import the geth archive and connect to Ethereum:
-											<pre>import org.ethereum.geth.*;</pre>
+											<pre>import org.smilo.geth.*;</pre>
 <pre>
 Enodes bootnodes = new Enodes();{{range .Bootnodes}}
 bootnodes.append(new Enode("{{.}}"));{{end}}

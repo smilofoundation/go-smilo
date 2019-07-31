@@ -156,7 +156,7 @@ func (w *ledgerDriver) Derive(path accounts.DerivationPath) (common.Address, err
 // Note, if the version of the Ethereum application running on the Ledger wallet is
 // too old to sign EIP-155 transactions, but such is requested nonetheless, an error
 // will be returned opposed to silently signing in Homestead mode.
-func (w *ledgerDriver) SignTx(path accounts.DerivationPath, tx *types.Transaction, chainID *big.Int, isSmilo bool) (common.Address, *types.Transaction, error) {
+func (w *ledgerDriver) SignTx(path accounts.DerivationPath, tx *types.Transaction, chainID *big.Int) (common.Address, *types.Transaction, error) {
 	// If the Ethereum app doesn't run, abort
 	if w.offline() {
 		return common.Address{}, nil, accounts.ErrWalletClosed

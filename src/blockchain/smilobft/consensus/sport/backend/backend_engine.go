@@ -31,7 +31,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/orinocopay/go-etherutils"
 
@@ -153,7 +154,7 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Don't waste time checking blocks from the future
-	if header.Time.Cmp(big.NewInt(now().Unix())) > 0 {
+	if big.NewInt(int64(header.Time)).Cmp(big.NewInt(now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
 
@@ -202,7 +203,7 @@ func (sb *backend) verifyCascadingFields(chain consensus.ChainReader, header *ty
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
-	if parent.Time.Uint64()+sb.config.BlockPeriod > header.Time.Uint64() {
+	if parent.Time+sb.config.BlockPeriod > header.Time {
 		return errInvalidTimestamp
 	}
 	// Verify fullnodes in extraData. Fullnodes in snapshot and extraData should be the same.
@@ -349,9 +350,9 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	header.Extra = extra
 
 	// set header's timestamp
-	header.Time = new(big.Int).Add(parent.Time, new(big.Int).SetUint64(sb.config.BlockPeriod))
-	if header.Time.Int64() < time.Now().Unix() {
-		header.Time = big.NewInt(time.Now().Unix())
+	header.Time = parent.Time + sb.config.BlockPeriod
+	if int64(header.Time) < time.Now().Unix() {
+		header.Time = uint64(time.Now().Unix())
 	}
 	return nil
 }
@@ -391,37 +392,44 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	// Bail out if we're unauthorized to sign a block
 	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
 	if err != nil {
+		log.Error("Seal, Bail out if we're unauthorized to sign a block", "err", err)
 		return nil, err
 	}
 	if _, v := snap.FullnodeSet.GetByAddress(sb.address); v == nil {
+		log.Error("Seal, Bail out errUnauthorized")
 		return nil, errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
+		log.Error("Seal, Bail out ErrUnknownAncestor")
 		return nil, consensus.ErrUnknownAncestor
 	}
 	block, err = sb.updateBlock(parent, block)
 	if err != nil {
+		log.Error("Seal, Bail out updateBlock", "err", err)
 		return nil, err
 	}
 
 	// wait for the timestamp of header, use this to adjust the block period
-	delay := time.Unix(block.Header().Time.Int64(), 0).Sub(now())
+	delay := time.Unix(int64(block.Header().Time), 0).Sub(now())
 	select {
 	case <-time.After(delay):
 	case <-stop:
+		log.Error("Seal, Bail out <-stop")
 		return nil, nil
 	}
 
 	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
 	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
+		log.Debug("Seal, Bail out errWaitTransactions")
 		return nil, errWaitTransactions
 	}
 
 	// get the proposed block hash and clear it if the seal() is completed.
 	sb.sealMu.Lock()
 	sb.proposedBlockHash = block.Hash()
+	sb.logger.Debug("get the proposed block hash and clear it if the seal() is completed ", "hash", sb.proposedBlockHash)
 	clear := func() {
 		sb.proposedBlockHash = common.Hash{}
 		sb.sealMu.Unlock()
@@ -429,19 +437,30 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	defer clear()
 
 	// post block into Sport engine
-	go sb.EventMux().Post(sport.RequestEvent{
-		BlockProposal: block,
-	})
+	go func() {
+		requestEvent := sport.RequestEvent{
+			BlockProposal: block,
+		}
+		err := sb.EventMux().Post(requestEvent)
+		if err != nil {
+			log.Error("Seal, Could not send sport.RequestEvent message with block proposal, ", "RequestEvent", requestEvent)
+		}
+	}()
 
 	for {
 		select {
 		case result := <-sb.commitChBlock:
+			sb.logger.Debug("Seal, got back the committed block from commitChBlock")
 			// if the block hash and the hash from channel are the same,
 			// return the result. Otherwise, keep waiting the next hash.
-			if block.Hash() == result.Hash() {
+			if result != nil && block.Hash() == result.Hash() {
+				log.Debug("Seal, lock hash and the hash from channel are the same. return result", "block.Hash", block.Hash(), "result.Hash", result.Hash(), "result", result)
 				return result, nil
+			} else {
+				log.Error("Seal, lock hash and the hash from channel NOT the same. Keep waiting the next hash.", "block.Hash", block.Hash(), "result.Hash", result.Hash())
 			}
 		case <-stop:
+			log.Error("Seal, Bail out for, select, <-stop")
 			return nil, nil
 		}
 	}

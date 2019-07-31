@@ -20,7 +20,7 @@ package smilobftcore
 import (
 	"reflect"
 
-	"go-smilo/src/blockchain/smilobft/swarm/log"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 

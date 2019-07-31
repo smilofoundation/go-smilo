@@ -357,7 +357,7 @@ func TestVoting(t *testing.T) {
 			copy(genesis.ExtraData[extraVanity+j*common.AddressLength:], signer[:])
 		}
 		// Create a pristine blockchain with the genesis injected
-		db := ethdb.NewMemDatabase()
+		db := rawdb.NewMemoryDatabase()
 		genesis.Commit(db)
 
 		// Assemble a chain of headers from the cast votes
@@ -365,7 +365,7 @@ func TestVoting(t *testing.T) {
 		for j, vote := range tt.votes {
 			headers[j] = &types.Header{
 				Number:   big.NewInt(int64(j) + 1),
-				Time:     big.NewInt(int64(j) * int64(blockPeriod)),
+				Time:     uint64(j) * uint64(blockPeriod),
 				Coinbase: accounts.address(vote.voted),
 				Extra:    make([]byte, extraVanity+extraSeal),
 			}

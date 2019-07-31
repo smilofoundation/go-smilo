@@ -22,6 +22,8 @@ import (
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
@@ -272,7 +274,7 @@ func (t *testSystem) stop(core bool) {
 
 func (t *testSystem) NewBackend(id int) *testSystemBackend {
 	// assume always success
-	ethDB := ethdb.NewMemDatabase()
+	ethDB := rawdb.NewMemoryDatabase()
 	backend := &testSystemBackend{
 		id:     id,
 		sys:    t,
@@ -298,7 +300,7 @@ func makeBlock(number int64) *types.Block {
 		Number:     big.NewInt(number),
 		GasLimit:   0,
 		GasUsed:    0,
-		Time:       big.NewInt(0),
+		Time:       0,
 	}
 	block := &types.Block{}
 	return block.WithSeal(header)

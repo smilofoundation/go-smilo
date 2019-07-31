@@ -25,6 +25,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 )
 
+//SPORT:2
 func (c *core) sendPreprepare(request *sport.Request) {
 	logger := c.logger.New("state", c.state)
 
@@ -36,9 +37,10 @@ func (c *core) sendPreprepare(request *sport.Request) {
 			BlockProposal: request.BlockProposal,
 		})
 		if err != nil {
-			logger.Error("Failed to encode", "view", curView)
+			logger.Error("$$$ SmiloBFT, sendPreprepare, Failed to encode", "view", curView)
 			return
 		}
+		logger.Info("$$$ SmiloBFT, I'm the speaker and I have the same sequence with the proposal, will c.broadcast ", "preprepare", preprepare)
 
 		c.broadcast(&message{
 			Code: msgPreprepare,
@@ -47,6 +49,7 @@ func (c *core) sendPreprepare(request *sport.Request) {
 	}
 }
 
+//SPORT:3
 func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	logger := c.logger.New("from", src, "state", c.state)
 
@@ -54,13 +57,20 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	var preprepare *sport.Preprepare
 	err := msg.Decode(&preprepare)
 	if err != nil {
+		logger.Error("$$$ SmiloBFT, handlePrepare, Decode failed, ", "err", err)
 		return errFailedDecodePreprepare
 	}
 
+	logger.Debug("*&*&*&*& handlePreprepare", "preprepare", preprepare)
+
 	// Ensure we have the same view with the PRE-PREPARE message
 	// If it is old message, see if we need to broadcast COMMIT
+	//SPORT:6
+	logger.Info("$$$ SmiloBFT, handlePreprepare, checkMessage, ", "preprepare block hash", preprepare.BlockProposal.String(), "view", preprepare.View.String())
+
 	if err := c.checkMessage(msgPreprepare, preprepare.View); err != nil {
 		if err == errOldMessage {
+			logger.Debug("$$$ SmiloBFT, handlePrepare, msgPreprepare, errOldMessage, ", "err", err)
 			// Get fullnode set for the given proposal
 			fullnodeSet := c.backend.ParentFullnodes(preprepare.BlockProposal).Copy()
 			previousSpeaker := c.backend.GetSpeaker(preprepare.BlockProposal.Number().Uint64() - 1)
@@ -69,6 +79,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 			// 1. The speaker needs to be a speaker matches the given (Sequence + Round)
 			// 2. The given block must exist
 			if fullnodeSet.IsSpeaker(src.Address()) && c.backend.HasBlockProposal(preprepare.BlockProposal.Hash(), preprepare.BlockProposal.Number()) {
+				logger.Info("$$$ SmiloBFT, handlePreprepare, msgPreprepare, I'm the Speaker, will sendCommitForOldBlock")
 				c.sendCommitForOldBlock(preprepare.View, preprepare.BlockProposal.Hash())
 				return nil
 			}
@@ -101,22 +112,28 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 	}
 
 	// Here is about to accept the PRE-PREPARE
+	//SPORT:4
 	if c.state == StateAcceptRequest {
+		logger.Debug("$$$ SmiloBFT, handlePreprepare, StateAcceptRequest")
+
 		// Send ROUND CHANGE if the locked proposal and the received proposal are different
 		if c.current.IsHashLocked() {
 			if preprepare.BlockProposal.Hash() == c.current.GetLockedHash() {
+				logger.Debug("$$$ SmiloBFT, handlePreprepare, StateAcceptRequest, Broadcast COMMIT and enters Prepared state directly")
 				// Broadcast COMMIT and enters Prepared state directly
 				c.acceptPreprepare(preprepare)
 				c.setState(StatePrepared)
 				c.sendCommit()
 			} else {
 				// Send round change
+				logger.Debug("$$$ SmiloBFT, handlePreprepare, StateAcceptRequest, Send round change")
 				c.sendNextRoundChange()
 			}
 		} else {
 			// Either
 			//   1. the locked proposal and the received proposal match
 			//   2. we have no locked proposal
+			logger.Debug("$$$ SmiloBFT, handlePreprepare, StateAcceptRequest, else")
 			c.acceptPreprepare(preprepare)
 			c.setState(StatePreprepared)
 			c.sendPrepare()

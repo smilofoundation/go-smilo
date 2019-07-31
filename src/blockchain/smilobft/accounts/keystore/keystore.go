@@ -138,8 +138,10 @@ func (ks *KeyStore) refreshWallets() {
 	accs := ks.cache.accounts()
 
 	// Transform the current list of wallets into the new one
-	wallets := make([]accounts.Wallet, 0, len(accs))
-	events := []accounts.WalletEvent{}
+	var (
+		wallets = make([]accounts.Wallet, 0, len(accs))
+		events  []accounts.WalletEvent
+	)
 
 	for _, account := range accs {
 		// Drop wallets while they were in front of the next account
@@ -269,7 +271,7 @@ func (ks *KeyStore) SignHash(a accounts.Account, hash []byte) ([]byte, error) {
 }
 
 // SignTx signs the given transaction with the requested account.
-func (ks *KeyStore) SignTx(a accounts.Account, tx *types.Transaction, chainID *big.Int, isSmilo bool) (*types.Transaction, error) {
+func (ks *KeyStore) SignTx(a accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
 	// Look up the key to sign with and abort if it cannot be found
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()

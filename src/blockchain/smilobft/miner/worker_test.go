@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
@@ -55,6 +57,12 @@ var (
 	newTxs     []*types.Transaction
 
 	minBlocksEmptyMining *big.Int
+
+	testConfig = &Config{
+		Recommit: time.Second,
+		GasFloor: params.GenesisGasLimit,
+		GasCeil:  params.GenesisGasLimit,
+	}
 )
 
 func init() {
@@ -86,7 +94,7 @@ type testWorkerBackend struct {
 
 func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, n int) *testWorkerBackend {
 	var (
-		db    = ethdb.NewMemDatabase()
+		db    = rawdb.NewMemoryDatabase()
 		gspec = core.Genesis{
 			Config: chainConfig,
 			Alloc:  core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
@@ -103,7 +111,7 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	}
 	genesis := gspec.MustCommit(db)
 
-	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
+	chain, _ := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{}, nil)
 	txpool := core.NewTxPool(testTxPoolConfig, chainConfig, chain)
 
 	// Generate a small n-block chain and an uncle block for it
@@ -142,7 +150,7 @@ func (b *testWorkerBackend) AccountManager() *accounts.Manager { return b.accoun
 func newTestWorker(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, blocks int) (*worker, *testWorkerBackend) {
 	backend := newTestWorkerBackend(t, chainConfig, engine, blocks)
 	backend.txPool.AddLocals(pendingTxs)
-	w := newWorker(chainConfig, engine, common.Address{}, backend, new(event.TypeMux), minBlocksEmptyMining)
+	w := newWorker(testConfig, chainConfig, engine, common.Address{}, backend, new(event.TypeMux), minBlocksEmptyMining)
 	w.setEtherbase(testBankAddress)
 	return w, backend
 }
@@ -151,7 +159,7 @@ func TestPendingStateAndBlockEthash(t *testing.T) {
 	testPendingStateAndBlock(t, ethashChainConfig, ethash.NewFaker())
 }
 func TestPendingStateAndBlockClique(t *testing.T) {
-	testPendingStateAndBlock(t, cliqueChainConfig, clique.New(cliqueChainConfig.Clique, ethdb.NewMemDatabase()))
+	testPendingStateAndBlock(t, cliqueChainConfig, clique.New(cliqueChainConfig.Clique, rawdb.NewMemoryDatabase()))
 }
 
 func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {

@@ -65,6 +65,9 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 
 	if sb.broadcaster != nil && len(targets) > 0 {
 		ps := sb.broadcaster.FindPeers(targets)
+		if len(ps) == 0 {
+			log.Warn("Gossip FindPeers returned zero peers ....")
+		}
 		for addr, p := range ps {
 			ms, ok := sb.recentMessages.Get(addr)
 			var m *lru.ARCCache
@@ -81,7 +84,13 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			go p.Send(smilobftMsg, payload)
+			err := p.Send(smilobftMsg, payload)
+			if err != nil {
+				log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
+
 		}
 	}
 	return nil
@@ -114,13 +123,18 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
 	if sb.proposedBlockHash == block.Hash() {
-		// feed block hash to Seal() and wait the Seal() result
+		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitChBlock <- block
 		return nil
+	} else {
+		sb.logger.Error("ERROR WHEN comparing proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 
 	if sb.broadcaster != nil {
+		sb.logger.Debug("broadcaster Enqueue fetcherID block")
 		sb.broadcaster.Enqueue(fetcherID, block)
+	} else {
+		sb.logger.Debug("Failed broadcast Enqueue fetcherID block, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 	return nil
 }
@@ -165,7 +179,7 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
 		sb.logger.Error("Invalid proposal, consensus.ErrFutureBlock %v", proposal)
-		return time.Unix(block.Header().Time.Int64(), 0).Sub(now()), consensus.ErrFutureBlock
+		return time.Unix(int64(block.Header().Time), 0).Sub(now()), consensus.ErrFutureBlock
 	}
 	return 0, err
 }

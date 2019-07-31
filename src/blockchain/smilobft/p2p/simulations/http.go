@@ -30,9 +30,10 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/net/websocket"
+
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
