@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.12
-    working_directory: ~/.go_workspace/src
+    working_directory: /go/src/go-smilo
     steps:
       - checkout
       - save_cache: # Store cache in the /go/pkg directory
@@ -17,11 +17,11 @@ jobs:
             mkdir -p ~/.docker
             for img in `ls ~/.docker`; do docker load -i ~/.docker/$img; done
             go get -u github.com/Smilo-platform/hive
-            (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && mkdir -p workspace/ethash/ ~/.ethash)
-            (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && cp -r ~/.ethash/. workspace/ethash/)
-            (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && hive --docker-noshell --client=NONE --test=. --sim=. --loglevel=6)
+            (cd /go/src/github.com/Smilo-platform/hive && mkdir -p workspace/ethash/ ~/.ethash)
+            (cd /go/src/github.com/Smilo-platform/hive && cp -r ~/.ethash/. workspace/ethash/)
+            (cd /go/src/github.com/Smilo-platform/hive && hive --docker-noshell --client=NONE --test=. --sim=. --loglevel=6)
             for img in `docker images | grep -v "^<none>" | tail -n +2 | awk '{print $1}'`; do docker save $img > ~/.docker/`echo $img | tr '/' ':'`.tar; done
-            cp -r ~/.go_workspace/src/github.com/Smilo-platform/hive/workspace/ethash/. ~/.ethash
+            cp -r /go/src/github.com/Smilo-platform/hive/workspace/ethash/. ~/.ethash
 
 workflows:
   version: 2
