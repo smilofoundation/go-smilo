@@ -14,17 +14,12 @@ jobs:
       - run:
           name: Run hive tests
           command: |
-            # Restore all previously cached docker images
             - mkdir -p ~/.docker
             - for img in `ls ~/.docker`; do docker load -i ~/.docker/$img; done
-
-            # Pull in and hive, restore cached ethash DAGs and do a dry run
             - go get -u github.com/Smilo-platform/hive
             - (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && mkdir -p workspace/ethash/ ~/.ethash)
             - (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && cp -r ~/.ethash/. workspace/ethash/)
             - (cd ~/.go_workspace/src/github.com/Smilo-platform/hive && hive --docker-noshell --client=NONE --test=. --sim=. --loglevel=6)
-
-            # Cache all the docker images and the ethash DAGs
             - for img in `docker images | grep -v "^<none>" | tail -n +2 | awk '{print $1}'`; do docker save $img > ~/.docker/`echo $img | tr '/' ':'`.tar; done
             - cp -r ~/.go_workspace/src/github.com/Smilo-platform/hive/workspace/ethash/. ~/.ethash
 
