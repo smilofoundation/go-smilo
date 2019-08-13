@@ -35,6 +35,6 @@ after_build:
   - go run src\blockchain\smilobft\build\ci.go archive -type zip
 #  - go run src\blockchain\smilobft\build\ci.go nsis -signer WINDOWS_SIGNING_KEY -upload gethstore/builds
 
-test_script:
-  - set CGO_ENABLED=1
-  - go run src\blockchain\smilobft\build\ci.go test -coverage
+#test_script:
+#  - set CGO_ENABLED=1
+#  - go run src\blockchain\smilobft\build\ci.go test -coverage
