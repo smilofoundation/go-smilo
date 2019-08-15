@@ -18,7 +18,7 @@ SRC_DIR = "src/blockchain/smilobft"
 
 
 GOBIN = $(shell pwd)/build/bin
-GO ?= 1.11
+GO ?= 1.12
 
 build: clean
 	go build -o go-smilo main.go
@@ -125,18 +125,13 @@ geth: eth
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/geth\" to launch geth."
 
-swarm: clean
-	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go install ./src/blockchain/smilobft/cmd/swarm
-	@echo "Done building."
-	@echo "Run \"$(GOBIN)/swarm\" to launch swarm."
-
-android: clean
-	export ANDROID_NDK_HOME=~/Downloads/android-studio/plugins/android-ndk/ # or replace it with your NDK_HOME, see: https://developer.android.com/ndk/guides/index.html
+android:
+#	export ANDROID_NDK_HOME=~/Downloads/android-studio/plugins/android-ndk/ # or replace it with your NDK_HOME, see: https://developer.android.com/ndk/guides/index.html
 	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go aar --local
 	@echo "Done building."
 	@echo "Import \"$(GOBIN)/geth.aar\" to use the library."
 
-ios: clean
+ios:
 	src/blockchain/smilobft/build/env.sh go run src/blockchain/smilobft/build/ci.go xcode --local
 	@echo "Done building."
 	@echo "Import \"$(GOBIN)/Geth.framework\" to use the library."
@@ -149,6 +144,7 @@ clean:
 # You need to put $GOBIN (or $GOPATH/bin) in your PATH to use 'go generate'.
 
 devtools:
+	env GOBIN= go get -u github.com/golang/dep/cmd/dep
 	env GOBIN= go get -u golang.org/x/tools/cmd/stringer
 	env GOBIN= go get -u github.com/kevinburke/go-bindata/go-bindata
 	env GOBIN= go get -u github.com/fjl/gencodec
@@ -158,9 +154,6 @@ devtools:
 	@type "solc" 2> /dev/null || echo 'Please install solc'
 	@type "protoc" 2> /dev/null || echo 'Please install protoc'
 
-swarm-devtools:
-	env GOBIN= go install ./cmd/swarm/mimegen
-
 generate:
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft/internal/jsre/deps
@@ -168,7 +161,7 @@ generate:
 
 
 # Cross Compilation Targets (xgo)
-geth-cross: geth-linux geth-darwin geth-windows android ios
+geth-cross: geth-linux geth-darwin android ios
 	@echo "Full cross compilation done:"
 	@ls -ld $(GOBIN)/geth-*
 
@@ -235,9 +228,9 @@ geth-darwin: geth-darwin-386 geth-darwin-amd64
 	@ls -ld $(GOBIN)/geth-darwin-*
 
 geth-darwin-386:
-#	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v ./$(SRC_DIR)/cmd/geth
-#	@echo "Darwin 386 cross compilation done:"
-#	@ls -ld $(GOBIN)/geth-darwin-* | grep 386
+	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v ./$(SRC_DIR)/cmd/geth
+	@echo "Darwin 386 cross compilation done:"
+	@ls -ld $(GOBIN)/geth-darwin-* | grep 386
 
 geth-darwin-amd64:
 	$(SRC_DIR)/build/env.sh go run $(SRC_DIR)/build/ci.go xgo -- --go=$(GO) --targets=darwin/amd64 -v ./$(SRC_DIR)/cmd/geth

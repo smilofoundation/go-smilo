@@ -25,14 +25,6 @@
   version = "v0.3.1"
 
 [[projects]]
-  digest = "1:e92f5581902c345eb4ceffdcd4a854fb8f73cf436d47d837d1ec98ef1fe0a214"
-  name = "github.com/StackExchange/wmi"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"
-  version = "1.0.0"
-
-[[projects]]
   digest = "1:f96ba6ecca7ba87b1dddd70ae38cfc4ce5ea844f58d1f728e121d2e29cdfb8a2"
   name = "github.com/allegro/bigcache"
   packages = [
@@ -108,14 +100,18 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  digest = "1:e7c526eb232bb9f1312630d216dd4242c902901a4e820deb6b17aabfb3010992"
+  digest = "1:ac72f4fbd9ac0db79cf6dd735009a345e8a359f695968cd0f81c9b5474fbd336"
   name = "github.com/elastic/gosigar"
   packages = [
     ".",
+    "cgroup",
+    "linux",
+    "sys",
     "sys/windows",
   ]
   pruneopts = "UT"
-  revision = "37f05ff46ffa7a825d1b24cf2b62d4a4c1a9d2e8"
+  revision = "f75810decf6f4d88b130bfc4d2ba7ccdcea0c01d"
+  version = "v0.10.4"
 
 [[projects]]
   digest = "1:80cdf53b43e0923d0a70861ace24206a1578fa55ac6c8375da11aef1a764cf5f"
@@ -214,17 +210,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "2772fd86a8ff4306d2749f610a386bfee9e0d727"
-
-[[projects]]
-  digest = "1:64a5a67c69b70c2420e607a8545d674a23778ed9c3e80607bfd17b77c6c87f6a"
-  name = "github.com/go-ole/go-ole"
-  packages = [
-    ".",
-    "oleutil",
-  ]
-  pruneopts = "UT"
-  revision = "a41e3c4b706f6ae8dfbff342b06e40fa4d2d0506"
-  version = "v1.2.1"
 
 [[projects]]
   digest = "1:586ea76dbd0374d6fb649a91d70d652b7fe0ccffb8910a77468e7702e7901f3d"
@@ -778,11 +763,11 @@
 
 [[projects]]
   branch = "v3"
-  digest = "1:94a7e206cc476d55ea7e5924324259d89a61b74589007193e0f35da1389202f3"
+  digest = "1:9a616c5b6667d3de5380dfc2adefb956e9f3b3448fb2196fc81664e2240bce74"
   name = "gopkg.in/olebedev/go-duktape.v3"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d53328019b21fe1987c97f368f98c072c8f44455"
+  revision = "1e4459ed25ff207bef4c6693fa17a4d11575f6a7"
 
 [[projects]]
   digest = "1:9935525a8c49b8434a0b0a54e1980e94a6fae73aaff45c5d33ba8dff69de123e"
