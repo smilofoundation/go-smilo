@@ -18,6 +18,7 @@ package les
 
 import (
 	"crypto/ecdsa"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"sync"
 	"time"
 
@@ -58,9 +59,9 @@ type LesServer struct {
 
 	thcNormal, thcBlockProcessing int // serving thread count for normal operation and block processing mode
 
-	maxPeers                   int
-	minCapacity, freeClientCap uint64
-	freeClientPool             *freeClientPool
+	maxPeers                                int
+	minCapacity, maxCapacity, freeClientCap uint64
+	clientPool                              *clientPool
 }
 
 func NewLesServer(e *eth.Smilo, config *eth.Config) (*LesServer, error) {
@@ -161,7 +162,7 @@ func (s *LesServer) startEventLoop() {
 	}
 	updateRecharge()
 	totalCapacity := s.fcManager.SubscribeTotalCapacity(totalCapacityCh)
-	s.freeClientPool.setLimits(s.maxPeers, totalCapacity)
+	s.clientPool.setLimits(s.maxPeers, totalCapacity)
 
 	var maxFreePeers uint64
 	go func() {
@@ -178,7 +179,7 @@ func (s *LesServer) startEventLoop() {
 					log.Warn("Reduced total capacity", "maxFreePeers", newFreePeers)
 				}
 				maxFreePeers = newFreePeers
-				s.freeClientPool.setLimits(s.maxPeers, totalCapacity)
+				s.clientPool.setLimits(s.maxPeers, totalCapacity)
 			case <-s.protocolManager.quitSync:
 				s.protocolManager.wg.Done()
 				return
@@ -208,14 +209,14 @@ func (s *LesServer) Start(srvr *p2p.Server) {
 		}
 	}
 
-	maxCapacity := s.freeClientCap * uint64(s.maxPeers)
-	if totalRecharge > maxCapacity {
-		maxCapacity = totalRecharge
+	s.maxCapacity = s.freeClientCap * uint64(s.maxPeers)
+	if totalRecharge > s.maxCapacity {
+		s.maxCapacity = totalRecharge
 	}
-	s.fcManager.SetCapacityLimits(s.freeClientCap, maxCapacity, s.freeClientCap*2)
-	s.freeClientPool = newFreeClientPool(s.chainDb, s.freeClientCap, 10000, mclock.System{}, func(id string) { go s.protocolManager.removePeer(id) })
-	s.protocolManager.peers.notify(s.freeClientPool)
-
+	s.fcManager.SetCapacityLimits(s.freeClientCap, s.maxCapacity, s.freeClientCap*2)
+	s.clientPool = newClientPool(s.chainDb, s.freeClientCap, 10000, mclock.System{}, func(id enode.ID) { go s.protocolManager.removePeer(peerIdToString(id)) })
+	s.clientPool.setPriceFactors(priceFactors{0, 1, 1}, priceFactors{0, 1, 1})
+	s.protocolManager.peers.notify(s.clientPool)
 	s.startEventLoop()
 	s.protocolManager.Start(s.config.LightPeers)
 	if srvr.DiscV5 != nil {
@@ -253,7 +254,7 @@ func (s *LesServer) Stop() {
 	go func() {
 		<-s.protocolManager.noMorePeers
 	}()
-	s.freeClientPool.stop()
+	s.clientPool.stop()
 	s.costTracker.stop()
 	s.protocolManager.Stop()
 }

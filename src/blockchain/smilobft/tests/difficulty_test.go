@@ -17,9 +17,8 @@
 package tests
 
 import (
-	"testing"
-
 	"math/big"
+	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 

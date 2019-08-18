@@ -44,16 +44,19 @@ matrix:
       script:
         - go run src/blockchain/smilobft/build/ci.go lint
 
-    # This builder only tests coveralls on latest version of Go
+    # This builder only tests coverage on latest version of Go
     - os: linux
       dist: xenial
       go: 1.12.x
       env:
         - COVERALLS_TOKEN
+        - CODECOV_TOKEN
       git:
         submodules: false # avoid cloning ethereum/tests
       script:
         - make coveralls
+      after_success:
+        - bash <(curl -s https://codecov.io/bash) -t $(CODECOV_TOKEN)
 
 
 #    # This builder does the Ubuntu PPA upload

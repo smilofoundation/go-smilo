@@ -62,14 +62,14 @@ func (b *bridge) NewAccount(call otto.FunctionCall) (response otto.Value) {
 	switch {
 	// No password was specified, prompt the user for it
 	case len(call.ArgumentList) == 0:
-		if password, err = b.prompter.PromptPassword("Passphrase: "); err != nil {
+		if password, err = b.prompter.PromptPassword("Password: "); err != nil {
 			throwJSException(err.Error())
 		}
-		if confirm, err = b.prompter.PromptPassword("Repeat passphrase: "); err != nil {
+		if confirm, err = b.prompter.PromptPassword("Repeat password: "); err != nil {
 			throwJSException(err.Error())
 		}
 		if password != confirm {
-			throwJSException("passphrases don't match!")
+			throwJSException("passwords don't match!")
 		}
 
 	// A single string password was specified, use that

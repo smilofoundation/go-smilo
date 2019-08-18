@@ -988,32 +988,33 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	if conn, ok := c.fd.(*meteredConn); ok {
 		conn.handshakeDone(c.node.ID())
 	}
+	clog = srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
 	err = srv.checkpoint(c, srv.checkpointPostHandshake)
 	if err != nil {
-		clog.Error("Rejected peer", "err", err)
+		clog.Trace("Rejected peer", "err", err)
 		return err
 	}
 
 	// Run the capability negotiation handshake.
 	phs, err := c.doProtoHandshake(srv.ourHandshake)
 	if err != nil {
-		clog.Error("Failed proto handshake", "err", err)
+		clog.Trace("Failed proto handshake", "err", err)
 		return err
 	}
 	if id := c.node.ID(); !bytes.Equal(crypto.Keccak256(phs.ID), id[:]) {
-		clog.Error("Wrong devp2p handshake identity", "phsid", hex.EncodeToString(phs.ID))
+		clog.Trace("Wrong devp2p handshake identity", "phsid", hex.EncodeToString(phs.ID))
 		return DiscUnexpectedIdentity
 	}
 	c.caps, c.name = phs.Caps, phs.Name
 	err = srv.checkpoint(c, srv.checkpointAddPeer)
 	if err != nil {
-		clog.Error("Rejected peer", "err", err)
+		clog.Trace("Rejected peer", "err", err)
 		return err
 	}
 
 	// If the checks completed successfully, the connection has been added as a peer and
 	// runPeer has been launched.
-	clog.Debug("Connection set up", "inbound", dialDest == nil)
+	clog.Trace("Connection set up", "inbound", dialDest == nil)
 	return nil
 }
 

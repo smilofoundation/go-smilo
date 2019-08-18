@@ -63,8 +63,6 @@ type freeClientPool struct {
 
 const (
 	recentUsageExpTC     = time.Hour   // time constant of the exponential weighting window for "recent" server usage
-	fixedPointMultiplier = 0x1000000   // constant to convert logarithms to fixed point format
-	connectedBias        = time.Minute // this bias is applied in favor of already connected clients in order to avoid kicking them out very soon
 )
 
 // newFreeClientPool creates a new free client pool

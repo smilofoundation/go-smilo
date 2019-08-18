@@ -12,6 +12,7 @@ Official Golang implementation of the Smilo protocol.
 [![Docker Repository on Quay](https://quay.io/repository/smilo/go-smilo/status "Docker Repository on Quay")](https://quay.io/repository/smilo/go-smilo)
 [![Downloads](https://img.shields.io/github/downloads/Smilo-platform/go-smilo/total.svg)](https://github.com/Smilo-platform/go-smilo/releases)
 [![Beerpay](https://beerpay.io/Smilo-platform/go-smilo/badge.svg)](https://beerpay.io/Smilo-platform/go-smilo)
+[![Gitter](https://badges.gitter.im/go-smilo/community.svg)](https://gitter.im/go-smilo/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Building the source
 
