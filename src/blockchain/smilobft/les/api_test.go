@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"

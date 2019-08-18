@@ -17,7 +17,6 @@
 package tests
 
 import (
-	"math/big"
 	"testing"
 
 	"go-smilo/src/blockchain/smilobft/params"

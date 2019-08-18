@@ -18,13 +18,13 @@ package les
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/p2p/enode"
 )
 
 func TestClientPoolL10C100Free(t *testing.T) {
