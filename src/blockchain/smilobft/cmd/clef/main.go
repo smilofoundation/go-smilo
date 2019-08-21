@@ -24,8 +24,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -36,6 +34,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/accounts/keystore"

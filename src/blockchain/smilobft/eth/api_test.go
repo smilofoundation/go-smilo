@@ -19,11 +19,12 @@ package eth
 import (
 	"bytes"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

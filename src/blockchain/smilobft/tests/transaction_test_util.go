@@ -18,6 +18,7 @@ package tests
 
 import (
 	"fmt"
+
 	"go-smilo/src/blockchain/smilobft/core"
 
 	"github.com/ethereum/go-ethereum/common"

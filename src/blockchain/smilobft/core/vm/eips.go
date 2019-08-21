@@ -18,6 +18,7 @@ package vm
 
 import (
 	"fmt"
+
 	"go-smilo/src/blockchain/smilobft/params"
 )
 

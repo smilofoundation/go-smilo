@@ -17,12 +17,13 @@
 package les
 
 import (
-	"go-smilo/src/blockchain/smilobft/ethdb"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"io"
 	"math"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/ethdb"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/common/prque"

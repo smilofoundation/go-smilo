@@ -39,7 +39,6 @@ type SmiloAPIState interface {
 	SetBalance(addr common.Address, amount, blockNumber *big.Int)
 	SetStorage(addr common.Address, storage map[common.Hash]common.Hash)
 
-
 	GetState(a common.Address, b common.Hash) common.Hash
 
 	GetNonce(addr common.Address) uint64

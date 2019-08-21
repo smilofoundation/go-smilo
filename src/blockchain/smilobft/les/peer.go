@@ -19,13 +19,14 @@ package les
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
 	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 

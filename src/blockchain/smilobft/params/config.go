@@ -117,8 +117,8 @@ var (
 		ChainID: big.NewInt(10),
 
 		RequiredMinFunds: 1,
-		IstanbulBlock:       nil,
-		Ethash:              new(EthashConfig),
+		IstanbulBlock:    nil,
+		Ethash:           new(EthashConfig),
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.

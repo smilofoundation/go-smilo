@@ -62,7 +62,7 @@ type freeClientPool struct {
 }
 
 const (
-	recentUsageExpTC     = time.Hour   // time constant of the exponential weighting window for "recent" server usage
+	recentUsageExpTC = time.Hour // time constant of the exponential weighting window for "recent" server usage
 )
 
 // newFreeClientPool creates a new free client pool

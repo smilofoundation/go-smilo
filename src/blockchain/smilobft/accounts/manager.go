@@ -17,10 +17,11 @@
 package accounts
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"reflect"
 	"sort"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/event"
 )

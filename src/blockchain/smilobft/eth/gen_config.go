@@ -51,8 +51,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		DocRoot                 string `toml:"-"`
 		EWASMInterpreter        string
 		EVMInterpreter          string
-		RPCGasCap               *big.Int `toml:",omitempty"`
-		Checkpoint              *params.TrustedCheckpoint `toml:",omitempty"`
+		RPCGasCap               *big.Int                       `toml:",omitempty"`
+		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
 		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
 	}
 	var enc Config
@@ -123,8 +123,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		DocRoot                 *string `toml:"-"`
 		EWASMInterpreter        *string
 		EVMInterpreter          *string
-		RPCGasCap               *big.Int `toml:",omitempty"`
-		Checkpoint              *params.TrustedCheckpoint `toml:",omitempty"`
+		RPCGasCap               *big.Int                       `toml:",omitempty"`
+		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
 		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
 	}
 	var dec Config

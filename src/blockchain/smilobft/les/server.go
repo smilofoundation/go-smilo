@@ -18,9 +18,10 @@ package les
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 
