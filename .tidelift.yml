@@ -1,0 +1,12 @@
+ci:
+  # don't run test on any dependencies in NPM
+  type:
+    development:
+      tests:
+        unmaintained: warn
+        removed: warn
+        deprecated: warn
+        outdated: warn
+        unlicensed: warn
+        inactive_stream: warn
+        vulnerable: warn

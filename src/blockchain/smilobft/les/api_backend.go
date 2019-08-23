@@ -60,27 +60,31 @@ func (b *LesApiBackend) SetHead(number uint64) {
 	b.eth.blockchain.SetHead(number)
 }
 
-func (b *LesApiBackend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
-	if blockNr == rpc.LatestBlockNumber || blockNr == rpc.PendingBlockNumber {
+func (b *LesApiBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
+	if number == rpc.LatestBlockNumber || number == rpc.PendingBlockNumber {
 		return b.eth.blockchain.CurrentHeader(), nil
 	}
-	return b.eth.blockchain.GetHeaderByNumberOdr(ctx, uint64(blockNr))
+	return b.eth.blockchain.GetHeaderByNumberOdr(ctx, uint64(number))
 }
 
 func (b *LesApiBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
 	return b.eth.blockchain.GetHeaderByHash(hash), nil
 }
 
-func (b *LesApiBackend) BlockByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Block, error) {
-	header, err := b.HeaderByNumber(ctx, blockNr)
+func (b *LesApiBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
+	header, err := b.HeaderByNumber(ctx, number)
 	if header == nil || err != nil {
 		return nil, err
 	}
-	return b.GetBlock(ctx, header.Hash())
+	return b.BlockByHash(ctx, header.Hash())
 }
 
-func (b *LesApiBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error) {
-	header, err := b.HeaderByNumber(ctx, blockNr)
+func (b *LesApiBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	return b.eth.blockchain.GetBlockByHash(ctx, hash)
+}
+
+func (b *LesApiBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error) {
+	header, err := b.HeaderByNumber(ctx, number)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,10 +92,6 @@ func (b *LesApiBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.
 		return nil, nil, errors.New("header not found")
 	}
 	return light.NewState(ctx, header, b.eth.odr), header, nil
-}
-
-func (b *LesApiBackend) GetBlock(ctx context.Context, blockHash common.Hash) (*types.Block, error) {
-	return b.eth.blockchain.GetBlockByHash(ctx, blockHash)
 }
 
 func (b *LesApiBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
@@ -116,7 +116,7 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, apiState v
 	statedb := apiState.(*state.StateDB)
 	statedb.SetBalance(msg.From(), math.MaxBig256, header.Number)
 	context := core.NewEVMContext(msg, header, b.eth.blockchain, nil)
-	return vm.NewEVM(context, statedb, statedb, b.eth.chainConfig, vm.Config{}), statedb.Error, nil
+	return vm.NewEVM(context, statedb, statedb, b.eth.chainConfig, vmCfg), statedb.Error, nil
 }
 
 func (b *LesApiBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {

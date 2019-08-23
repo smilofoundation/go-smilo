@@ -27,11 +27,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"text/template"
 	"time"
-
-	"syscall"
 
 	"github.com/docker/docker/pkg/reexec"
 )

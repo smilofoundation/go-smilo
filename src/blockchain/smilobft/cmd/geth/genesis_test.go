@@ -26,12 +26,13 @@ import (
 //1000000000000000000000000000 == 0x446c3b15f9926687d2c40534fdb564000000000000
 
 var customGenesisTests = []struct {
+	name    string
 	genesis string
 	query   string
 	result  string
 }{
-	// Plain genesis file without anything extra
 	{
+		name: "Plain genesis file without anything extra",
 		genesis: `{
 			"alloc"      : {},
 			"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -47,8 +48,8 @@ var customGenesisTests = []struct {
 		query:  "eth.getBlock(0).nonce",
 		result: "0x0000000000000042",
 	},
-	// Genesis file with an empty chain configuration (ensure missing fields work)
 	{
+		name: "Genesis file with an empty chain configuration (ensure missing fields work)",
 		genesis: `{
 			"alloc"      : {},
 			"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -64,8 +65,8 @@ var customGenesisTests = []struct {
 		query:  "eth.getBlock(0).nonce",
 		result: "0x0000000000000042",
 	},
-	// Genesis file with specific chain configurations
 	{
+		name: "Genesis file with specific chain configurations",
 		genesis: `{
 			"alloc"      : {},
 			"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -88,6 +89,7 @@ var customGenesisTests = []struct {
 		result: "0x0000000000000042",
 	},
 	{
+		name: "Genesis file with --testnet configuration",
 		genesis: `{
   "alloc": {
     "ecf7e57d01d3d155e5fc33dbc7a58355685ba39c": {
@@ -119,12 +121,17 @@ var customGenesisTests = []struct {
     "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "eip155Block": 0,
     "eip158Block": 3,
+    "petersburgBlock": 4,
+    "constantinopleBlock": 5,
     "sport": {
       "epoch": 30000,
       "policy": 0
     },
     "isSmilo": true,
-    "chainId": 10
+    "isGas": true,
+    "isGasRefunded": true,
+    "chainId": 10,
+    "required_min_funds": 1
   },
   "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000f8d9f89394ecf7e57d01d3d155e5fc33dbc7a58355685ba39c94c0ce2fd65f71c6ce82d22db11fcf7ca43357f172947cb791430d2461268691bfba6e35d8a8c7ea2e6394d54924701cd0d94d677d0a66dee75c978e175c74942f65a895741143953aabed3680177594818a5f9a94497c8fe926bc88b61e736afe7aae2ea21414671f940fbc07ebdce2bfead66f1686d67f9ea5c759e433b8410000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0",
   "gasLimit": "0xE0000000",
@@ -142,24 +149,28 @@ var customGenesisTests = []struct {
 // Tests that initializing Geth with a custom genesis block and chain definitions
 // work properly.
 func TestCustomGenesis(t *testing.T) {
+
 	for i, tt := range customGenesisTests {
-		// Create a temporary data directory to use and inspect later
-		datadir := tmpdir(t)
-		defer os.RemoveAll(datadir)
 
-		// Initialize the data directory with the custom genesis block
-		json := filepath.Join(datadir, "genesis.json")
-		if err := ioutil.WriteFile(json, []byte(tt.genesis), 0600); err != nil {
-			t.Fatalf("test %d: failed to write genesis file: %v", i, err)
-		}
-		runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a temporary data directory to use and inspect later
+			datadir := tmpdir(t)
+			defer os.RemoveAll(datadir)
 
-		// Query the custom genesis block
-		geth := runGeth(t,
-			"--datadir", datadir, "--maxpeers", "0", "--port", "0",
-			"--nodiscover", "--nat", "none", "--ipcdisable",
-			"--exec", tt.query, "console")
-		geth.ExpectRegexp(tt.result)
-		geth.ExpectExit()
+			// Initialize the data directory with the custom genesis block
+			json := filepath.Join(datadir, "genesis.json")
+			if err := ioutil.WriteFile(json, []byte(tt.genesis), 0600); err != nil {
+				t.Fatalf("test %d: failed to write genesis file: %v", i, err)
+			}
+			runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+
+			// Query the custom genesis block
+			geth := runGeth(t,
+				"--datadir", datadir, "--maxpeers", "0", "--port", "0",
+				"--nodiscover", "--nat", "none", "--ipcdisable",
+				"--exec", tt.query, "console")
+			geth.ExpectRegexp(tt.result)
+			geth.ExpectExit()
+		})
 	}
 }

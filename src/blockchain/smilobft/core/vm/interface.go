@@ -33,8 +33,16 @@ type SmiloAPIState interface {
 
 	GetBalance(addr common.Address) *big.Int
 	GetCode(addr common.Address) []byte
+	SetCode(common.Address, []byte)
+
+	SetState(addr common.Address, key, value common.Hash)
+	SetBalance(addr common.Address, amount, blockNumber *big.Int)
+	SetStorage(addr common.Address, storage map[common.Hash]common.Hash)
+
 	GetState(a common.Address, b common.Hash) common.Hash
+
 	GetNonce(addr common.Address) uint64
+	SetNonce(common.Address, uint64)
 
 	SubSmiloPay(common.Address, *big.Int, *big.Int)
 	AddSmiloPay(common.Address, *big.Int)
@@ -57,11 +65,11 @@ type StateDB interface {
 	//GetBalance(common.Address) *big.Int
 
 	//GetNonce(common.Address) uint64
-	SetNonce(common.Address, uint64)
+	//SetNonce(common.Address, uint64)
 
 	//GetCodeHash(common.Address) common.Hash
 	//GetCode(common.Address) []byte
-	SetCode(common.Address, []byte)
+	//SetCode(common.Address, []byte)
 	GetCodeSize(common.Address) int
 
 	AddRefund(uint64)
@@ -70,7 +78,7 @@ type StateDB interface {
 
 	GetCommittedState(common.Address, common.Hash) common.Hash
 	//GetState(common.Address, common.Hash) common.Hash
-	SetState(common.Address, common.Hash, common.Hash)
+	//SetState(common.Address, common.Hash, common.Hash)
 
 	Suicide(common.Address) bool
 	HasSuicided(common.Address) bool

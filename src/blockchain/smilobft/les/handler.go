@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/mclock"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
@@ -87,6 +89,7 @@ type BlockChain interface {
 
 type txPool interface {
 	AddRemotes(txs []*types.Transaction) []error
+	AddRemotesSync(txs []*types.Transaction) []error
 	Status(hashes []common.Hash) []core.TxStatus
 }
 
@@ -127,6 +130,9 @@ type ProtocolManager struct {
 
 	// Callbacks
 	synced func() bool
+
+	// Testing fields
+	addTxsSync bool
 }
 
 // NewProtocolManager returns a new ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -305,8 +311,14 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		p.Log().Error("Light Ethereum peer registration failed", "err", err)
 		return err
 	}
+	if !pm.client && p.balanceTracker == nil {
+		// add dummy balance tracker for tests
+		p.balanceTracker = &balanceTracker{}
+		p.balanceTracker.init(&mclock.System{}, 1)
+	}
 	connectedAt := time.Now()
 	defer func() {
+		p.balanceTracker = nil
 		pm.removePeer(p.id)
 		connectionTimer.UpdateSince(connectedAt)
 	}()
@@ -401,6 +413,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	defer msg.Discard()
 
 	var deliverMsg *Msg
+	balanceTracker := p.balanceTracker
 
 	sendResponse := func(reqID, amount uint64, reply *reply, servingTime uint64) {
 		p.responseLock.Lock()
@@ -419,6 +432,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			realCost = pm.server.costTracker.realCost(servingTime, msg.Size, replySize)
 			if amount != 0 {
 				pm.server.costTracker.updateStats(msg.Code, amount, servingTime, realCost)
+				balanceTracker.requestCost(realCost)
 			}
 		} else {
 			realCost = maxCost
@@ -598,7 +612,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		} else {
 			err := pm.downloader.DeliverHeaders(p.id, resp.Headers)
 			if err != nil {
-				p.Log().Debug("$$$ LES, BlockHeadersMsg", "err", fmt.Sprint(err))
+				log.Debug(fmt.Sprint(err))
 			}
 		}
 
@@ -792,7 +806,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					}
 					// If known, encode and queue for response packet
 					if encoded, err := rlp.EncodeToBytes(results); err != nil {
-						p.Log().Error("$$$ LES, Failed to encode receipt", "err", err)
+						log.Error("Failed to encode receipt", "err", err)
 					} else {
 						receipts = append(receipts, encoded)
 						bytes += len(encoded)
@@ -1049,7 +1063,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					hash := tx.Hash()
 					stats[i] = pm.txStatus(hash)
 					if stats[i].Status == core.TxStatusUnknown {
-						if errs := pm.txpool.AddRemotes([]*types.Transaction{tx}); errs[0] != nil {
+						addFn := pm.txpool.AddRemotes
+						// Add txs synchronously for testing purpose
+						if pm.addTxsSync {
+							addFn = pm.txpool.AddRemotesSync
+						}
+						if errs := addFn([]*types.Transaction{tx}); errs[0] != nil {
 							stats[i].Error = errs[0].Error()
 							continue
 						}
@@ -1116,7 +1135,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		p.freezeServer(true)
 		pm.retriever.frozen(p)
-		p.Log().Warn("Service stopped")
+		p.Log().Debug("Service stopped")
 
 	case ResumeMsg:
 		if pm.odr == nil {
@@ -1128,7 +1147,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		p.fcServer.ResumeFreeze(bv)
 		p.freezeServer(false)
-		p.Log().Warn("Service resumed")
+		p.Log().Debug("Service resumed")
 
 	default:
 		p.Log().Trace("Received unknown message", "code", msg.Code)

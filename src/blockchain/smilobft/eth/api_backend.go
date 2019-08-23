@@ -21,6 +21,8 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/event"
@@ -49,7 +51,7 @@ type EthAPIBackend struct {
 
 // ChainConfig returns the active chain configuration.
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
-	return b.eth.chainConfig
+	return b.eth.blockchain.Config()
 }
 
 func (b *EthAPIBackend) CurrentBlock() *types.Block {
@@ -61,44 +63,48 @@ func (b *EthAPIBackend) SetHead(number uint64) {
 	b.eth.blockchain.SetHead(number)
 }
 
-func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
+func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
 	// Pending block is only known by the miner
-	if blockNr == rpc.PendingBlockNumber {
+	if number == rpc.PendingBlockNumber {
 		block := b.eth.miner.PendingBlock()
 		return block.Header(), nil
 	}
 	// Otherwise resolve and return the block
-	if blockNr == rpc.LatestBlockNumber {
+	if number == rpc.LatestBlockNumber {
 		return b.eth.blockchain.CurrentBlock().Header(), nil
 	}
-	return b.eth.blockchain.GetHeaderByNumber(uint64(blockNr)), nil
+	return b.eth.blockchain.GetHeaderByNumber(uint64(number)), nil
 }
 
 func (b *EthAPIBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
 	return b.eth.blockchain.GetHeaderByHash(hash), nil
 }
 
-func (b *EthAPIBackend) BlockByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Block, error) {
+func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
 	// Pending block is only known by the miner
-	if blockNr == rpc.PendingBlockNumber {
+	if number == rpc.PendingBlockNumber {
 		block := b.eth.miner.PendingBlock()
 		return block, nil
 	}
 	// Otherwise resolve and return the block
-	if blockNr == rpc.LatestBlockNumber {
+	if number == rpc.LatestBlockNumber {
 		return b.eth.blockchain.CurrentBlock(), nil
 	}
-	return b.eth.blockchain.GetBlockByNumber(uint64(blockNr)), nil
+	return b.eth.blockchain.GetBlockByNumber(uint64(number)), nil
 }
 
-func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error) {
+func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	return b.eth.blockchain.GetBlockByHash(hash), nil
+}
+
+func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error) {
 	// Pending state is only known by the miner
-	if blockNr == rpc.PendingBlockNumber {
+	if number == rpc.PendingBlockNumber {
 		block, publicState, vaultState := b.eth.miner.Pending()
 		return EthAPIState{publicState, vaultState}, block.Header(), nil
 	}
 	// Otherwise resolve the block number and return its state
-	header, err := b.HeaderByNumber(ctx, blockNr)
+	header, err := b.HeaderByNumber(ctx, number)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -277,6 +283,76 @@ func (b *EthAPIBackend) GetSmiloCodeAnalysisPath() string {
 
 type EthAPIState struct {
 	State, VaultState *state.StateDB
+}
+
+func (ethApiState EthAPIState) SetCode(addr common.Address, code []byte) {
+	if ethApiState.VaultState.Exist(addr) {
+		stateObject := ethApiState.VaultState.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		}
+	} else {
+		stateObject := ethApiState.State.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		}
+	}
+}
+
+func (ethApiState EthAPIState) SetState(addr common.Address, key, value common.Hash) {
+	if ethApiState.VaultState.Exist(addr) {
+		stateObject := ethApiState.VaultState.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetState(ethApiState.VaultState.Database(), key, value)
+		}
+	} else {
+		stateObject := ethApiState.State.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetState(ethApiState.State.Database(), key, value)
+		}
+	}
+}
+
+func (ethApiState EthAPIState) SetBalance(addr common.Address, amount, blockNumber *big.Int) {
+	if ethApiState.VaultState.Exist(addr) {
+		stateObject := ethApiState.VaultState.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetBalance(amount, blockNumber)
+		}
+	} else {
+		stateObject := ethApiState.State.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetBalance(amount, blockNumber)
+		}
+	}
+}
+
+func (ethApiState EthAPIState) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	if ethApiState.VaultState.Exist(addr) {
+		stateObject := ethApiState.VaultState.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetStorage(storage)
+		}
+	} else {
+		stateObject := ethApiState.State.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetStorage(storage)
+		}
+	}
+}
+
+func (ethApiState EthAPIState) SetNonce(addr common.Address, nonce uint64) {
+	if ethApiState.VaultState.Exist(addr) {
+		stateObject := ethApiState.VaultState.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetNonce(nonce)
+		}
+	} else {
+		stateObject := ethApiState.State.GetOrNewStateObject(addr)
+		if stateObject != nil {
+			stateObject.SetNonce(nonce)
+		}
+	}
 }
 
 func (ethApiState EthAPIState) GetBalance(addr common.Address) *big.Int {

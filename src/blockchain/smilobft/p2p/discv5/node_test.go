@@ -18,7 +18,6 @@ package discv5
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"math/rand"
 	"net"
@@ -27,6 +26,8 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

@@ -47,7 +47,7 @@ var DefaultConfig = Config{
 		DatasetsInMem:  1,
 		DatasetsOnDisk: 2,
 	},
-	NetworkId:          1337,
+	NetworkId:          20080914,
 	LightPeers:         100,
 	UltraLightFraction: 75,
 	DatabaseCache:      512,
@@ -55,8 +55,8 @@ var DefaultConfig = Config{
 	TrieDirtyCache:     256,
 	TrieTimeout:        60 * time.Minute,
 	Miner: miner.Config{
-		GasFloor: 8000000,
-		GasCeil:  8000000,
+		GasFloor: 190000000,
+		GasCeil:  230000000,
 		GasPrice: big.NewInt(params.GWei),
 		Recommit: 3 * time.Second,
 	},
@@ -160,10 +160,10 @@ type Config struct {
 	RPCGasCap *big.Int `toml:",omitempty"`
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.
-	Checkpoint *params.TrustedCheckpoint
+	Checkpoint *params.TrustedCheckpoint `toml:",omitempty"`
 
 	// CheckpointOracle is the configuration for checkpoint oracle.
-	CheckpointOracle *params.CheckpointOracleConfig
+	CheckpointOracle *params.CheckpointOracleConfig `toml:",omitempty"`
 
 	PowMode               Mode
 	SolcPath              string

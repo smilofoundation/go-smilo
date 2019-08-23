@@ -134,6 +134,7 @@ func CalcGasLimit(parent *types.Block, gasFloor, gasCeil uint64) uint64 {
 		from parentGasLimit * (2/3) parentGasUsed is.
 	*/
 	limit := parent.GasLimit() - decay + contrib
+	log.Debug("&*&*&*&*&*& block_validator.go, CalcGasLimit, ", "limit", limit, "params.MinGasLimit", params.MinGasLimit, "gasFloor", gasFloor, "gasCeil", gasCeil, "decay", decay)
 	if limit < params.MinGasLimit {
 		limit = params.MinGasLimit
 	}

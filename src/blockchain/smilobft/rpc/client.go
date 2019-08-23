@@ -41,9 +41,8 @@ var (
 
 const (
 	// Timeouts
-	tcpKeepAliveInterval = 30 * time.Second
-	defaultDialTimeout   = 10 * time.Second // used if context has no deadline
-	subscribeTimeout     = 5 * time.Second  // overall timeout eth_subscribe, rpc_modules calls
+	defaultDialTimeout = 10 * time.Second // used if context has no deadline
+	subscribeTimeout   = 5 * time.Second  // overall timeout eth_subscribe, rpc_modules calls
 )
 
 const (
@@ -553,13 +552,13 @@ func (c *Client) dispatch(codec ServerCodec) {
 			}
 
 		case err := <-c.readErr:
-			conn.handler.log.Trace("RPC connection read error", "err", err)
+			conn.handler.log.Debug("RPC connection read error", "err", err)
 			conn.close(err, lastOp)
 			reading = false
 
 		// Reconnect:
 		case newcodec := <-c.reconnected:
-			log.Trace("RPC client reconnected", "reading", reading, "conn", newcodec.RemoteAddr())
+			log.Debug("RPC client reconnected", "reading", reading, "conn", newcodec.RemoteAddr())
 			if reading {
 				// Wait for the previous read loop to exit. This is a rare case which
 				// happens if this loop isn't notified in time after the connection breaks.

@@ -503,6 +503,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 
 	server, tearDown := newServerEnv(t, 0, 2, nil)
 	defer tearDown()
+	server.pm.addTxsSync = true
 
 	chain := server.pm.blockchain.(*core.BlockChain)
 	config := core.DefaultTxPoolConfig

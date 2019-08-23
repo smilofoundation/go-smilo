@@ -34,10 +34,10 @@ import (
 )
 
 const (
-	MetricsInboundConnects  = "p2p/InboundConnects"  // Name for the registered inbound connects meter
-	MetricsInboundTraffic   = "p2p/InboundTraffic"   // Name for the registered inbound traffic meter
-	MetricsOutboundConnects = "p2p/OutboundConnects" // Name for the registered outbound connects meter
-	MetricsOutboundTraffic  = "p2p/OutboundTraffic"  // Name for the registered outbound traffic meter
+	MetricsInboundTraffic   = "p2p/ingress" // Name for the registered inbound traffic meter
+	MetricsOutboundTraffic  = "p2p/egress"  // Name for the registered outbound traffic meter
+	MetricsOutboundConnects = "p2p/dials"   // Name for the registered outbound connects meter
+	MetricsInboundConnects  = "p2p/serves"  // Name for the registered inbound connects meter
 
 	MeteredPeerLimit = 1024 // This amount of peers are individually metered
 )
