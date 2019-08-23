@@ -24,7 +24,7 @@ var (
 
 const (
 	GasLimitBoundDivisor uint64 = 1024      // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 180000000   // Minimum the gas limit may ever be. (actual gasLimit on eth network)
+	MinGasLimit          uint64 = 180000000 // Minimum the gas limit may ever be. (actual gasLimit on eth network)
 	GenesisGasLimit      uint64 = 210000000 // Gas limit of the Genesis block. (10000*21000) -> 10k TxGas
 
 	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
