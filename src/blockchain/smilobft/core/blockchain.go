@@ -1650,6 +1650,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 	// Some other error occurred, abort
 	case err != nil:
+		log.Error("Some other error occurred, abort")
 		stats.ignored += len(it.chain)
 		bc.reportBlock(block, nil, err)
 		return it.index, events, coalescedLogs, err
@@ -1663,6 +1664,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[block.Hash()] {
+			log.Error("the header is a banned one, straight out abort", "hash", block.Hash())
 			bc.reportBlock(block, nil, ErrBlacklistedHash)
 			return it.index, events, coalescedLogs, ErrBlacklistedHash
 		}
@@ -1745,6 +1747,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		substart := time.Now()
 		receipts, vaultReceipts, logs, usedGas, err := bc.processor.Process(block, thisstate, vaultState, bc.vmConfig)
 		if err != nil {
+			log.Error("error Process block using the parent state as reference point, running c.processor.Process")
 			bc.reportBlock(block, receipts, err)
 			atomic.StoreUint32(&followupInterrupt, 1)
 			return it.index, events, coalescedLogs, err
@@ -1765,6 +1768,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		substart = time.Now()
 		err = bc.Validator().ValidateState(block, parentBlock, thisstate, receipts, usedGas)
 		if err != nil {
+			log.Error("error when Validate the state using the default validator")
 			bc.reportBlock(block, receipts, err)
 			atomic.StoreUint32(&followupInterrupt, 1)
 			return it.index, events, coalescedLogs, err

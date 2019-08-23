@@ -399,12 +399,12 @@ func (c *SportConfig) String() string {
 func (c *ChainConfig) String() string {
 	var engine interface{}
 	switch {
+	case c.Sport != nil:
+		engine = c.Sport
 	case c.Ethash != nil:
 		engine = c.Ethash
 	case c.Clique != nil:
 		engine = c.Clique
-	case c.Sport != nil:
-		engine = c.Sport
 	default:
 		engine = "unknown"
 	}
@@ -419,11 +419,11 @@ func (c *ChainConfig) String() string {
 		c.ByzantiumBlock,
 		c.ConstantinopleBlock,
 		c.PetersburgBlock,
+		c.IstanbulBlock,
 		c.IsSmilo,
 		c.IsGas,
 		c.IsGasRefunded,
 		c.RequiredMinFunds,
-		c.IstanbulBlock,
 		engine,
 	)
 }
