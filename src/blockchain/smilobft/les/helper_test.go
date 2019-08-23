@@ -187,7 +187,7 @@ func newTestProtocolManager(lightSync bool, blocks int, odr *LesOdr, indexers []
 		peers = newPeerSet()
 	}
 	// create a simulation backend and pre-commit several customized block to the database.
-	simulation := backends.NewSimulatedBackendWithDatabase(db, gspec.Alloc, 100000000)
+	simulation := backends.NewSimulatedBackendWithDatabase(db, gspec.Alloc, 180000000)
 	prepareTestchain(blocks, simulation)
 
 	// initialize empty chain for light client or pre-committed chain for server.

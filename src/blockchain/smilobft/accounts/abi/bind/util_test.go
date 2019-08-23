@@ -58,7 +58,7 @@ func TestWaitDeployed(t *testing.T) {
 			core.GenesisAlloc{
 				crypto.PubkeyToAddress(testKey.PublicKey): {Balance: big.NewInt(10000000000)},
 			},
-			10000000,
+			180000000,
 		)
 		defer backend.Close()
 
