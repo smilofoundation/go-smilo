@@ -29,6 +29,7 @@ const (
 	SmiloVersionMajor = 1
 	SmiloVersionMinor = 9
 	SmiloVersionPatch = 2
+	SmiloMinorPatch = 1
 )
 
 // Version holds the textual version string.
@@ -61,7 +62,7 @@ func ArchiveVersion(gitCommit string) string {
 
 // Version holds the textual version string.
 var SmiloVersion = func() string {
-	return fmt.Sprintf("%d.%d.%d", SmiloVersionMajor, SmiloVersionMinor, SmiloVersionPatch)
+	return fmt.Sprintf("%d.%d.%d.%d", SmiloVersionMajor, SmiloVersionMinor, SmiloVersionPatch, SmiloMinorPatch)
 }()
 
 func VersionWithCommit(gitCommit, gitDate string) string {
