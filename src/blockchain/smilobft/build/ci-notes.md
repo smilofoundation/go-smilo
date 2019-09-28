@@ -38,7 +38,7 @@ Add the gophers PPA and install Go 1.11 and Debian packaging tools:
 
 Create the source packages:
 
-    $ go run build/ci.go debsrc -workdir dist
+    $ go run src/blockchain/smilobft/build/ci.go debsrc -workdir dist
 
 Then go into the source package directory for your running distribution and build the package:
 

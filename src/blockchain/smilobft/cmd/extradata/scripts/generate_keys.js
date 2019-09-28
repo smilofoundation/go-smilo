@@ -108,8 +108,8 @@ for (let i = 1; i <= totalNodes; i++) {
 }
 
 
-// console.log("Generating blackbox keys ", `go run ${blackboxPATH}/main.go -generate-keys -filename ${blackboxKeyNames.join()}`)
-execSync(`go run ${blackboxPATH}/main.go -generate-keys -filename ${blackboxKeyNames.join()}`, {input: "".padStart(2 * totalNodes, "\n")});
+console.log("Generating blackbox keys ", `go run ${blackboxPATH}/main.go -generate-keys ${blackboxKeyNames.join()}`)
+execSync(`go run ${blackboxPATH}/main.go -generate-keys ${blackboxKeyNames.join()}`, {input: "".padStart(2 * totalNodes, "\n")});
 console.log(`Blackbox Keys Saved.`);
 
 fs.writeFileSync(basePath + "/permissioned-nodes.json", JSON.stringify(enodeURLs, null, 2));

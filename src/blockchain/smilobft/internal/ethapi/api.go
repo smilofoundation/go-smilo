@@ -937,7 +937,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 	executable := func(gas uint64) bool {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
-		_, _, failed, err := DoCall(ctx, b, args, rpc.PendingBlockNumber, nil, vm.Config{}, 0, gasCap)
+		_, _, failed, err := DoCall(ctx, b, args, rpc.PendingBlockNumber, nil, vm.Config{EstimateGas: true}, 0, gasCap)
 		if err != nil || failed {
 			return false
 		}
@@ -960,12 +960,17 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 	}
 
 	// Reject vault transactions that have intrinsic gas bigger than public intrinsic gas allowed
-	if args.Value.ToInt().Cmp(big.NewInt(0)) == 0 {
+	value := new(big.Int)
+	if args.Value != nil {
+		value = args.Value.ToInt()
+	}
+	if value.Cmp(big.NewInt(0)) == 0 {
 		isHomestead := b.ChainConfig().IsHomestead(new(big.Int).SetInt64(int64(rpc.PendingBlockNumber)))
 		intrinsicGasPublic, _ := core.IntrinsicGas(*args.Data, args.To == nil, isHomestead)
 		intrinsicGasPrivate, _ := core.IntrinsicGas(common.Hex2Bytes(maxPrivateIntrinsicDataHex), args.To == nil, isHomestead)
 		if intrinsicGasPrivate > intrinsicGasPublic {
 			if math.MaxUint64-hi < intrinsicGasPrivate-intrinsicGasPublic {
+				log.Debug("Reject vault transactions that have intrinsic gas bigger than public intrinsic gas allowed", "args.Value", args.Value, "intrinsicGasPrivate", intrinsicGasPrivate, "intrinsicGasPublic", intrinsicGasPublic, " math.MaxUint64-hi", math.MaxUint64-hi, "hi", hi)
 				return 0, fmt.Errorf("private intrinsic gas addition exceeds allowance")
 			}
 			return hexutil.Uint64(hi + (intrinsicGasPrivate - intrinsicGasPublic)), nil

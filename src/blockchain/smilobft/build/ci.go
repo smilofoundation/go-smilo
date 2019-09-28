@@ -120,15 +120,15 @@ var (
 
 	// A debian package is created for all executables listed here.
 
-	debEthereum = debPackage{
-		Name:        "ethereum",
-		Version:     params.Version,
+	debSmilo = debPackage{
+		Name:        "smilo",
+		Version:     params.SmiloVersion,
 		Executables: debExecutables,
 	}
 
 	// Debian meta packages to build and push to Ubuntu PPA
 	debPackages = []debPackage{
-		debEthereum,
+		debSmilo,
 	}
 
 	// Distros for which packages are created.
@@ -451,10 +451,10 @@ func maybeSkipArchive(env build.Environment) {
 		log.Printf("skipping because this is a cron job")
 		os.Exit(0)
 	}
-	if env.Branch != "master" && !strings.HasPrefix(env.Tag, "v1.") {
-		log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
-		os.Exit(0)
-	}
+	//if env.Branch != "master" && !strings.HasPrefix(env.Tag, "v1.") {
+	//	log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
+	//	os.Exit(0)
+	//}
 }
 
 // Debian Packaging
@@ -566,7 +566,7 @@ type debMetadata struct {
 
 	PackageName string
 
-	// go-ethereum version being built. Note that this
+	// go-smilo version being built. Note that this
 	// is not the debian package version. The package version
 	// is constructed by VersionString.
 	Version string
@@ -594,7 +594,7 @@ func (d debExecutable) Package() string {
 func newDebMetadata(distro, author string, env build.Environment, t time.Time, name string, version string, exes []debExecutable) debMetadata {
 	if author == "" {
 		// No signing key, use default author.
-		author = "Ethereum Builds <fjl@ethereum.org>"
+		author = "Smilo Developers <smilodevelopers@gmail.com>"
 	}
 	return debMetadata{
 		PackageName: name,
@@ -674,17 +674,17 @@ func stageDebianSource(tmpdir string, meta debMetadata) (pkgdir string) {
 
 	// Put the debian build files in place.
 	debian := filepath.Join(pkgdir, "debian")
-	build.Render("build/deb/"+meta.PackageName+"/deb.rules", filepath.Join(debian, "rules"), 0755, meta)
-	build.Render("build/deb/"+meta.PackageName+"/deb.changelog", filepath.Join(debian, "changelog"), 0644, meta)
-	build.Render("build/deb/"+meta.PackageName+"/deb.control", filepath.Join(debian, "control"), 0644, meta)
-	build.Render("build/deb/"+meta.PackageName+"/deb.copyright", filepath.Join(debian, "copyright"), 0644, meta)
+	build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.rules", filepath.Join(debian, "rules"), 0755, meta)
+	build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.changelog", filepath.Join(debian, "changelog"), 0644, meta)
+	build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.control", filepath.Join(debian, "control"), 0644, meta)
+	build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.copyright", filepath.Join(debian, "copyright"), 0644, meta)
 	build.RenderString("8\n", filepath.Join(debian, "compat"), 0644, meta)
 	build.RenderString("3.0 (native)\n", filepath.Join(debian, "source/format"), 0644, meta)
 	for _, exe := range meta.Executables {
 		install := filepath.Join(debian, meta.ExeName(exe)+".install")
 		docs := filepath.Join(debian, meta.ExeName(exe)+".docs")
-		build.Render("build/deb/"+meta.PackageName+"/deb.install", install, 0644, exe)
-		build.Render("build/deb/"+meta.PackageName+"/deb.docs", docs, 0644, exe)
+		build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.install", install, 0644, exe)
+		build.Render("src/blockchain/smilobft/build/deb/"+meta.PackageName+"/deb.docs", docs, 0644, exe)
 	}
 
 	return pkgdir
