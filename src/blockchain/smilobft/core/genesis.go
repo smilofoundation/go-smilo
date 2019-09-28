@@ -196,6 +196,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 		// Ensure the stored genesis matches with the given one.
 		hash := genesis.ToBlock(nil).Hash()
 		if hash != stored {
+			log.Error("Error when ensuring the stored genesis matches with the given one.", "stored", stored, "new", hash)
 			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
 		}
 		block, err := genesis.Commit(db)
@@ -206,6 +207,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 	if genesis != nil {
 		hash := genesis.ToBlock(nil).Hash()
 		if hash != stored {
+			log.Error("Error when checking whether the genesis block is already written.", "stored", stored, "new", hash)
 			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
 		}
 	}
