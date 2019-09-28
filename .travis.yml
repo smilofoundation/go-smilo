@@ -59,7 +59,6 @@ matrix:
         - bash <(curl -s https://codecov.io/bash) -t $(CODECOV_TOKEN)
 
     # This builder does the Ubuntu PPA upload
-    - if: type = push
       os: linux
       dist: trusty
       go: 1.11.x
@@ -67,9 +66,9 @@ matrix:
         - ubuntu-ppa
       git:
         submodules: false # avoid cloning ethereum/tests
-#      branches:
-#        only:
-#          - release/1.9
+      branches:
+        only:
+          - master
       addons:
         apt:
           packages:
