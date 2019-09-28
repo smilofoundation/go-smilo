@@ -67,9 +67,9 @@ matrix:
         - ubuntu-ppa
       git:
         submodules: false # avoid cloning ethereum/tests
-      branches:
-        only:
-          - release/1.9
+#      branches:
+#        only:
+#          - release/1.9
       addons:
         apt:
           packages:
