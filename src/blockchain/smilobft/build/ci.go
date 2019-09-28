@@ -122,7 +122,7 @@ var (
 
 	debSmilo = debPackage{
 		Name:        "smilo",
-		Version:     params.Version,
+		Version:     params.SmiloVersion,
 		Executables: debExecutables,
 	}
 
@@ -451,10 +451,10 @@ func maybeSkipArchive(env build.Environment) {
 		log.Printf("skipping because this is a cron job")
 		os.Exit(0)
 	}
-	if env.Branch != "master" && !strings.HasPrefix(env.Tag, "v1.") {
-		log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
-		os.Exit(0)
-	}
+	//if env.Branch != "master" && !strings.HasPrefix(env.Tag, "v1.") {
+	//	log.Printf("skipping because branch %q, tag %q is not on the whitelist", env.Branch, env.Tag)
+	//	os.Exit(0)
+	//}
 }
 
 // Debian Packaging
@@ -566,7 +566,7 @@ type debMetadata struct {
 
 	PackageName string
 
-	// go-ethereum version being built. Note that this
+	// go-smilo version being built. Note that this
 	// is not the debian package version. The package version
 	// is constructed by VersionString.
 	Version string

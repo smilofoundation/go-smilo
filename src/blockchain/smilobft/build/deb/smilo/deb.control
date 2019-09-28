@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: {{.Author}}
 Build-Depends: debhelper (>= 8.0.0), golang-1.11
 Standards-Version: 3.9.5
-Homepage: https://ethereum.org
+Homepage: https://github.com/smilofoundation/go-smilo
 Vcs-Git: git://github.com/smilofoundation/go-smilo.git
 Vcs-Browser: https://github.com/smilofoundation/go-smilo
 
