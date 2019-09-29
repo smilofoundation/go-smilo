@@ -94,7 +94,7 @@ func Env() Environment {
 
 // LocalEnv returns build environment metadata gathered from git.
 func LocalEnv() Environment {
-	env := applyEnvFlags(Environment{Name: "local", Repo: "Smilo-platform/go-smilo"})
+	env := applyEnvFlags(Environment{Name: "local", Repo: "smilofoundation/go-smilo"})
 
 	head := readGitFile("HEAD")
 	if fields := strings.Fields(head); len(fields) == 2 {

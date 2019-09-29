@@ -19,7 +19,7 @@
 /*
 The ci command is called from Continuous Integration scripts.
 
-Usage: go run build/ci.go <command> <command flags/arguments>
+Usage: go run src/blockchain/smilobft/build/ci.go <command> <command flags/arguments>
 
 Available commands are:
 
@@ -85,36 +85,44 @@ var (
 	// A debian package is created for all executables listed here.
 	debExecutables = []debExecutable{
 		{
-			BinaryName:  "abigen",
-			Description: "Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages.",
+			BinaryName:  "sabigen",
+			Description: "Source code generator to convert Smilo contract definitions into easy to use, compile-time type-safe Go packages.",
 		},
 		{
-			BinaryName:  "bootnode",
+			BinaryName:  "sbootnode",
 			Description: "Ethereum bootnode.",
 		},
 		{
-			BinaryName:  "evm",
-			Description: "Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode.",
+			BinaryName:  "sevm",
+			Description: "Developer utility version of the Smilo EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode.",
 		},
 		{
-			BinaryName:  "geth",
-			Description: "Ethereum CLI client.",
+			BinaryName:  "sgeth",
+			Description: "Smilo CLI client.",
 		},
 		{
-			BinaryName:  "puppeth",
-			Description: "Ethereum private network manager.",
+			BinaryName:  "spuppeth",
+			Description: "Smilo private network manager.",
 		},
 		{
-			BinaryName:  "rlpdump",
-			Description: "Developer utility tool that prints RLP structures.",
+			BinaryName:  "srlpdump",
+			Description: "Smilo Developer utility tool that prints RLP structures.",
 		},
 		{
-			BinaryName:  "wnode",
-			Description: "Ethereum Whisper diagnostic tool",
+			BinaryName:  "swnode",
+			Description: "Smilo Whisper diagnostic tool",
 		},
 		{
-			BinaryName:  "clef",
-			Description: "Ethereum account management tool.",
+			BinaryName:  "sclef",
+			Description: "Smilo account management tool.",
+		},
+		{
+			BinaryName:  "extradata",
+			Description: "Smilo extradata management tool.",
+		},
+		{
+			BinaryName:  "smiloutils",
+			Description: "Smilo utils tool.",
 		},
 	}
 
@@ -137,7 +145,8 @@ var (
 	// Note: yakkety is unsupported because it was officially deprecated on Launchpad.
 	// Note: zesty is unsupported because it was officially deprecated on Launchpad.
 	// Note: artful is unsupported because it was officially deprecated on Launchpad.
-	debDistros = []string{"trusty", "xenial", "bionic", "cosmic", "disco"}
+	// Note: cosmic is unsupported because it was officially deprecated on Launchpad.
+	debDistros = []string{"trusty", "xenial", "bionic", "disco", "eoan"}
 )
 
 var GOBIN, _ = filepath.Abs(filepath.Join("build", "bin"))
@@ -188,8 +197,9 @@ func main() {
 
 func doInstall(cmdline []string) {
 	var (
-		arch = flag.String("arch", "", "Architecture to cross build for")
-		cc   = flag.String("cc", "", "C compiler to cross build with")
+		arch   = flag.String("arch", "", "Architecture to cross build for")
+		cc     = flag.String("cc", "", "C compiler to cross build with")
+		rename = flag.Bool("rename", false, "Rename build files to Smilo version (adds prefix s in front, eg: sgeth)")
 	)
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
@@ -220,6 +230,7 @@ func doInstall(cmdline []string) {
 		goinstall.Args = append(goinstall.Args, "-v")
 		goinstall.Args = append(goinstall.Args, packages...)
 		build.MustRun(goinstall)
+		doRename(*rename)
 		return
 	}
 	// If we are cross compiling to ARMv5 ARMv6 or ARMv7, clean any previous builds
@@ -253,6 +264,39 @@ func doInstall(cmdline []string) {
 				}
 			}
 		}
+	}
+	doRename(*rename)
+}
+
+func doRename(rename bool) {
+	if rename {
+		fmt.Println("**** Going to rename geth files to Smilo custom ****")
+		if _, err := os.Stat(filepath.Join(GOBIN, "abigen")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "abigen"), filepath.Join(GOBIN, "sabigen"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "bootnode")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "bootnode"), filepath.Join(GOBIN, "sbootnode"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "evm")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "evm"), filepath.Join(GOBIN, "sevm"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "geth")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "geth"), filepath.Join(GOBIN, "sgeth"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "puppeth")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "puppeth"), filepath.Join(GOBIN, "spuppeth"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "rlpdump")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "rlpdump"), filepath.Join(GOBIN, "srlpdump"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "wnode")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "wnode"), filepath.Join(GOBIN, "swnode"))
+		}
+		if _, err := os.Stat(filepath.Join(GOBIN, "clef")); !os.IsNotExist(err) {
+			os.Rename(filepath.Join(GOBIN, "clef"), filepath.Join(GOBIN, "sclef"))
+		}
+		fmt.Println("**** Done renaming geth files to Smilo custom ****")
+
 	}
 }
 
@@ -729,12 +773,12 @@ func doWindowsInstaller(cmdline []string) {
 		"Geth":     gethTool,
 		"DevTools": devTools,
 	}
-	build.Render("build/nsis.geth.nsi", filepath.Join(*workdir, "geth.nsi"), 0644, nil)
-	build.Render("build/nsis.install.nsh", filepath.Join(*workdir, "install.nsh"), 0644, templateData)
-	build.Render("build/nsis.uninstall.nsh", filepath.Join(*workdir, "uninstall.nsh"), 0644, allTools)
-	build.Render("build/nsis.pathupdate.nsh", filepath.Join(*workdir, "PathUpdate.nsh"), 0644, nil)
-	build.Render("build/nsis.envvarupdate.nsh", filepath.Join(*workdir, "EnvVarUpdate.nsh"), 0644, nil)
-	build.CopyFile(filepath.Join(*workdir, "SimpleFC.dll"), "build/nsis.simplefc.dll", 0755)
+	build.Render("src/blockchain/smilobft/build/nsis.geth.nsi", filepath.Join(*workdir, "geth.nsi"), 0644, nil)
+	build.Render("src/blockchain/smilobft/build/nsis.install.nsh", filepath.Join(*workdir, "install.nsh"), 0644, templateData)
+	build.Render("src/blockchain/smilobft/build/nsis.uninstall.nsh", filepath.Join(*workdir, "uninstall.nsh"), 0644, allTools)
+	build.Render("src/blockchain/smilobft/build/nsis.pathupdate.nsh", filepath.Join(*workdir, "PathUpdate.nsh"), 0644, nil)
+	build.Render("src/blockchain/smilobft/build/nsis.envvarupdate.nsh", filepath.Join(*workdir, "EnvVarUpdate.nsh"), 0644, nil)
+	build.CopyFile(filepath.Join(*workdir, "SimpleFC.dll"), "src/blockchain/smilobft/build/nsis.simplefc.dll", 0755)
 	build.CopyFile(filepath.Join(*workdir, "COPYING"), "COPYING", 0755)
 
 	// Build the installer. This assumes that all the needed files have been previously
@@ -786,7 +830,7 @@ func doAndroidArchive(cmdline []string) {
 		return
 	}
 	meta := newMavenMetadata(env)
-	build.Render("build/mvn.pom", meta.Package+".pom", 0755, meta)
+	build.Render("src/blockchain/smilobft/build/mvn.pom", meta.Package+".pom", 0755, meta)
 
 	// Skip Maven deploy and Azure upload for PR builds
 	maybeSkipArchive(env)
@@ -816,7 +860,7 @@ func doAndroidArchive(cmdline []string) {
 			repo = *deploy + "/content/repositories/snapshots"
 		}
 		build.MustRunCommand("mvn", "gpg:sign-and-deploy-file", "-e", "-X",
-			"-settings=build/mvn.settings", "-Durl="+repo, "-DrepositoryId=ossrh",
+			"-settings=src/blockchain/smilobft/build/mvn.settings", "-Durl="+repo, "-DrepositoryId=ossrh",
 			"-Dgpg.keyname="+keyID,
 			"-DpomFile="+meta.Package+".pom", "-Dfile="+meta.Package+".aar")
 	}
@@ -925,7 +969,7 @@ func doXCodeFramework(cmdline []string) {
 	// Prepare and upload a PodSpec to CocoaPods
 	if *deploy != "" {
 		meta := newPodMetadata(env, archive)
-		build.Render("build/pod.podspec", "Geth.podspec", 0755, meta)
+		build.Render("src/blockchain/smilobft/build/pod.podspec", "Geth.podspec", 0755, meta)
 		build.MustRunCommand("pod", *deploy, "push", "Geth.podspec", "--allow-warnings", "--verbose")
 	}
 }

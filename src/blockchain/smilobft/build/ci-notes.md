@@ -38,14 +38,15 @@ Add the gophers PPA and install Go 1.11 and Debian packaging tools:
 
 Create the source packages:
 
-    $ go run src/blockchain/smilobft/build/ci.go debsrc -workdir dist
+    $ go run src/blockchain/smilobft/build/ci.go debsrc -workdir build/dist
 
 Then go into the source package directory for your running distribution and build the package:
 
-    $ cd dist/ethereum-unstable-1.6.0+xenial
+    $ cd build/dist/smilo-unstable-1.9.2.1+bionic
     $ dpkg-buildpackage
 
 Built packages are placed in the dist/ directory.
 
     $ cd ..
-    $ dpkg-deb -c geth-unstable_1.6.0+xenial_amd64.deb
+    $ dpkg-deb -c sgeth-unstable_1.9.2.1+bionic_amd64.deb
+    $ smilo-unstable-1.9.2.1+bionic/debian/sgeth-unstable/usr/bin/sgeth version
