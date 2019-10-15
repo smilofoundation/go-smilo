@@ -17,6 +17,7 @@
 package core
 
 import (
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -38,6 +39,7 @@ type StateProcessor struct {
 	config *params.ChainConfig // Chain configuration options
 	bc     *BlockChain         // Canonical block chain
 	engine consensus.Engine    // Consensus engine used for block rewards
+	autonityContract *autonity.Contract
 }
 
 // NewStateProcessor initialises a new StateProcessor.
@@ -48,6 +50,11 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 		engine: engine,
 	}
 }
+
+func (p *StateProcessor) SetAutonityContract(contract *autonity.Contract) {
+	p.autonityContract = contract
+}
+
 
 // Process processes the state changes according to the Ethereum rules by running
 // the transaction messages using the statedb and applying any rewards to both
@@ -87,6 +94,12 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 		if vaultReceipt != nil {
 			vaultReceipts = append(vaultReceipts, vaultReceipt)
 			allLogs = append(allLogs, vaultReceipt.Logs...)
+		}
+	}
+	if p.autonityContract != nil {
+		err := p.autonityContract.ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), statedb)
+		if err != nil {
+			return nil, nil, nil, 0, err
 		}
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)

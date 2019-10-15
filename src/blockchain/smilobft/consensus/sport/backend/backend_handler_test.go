@@ -18,6 +18,7 @@
 package backend
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"io/ioutil"
@@ -26,16 +27,17 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
+
 func TestBackendHandler(t *testing.T) {
-	_, backend := newBlockChain(1)
+	_, backend, err := newBlockChain(1)
+	require.Nil(t, err)
 
 	// generate one msg
 	data := []byte("data1")
-	hash := sport.RLPHash(data)
+	hash := types.RLPHash(data)
 	msg := makeMsg(smilobftMsg, data)
 	addr := cmn.StringToAddress("address")
 
@@ -51,7 +53,7 @@ func TestBackendHandler(t *testing.T) {
 	}
 
 	// 2. this message should be in cache after we handle it
-	_, err := backend.HandleMsg(addr, msg)
+	_, err = backend.HandleMsg(addr, msg)
 	if err != nil {
 		t.Fatalf("handle message failed: %v", err)
 	}
@@ -71,7 +73,10 @@ func TestBackendHandler(t *testing.T) {
 }
 
 func TestHandleNewBlockMessage_whenTypical(t *testing.T) {
-	_, backend := newBlockChain(1)
+	t.Skip("Implementation of this test was removed")
+	_, backend, err := newBlockChain(1)
+	require.Nil(t, err)
+
 	arbitraryAddress := cmn.StringToAddress("arbitrary")
 	arbitraryBlock, arbitraryP2PMessage := buildArbitraryP2PNewBlockMessage(t, false)
 	postAndWait(backend, arbitraryBlock, t)
@@ -90,7 +95,9 @@ func TestHandleNewBlockMessage_whenTypical(t *testing.T) {
 }
 
 func TestHandleNewBlockMessage_whenNotAProposedBlock(t *testing.T) {
-	_, backend := newBlockChain(1)
+	_, backend, err := newBlockChain(1)
+	require.Nil(t, err)
+
 	arbitraryAddress := cmn.StringToAddress("arbitrary")
 	_, arbitraryP2PMessage := buildArbitraryP2PNewBlockMessage(t, false)
 	postAndWait(backend, types.NewBlock(&types.Header{
@@ -114,7 +121,9 @@ func TestHandleNewBlockMessage_whenNotAProposedBlock(t *testing.T) {
 }
 
 func TestHandleNewBlockMessage_whenFailToDecode(t *testing.T) {
-	_, backend := newBlockChain(1)
+	_, backend, err := newBlockChain(1)
+	require.Nil(t, err)
+
 	arbitraryAddress := cmn.StringToAddress("arbitrary")
 	_, arbitraryP2PMessage := buildArbitraryP2PNewBlockMessage(t, true)
 	postAndWait(backend, types.NewBlock(&types.Header{

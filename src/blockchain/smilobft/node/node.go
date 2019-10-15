@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"net"
 	"os"
 	"path/filepath"
@@ -30,7 +31,6 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/rpc"
@@ -43,7 +43,7 @@ import (
 
 // Node is a container on which services can be registered.
 type Node struct {
-	eventmux *event.TypeMux // Event multiplexer used between the services of a stack
+	eventmux *cmn.TypeMux // Event multiplexer used between the services of a stack
 	config   *Config
 	accman   *accounts.Manager
 
@@ -121,7 +121,7 @@ func New(conf *Config) (*Node, error) {
 		ipcEndpoint:       conf.IPCEndpoint(),
 		httpEndpoint:      conf.HTTPEndpoint(),
 		wsEndpoint:        conf.WSEndpoint(),
-		eventmux:          new(event.TypeMux),
+		eventmux:          new(cmn.TypeMux),
 		log:               conf.Logger,
 	}, nil
 }
@@ -519,6 +519,11 @@ func (n *Node) Attach() (*rpc.Client, error) {
 	if n.server == nil {
 		return nil, ErrNodeStopped
 	}
+
+	if n.config.P2P.IsRated {
+		return rpc.DialInProcWithRate(n.inprocHandler, n.config.P2P.InRate, n.config.P2P.OutRate), nil
+	}
+
 	return rpc.DialInProc(n.inprocHandler), nil
 }
 
@@ -606,8 +611,12 @@ func (n *Node) WSEndpoint() string {
 
 // EventMux retrieves the event multiplexer used by all the network services in
 // the current protocol stack.
-func (n *Node) EventMux() *event.TypeMux {
+func (n *Node) EventMux() *cmn.TypeMux {
 	return n.eventmux
+}
+
+func (n *Node) ResetEventMux() {
+	n.eventmux = &cmn.TypeMux{}
 }
 
 // OpenDatabase opens an existing database with the given name (or creates one if no

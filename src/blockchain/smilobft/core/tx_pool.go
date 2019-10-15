@@ -19,6 +19,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math"
 	"math/big"
 	"sort"
@@ -140,6 +141,8 @@ type blockChain interface {
 	StateAt(root common.Hash) (*state.StateDB, *state.StateDB, error)
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
+	GetAutonityContract() *autonity.Contract
+	Config() *params.ChainConfig
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.

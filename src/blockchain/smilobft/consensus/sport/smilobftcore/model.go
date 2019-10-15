@@ -18,12 +18,12 @@
 package smilobftcore
 
 import (
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
@@ -40,23 +40,24 @@ type core struct {
 	logger  log.Logger
 
 	backend               sport.Backend
-	events                *event.TypeMuxSubscription
-	finalCommittedSub     *event.TypeMuxSubscription
-	timeoutSub            *event.TypeMuxSubscription
+	events                *cmn.TypeMuxSubscription
+	finalCommittedSub     *cmn.TypeMuxSubscription
+	timeoutSub            *cmn.TypeMuxSubscription
 	futurePreprepareTimer *time.Timer
 
 	fullnodeSet           sport.FullnodeSet
 	waitingForRoundChange bool
 	validateFn            func([]byte, []byte) (common.Address, error)
 
-	backlogs   map[common.Address]*prque.Prque
+	backlogs   map[sport.Fullnode]*prque.Prque
 	backlogsMu *sync.Mutex
 
 	current   *roundState
-	handlerWg *sync.WaitGroup
+	handlerStopCh chan struct{}
 
 	roundChangeSet   *roundChangeSet
 	roundChangeTimer *time.Timer
+	roundChangeTimerMu sync.RWMutex
 
 	pendingRequests   *prque.Prque
 	pendingRequestsMu *sync.Mutex
@@ -68,31 +69,28 @@ type core struct {
 	sequenceMeter metrics.Meter
 	// the timer to record consensus duration (from accepting a preprepare to final committed stage)
 	consensusTimer metrics.Timer
+
+	sentPreprepare bool
 }
 
 // New creates an smilobft consensus core
 func New(backend sport.Backend, config *sport.Config) Engine {
-	r := metrics.NewRegistry()
 	c := &core{
 		config:             config,
 		address:            backend.Address(),
 		state:              StateAcceptRequest,
-		handlerWg:          new(sync.WaitGroup),
+		handlerStopCh:      make(chan struct{}),
 		logger:             log.New("address", backend.Address()),
 		backend:            backend,
-		backlogs:           make(map[common.Address]*prque.Prque),
+		backlogs:           make(map[sport.Fullnode]*prque.Prque),
 		backlogsMu:         new(sync.Mutex),
 		pendingRequests:    prque.New(),
 		pendingRequestsMu:  new(sync.Mutex),
 		consensusTimestamp: time.Time{},
-		roundMeter:         metrics.NewMeter(),
-		sequenceMeter:      metrics.NewMeter(),
-		consensusTimer:     metrics.NewTimer(),
+		roundMeter:         metrics.NewRegisteredMeter("consensus/sport/smilobftcore/round", nil),
+		sequenceMeter:      metrics.NewRegisteredMeter("consensus/sport/smilobftcore/sequence", nil),
+		consensusTimer:     metrics.NewRegisteredTimer("consensus/sport/smilobftcore/consensus", nil),
 	}
-
-	r.Register("consensus/sport/smilobftcore/round", c.roundMeter)
-	r.Register("consensus/sport/smilobftcore/sequence", c.sequenceMeter)
-	r.Register("consensus/sport/smilobftcore/consensus", c.consensusTimer)
 
 	c.validateFn = c.checkFullnodeSignature
 	return c
@@ -190,9 +188,6 @@ type Engine interface {
 	Start() error
 	Stop() error
 
-	IsSpeaker() bool
-
-	IsCurrentBlockProposal(blockHash common.Hash) bool
 }
 
 // ----------------------------------------------------------------------------

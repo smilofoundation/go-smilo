@@ -16,12 +16,16 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 package sport
 
-import "math/big"
+import (
+	"math/big"
+	"sync"
+)
 
 type SpeakerPolicy uint64
 
 const (
 	RoundRobin SpeakerPolicy = iota
+	Sticky
 )
 
 type Config struct {
@@ -34,6 +38,8 @@ type Config struct {
 	MinFunds             int64         `toml:",omitempty"` // The minimum funds a node should have to be a full node
 	CommunityAddress     string        `toml:",omitempty"` // The community address for miner donations
 	MinBlocksEmptyMining *big.Int      `toml:",omitempty"` // Min Blocks to mine before Stop Mining Empty Blocks
+
+	sync.RWMutex
 }
 
 var DefaultConfig = &Config{
@@ -44,4 +50,17 @@ var DefaultConfig = &Config{
 	Epoch:                30000,
 	MinFunds:             1,
 	MinBlocksEmptyMining: big.NewInt(20000000),
+}
+
+
+func (cfg *Config) SetProposerPolicy(p SpeakerPolicy) {
+	cfg.Lock()
+	cfg.SpeakerPolicy = p
+	cfg.Unlock()
+}
+
+func (cfg *Config) GetProposerPolicy() SpeakerPolicy {
+	cfg.RLock()
+	defer cfg.RUnlock()
+	return cfg.SpeakerPolicy
 }

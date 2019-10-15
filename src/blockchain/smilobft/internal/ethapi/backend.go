@@ -19,6 +19,8 @@ package ethapi
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -43,11 +45,12 @@ import (
 // both full and light clients) with access to necessary functions.
 type Backend interface {
 	// General Ethereum API
+	AutonityContract() *autonity.Contract
 	Downloader() *downloader.Downloader
 	ProtocolVersion() int
 	SuggestPrice(ctx context.Context) (*big.Int, error)
 	ChainDb() ethdb.Database
-	EventMux() *event.TypeMux
+	EventMux() *cmn.TypeMux
 	AccountManager() *accounts.Manager
 	ExtRPCEnabled() bool
 	RPCGasCap() *big.Int // global gas cap for eth_call over rpc: DoS protection
@@ -59,6 +62,8 @@ type Backend interface {
 	BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
 	StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error)
+	GetHeader(ctx context.Context, hash common.Hash) *types.Header
+	GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error)
 	GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	GetTd(hash common.Hash) *big.Int
 	GetEVM(ctx context.Context, msg core.Message, state vm.SmiloAPIState, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error)

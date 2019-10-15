@@ -17,6 +17,7 @@
 package core
 
 import (
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -26,7 +27,6 @@ import (
 // Validator is an interface which defines the standard for block validation. It
 // is only responsible for validating block contents, as the header validation is
 // done by the specific consensus engines.
-//
 type Validator interface {
 	// ValidateBody validates the given block's content.
 	ValidateBody(block *types.Block) error
@@ -50,4 +50,5 @@ type Processor interface {
 	// the transaction messages using the statedb and applying any rewards to both
 	// the processor (coinbase) and any included uncles.
 	Process(block *types.Block, statedb, vaultState *state.StateDB, cfg vm.Config) (types.Receipts, types.Receipts, []*types.Log, uint64, error)
+	SetAutonityContract(contract *autonity.Contract)
 }

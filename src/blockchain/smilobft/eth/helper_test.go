@@ -22,6 +22,8 @@ package eth
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sort"
 	"sync"
@@ -52,23 +54,46 @@ var (
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
 // channels for different events.
-func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, ethdb.Database, error) {
+func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction, peers []string) (*ProtocolManager, ethdb.Database, error) {
 	var (
-		evmux  = new(event.TypeMux)
+		evmux  = new(cmn.TypeMux)
 		engine = ethash.NewFaker()
 		db     = rawdb.NewMemoryDatabase()
 		gspec  = &core.Genesis{
 			Config: params.TestChainConfig,
 			Alloc:  core.GenesisAlloc{testBank: {Balance: big.NewInt(1000000)}},
 		}
-		genesis       = gspec.MustCommit(db)
-		blockchain, _ = core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{}, nil)
 	)
+	gspec.Config.AutonityContractConfig = &params.AutonityContractGenesis{
+		Users: []params.User{},
+	}
+
+	for i := range peers {
+		gspec.Config.AutonityContractConfig.Users = append(
+			gspec.Config.AutonityContractConfig.Users,
+			params.User{
+				Enode: peers[i],
+				Type:  params.UserValidator,
+				Stake: 100,
+			},
+		)
+	}
+	err := gspec.Config.AutonityContractConfig.AddDefault().Validate()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	genesis := gspec.MustCommit(db)
+	blockchain, err := core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{}, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	chain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, blocks, generator)
 	if _, err := blockchain.InsertChain(chain); err != nil {
 		panic(err)
 	}
-	pm, err := NewProtocolManager(gspec.Config, nil, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, 1, nil)
+	pm, err := NewProtocolManager(gspec.Config, nil, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, 1, nil, DefaultConfig.SportEnableNodePermissionFlag)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,8 +105,8 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 // with the given number of blocks already known, and potential notification
 // channels for different events. In case of an error, the constructor force-
 // fails the test.
-func newTestProtocolManagerMust(t *testing.T, mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, ethdb.Database) {
-	pm, db, err := newTestProtocolManager(mode, blocks, generator, newtx)
+func newTestProtocolManagerMust(t *testing.T, mode downloader.SyncMode, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction, peers []string) (*ProtocolManager, ethdb.Database) {
+	pm, db, err := newTestProtocolManager(mode, blocks, generator, newtx, peers)
 	if err != nil {
 		t.Fatalf("Failed to create protocol manager: %v", err)
 	}
@@ -145,15 +170,11 @@ type testPeer struct {
 }
 
 // newTestPeer creates a new peer registered at the given protocol manager.
-func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*testPeer, <-chan error) {
+func newTestPeer(p2pPeer *p2p.Peer, version int, pm *ProtocolManager, shake bool) (*testPeer, <-chan error) {
 	// Create a message pipe to communicate through
 	app, net := p2p.MsgPipe()
 
-	// Generate a random id and create the peer
-	var id enode.ID
-	rand.Read(id[:])
-
-	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
+	peer := pm.newPeer(version, p2pPeer, net)
 
 	// Start the peer on a new thread
 	errc := make(chan error, 1)
@@ -175,7 +196,19 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 		)
 		tp.handshake(nil, td, head.Hash(), genesis.Hash())
 	}
+
 	return tp, errc
+}
+
+func newTestP2PPeer(name string) *p2p.Peer {
+	// Generate a random id and create the peer
+	var id enode.ID
+	rand.Read(id[:])
+	peer, err := p2p.NewTestPeer(name, []p2p.Cap{})
+	if err != nil {
+		log.Error("newTestP2PPeer err", "error", err)
+	}
+	return peer
 }
 
 // handshake simulates a trivial handshake that expects the same state from the

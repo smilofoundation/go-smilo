@@ -19,6 +19,7 @@ package clique
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"go-smilo/src/blockchain/smilobft/consensus"
 	"math/big"
 	"testing"
 
@@ -89,6 +90,7 @@ func (r *testerChainReader) GetHeaderByNumber(number uint64) *types.Header {
 	panic("not supported")
 }
 func (r *testerChainReader) State() (*state.StateDB, *state.StateDB, error) { return r.State() }
+func (r *testerChainReader) Engine() consensus.Engine           { return r.Engine() }
 
 // Tests that voting is evaluated correctly for various simple and complex scenarios.
 func TestVoting(t *testing.T) {

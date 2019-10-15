@@ -19,6 +19,8 @@ package les
 import (
 	"context"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -92,6 +94,14 @@ func (b *LesApiBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.B
 		return nil, nil, errors.New("header not found")
 	}
 	return light.NewState(ctx, header, b.eth.odr), header, nil
+}
+
+func (b *LesApiBackend) GetHeader(ctx context.Context, hash common.Hash) *types.Header {
+	return b.eth.blockchain.GetHeaderByHash(hash)
+}
+
+func (b *LesApiBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	return b.eth.blockchain.GetBlockByHash(ctx, hash)
 }
 
 func (b *LesApiBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
@@ -191,12 +201,16 @@ func (b *LesApiBackend) ChainDb() ethdb.Database {
 	return b.eth.chainDb
 }
 
-func (b *LesApiBackend) EventMux() *event.TypeMux {
+func (b *LesApiBackend) EventMux() *cmn.TypeMux {
 	return b.eth.eventMux
 }
 
 func (b *LesApiBackend) AccountManager() *accounts.Manager {
 	return b.eth.accountManager
+}
+func (b *LesApiBackend) AutonityContract() *autonity.Contract {
+	//todo add autonity contract integration to LES
+	return nil
 }
 
 func (b *LesApiBackend) ExtRPCEnabled() bool {

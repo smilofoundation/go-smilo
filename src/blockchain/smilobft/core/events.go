@@ -18,6 +18,7 @@ package core
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
@@ -50,3 +51,6 @@ type ChainSideEvent struct {
 }
 
 type ChainHeadEvent struct{ Block *types.Block }
+
+// WhitelistEvent is posted when the list of authorized enodes is updated.
+type WhitelistEvent struct{ Whitelist []*enode.Node }

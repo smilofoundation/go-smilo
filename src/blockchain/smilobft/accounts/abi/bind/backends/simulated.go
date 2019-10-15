@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
@@ -79,7 +80,7 @@ func NewSimulatedBackendWithDatabase(database ethdb.Database, alloc core.Genesis
 		database:   database,
 		blockchain: blockchain,
 		config:     genesis.Config,
-		events:     filters.NewEventSystem(new(event.TypeMux), &filterBackend{database, blockchain}, false),
+		events:     filters.NewEventSystem(new(cmn.TypeMux), &filterBackend{database, blockchain}, false),
 	}
 	backend.rollback()
 	return backend
@@ -468,7 +469,7 @@ type filterBackend struct {
 }
 
 func (fb *filterBackend) ChainDb() ethdb.Database  { return fb.db }
-func (fb *filterBackend) EventMux() *event.TypeMux { panic("not supported") }
+func (fb *filterBackend) EventMux() *cmn.TypeMux { panic("not supported") }
 
 func (fb *filterBackend) HeaderByNumber(ctx context.Context, block rpc.BlockNumber) (*types.Header, error) {
 	if block == rpc.LatestBlockNumber {

@@ -19,7 +19,6 @@ package backend
 
 import (
 	"errors"
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 )
 
@@ -33,8 +32,13 @@ var (
 	errDecodeFailed = errors.New("fail to decode smilobft message")
 )
 
+// Protocol implements consensus.Handler.Protocol
+func (sb *backend) Protocol() (protocolName string, extraMsgCodes uint64) {
+	return "smilobft", 1
+}
+
 // Protocol (clique override) implements consensus.Engine.Protocol
-func (sb *backend) Protocol() consensus.Protocol {
+func (sb *backend) ProtocolOld() consensus.Protocol {
 	return consensus.Protocol{
 		Name:     "smilobft",
 		Versions: []uint{64},

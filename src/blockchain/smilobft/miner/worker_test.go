@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"testing"
 	"time"
@@ -150,7 +151,7 @@ func (b *testWorkerBackend) AccountManager() *accounts.Manager { return b.accoun
 func newTestWorker(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine, blocks int) (*worker, *testWorkerBackend) {
 	backend := newTestWorkerBackend(t, chainConfig, engine, blocks)
 	backend.txPool.AddLocals(pendingTxs)
-	w := newWorker(testConfig, chainConfig, engine, common.Address{}, backend, new(event.TypeMux), minBlocksEmptyMining)
+	w := newWorker(testConfig, chainConfig, engine, common.Address{}, backend, new(cmn.TypeMux), minBlocksEmptyMining)
 	w.setEtherbase(testBankAddress)
 	return w, backend
 }

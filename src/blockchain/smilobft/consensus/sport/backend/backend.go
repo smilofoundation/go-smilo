@@ -18,11 +18,13 @@ package backend
 
 import (
 	"crypto/ecdsa"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/core/vm"
+	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -39,14 +41,14 @@ const (
 )
 
 // New creates an Ethereum backend for smilobft core engine.
-func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database) consensus.SmiloBFT {
+func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *backend {
 	// Allocate the snapshot caches and create the engine
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	recentMessages, _ := lru.NewARC(inmemoryPeers)
 	knownMessages, _ := lru.NewARC(inmemoryMessages)
 	backend := &backend{
 		config:           config,
-		smilobftEventMux: new(event.TypeMux),
+		smilobftEventMux: new(cmn.TypeMux),
 		privateKey:       privateKey,
 		address:          crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:           log.New(),
@@ -57,6 +59,8 @@ func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database) 
 		coreStarted:      false,
 		recentMessages:   recentMessages,
 		knownMessages:    knownMessages,
+		vmConfig:         vmConfig,
+
 	}
 	backend.core = smilobftcore.New(backend, backend.config)
 	return backend

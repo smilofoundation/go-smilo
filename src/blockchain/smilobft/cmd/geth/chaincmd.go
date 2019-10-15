@@ -19,6 +19,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"io"
 	"os"
 	"path/filepath"
@@ -30,7 +34,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/urfave/cli.v1"
 
@@ -243,6 +246,18 @@ func initGenesis(ctx *cli.Context) error {
 
 	log.Info("$$$$$$$$$$ Init SMILO Genesis, ", "IsSmilo", genesis.Config.IsSmilo, "IsGas", genesis.Config.IsGas, "IsGasRefunded", genesis.Config.IsGasRefunded)
 
+	if genesis.Config.AutonityContractConfig != nil {
+		if err := genesis.Config.AutonityContractConfig.AddDefault().Validate(); err != nil {
+			spew.Dump(genesis.Config.AutonityContractConfig)
+			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
+		}
+	} else {
+		log.Warn("Smart contract governance not defined ?")
+	}
+
+	setupBFTDefaults(genesis)
+
+
 	// Open an initialise both full and light databases
 	stack := makeFullNode(ctx)
 	defer stack.Close()
@@ -260,6 +275,42 @@ func initGenesis(ctx *cli.Context) error {
 		log.Info("Successfully wrote genesis state", "database", name, "hash", hash, "genesis", genesis)
 	}
 	return nil
+}
+
+func setupBFTDefaults(genesis *core.Genesis) {
+	if genesis == nil || genesis.Config == nil {
+		return
+	}
+
+	if genesis.Config.Istanbul != nil {
+		if genesis.Config.Istanbul.Epoch == 0 {
+			genesis.Config.Istanbul.Epoch = istanbul.DefaultConfig.Epoch
+		}
+		if genesis.Config.Istanbul.RequestTimeout == 0 {
+			genesis.Config.Istanbul.RequestTimeout = istanbul.DefaultConfig.RequestTimeout
+		}
+		if genesis.Config.Istanbul.BlockPeriod == 0 {
+			genesis.Config.Istanbul.BlockPeriod = istanbul.DefaultConfig.BlockPeriod
+		}
+	}
+
+	defaultConfig := config.DefaultConfig()
+
+	if genesis.Config.Tendermint != nil {
+		if genesis.Config.Tendermint.Epoch == 0 {
+			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
+		}
+		if genesis.Config.Tendermint.RequestTimeout == 0 {
+			genesis.Config.Tendermint.RequestTimeout = defaultConfig.RequestTimeout
+		}
+		if genesis.Config.Tendermint.BlockPeriod == 0 {
+			genesis.Config.Tendermint.BlockPeriod = defaultConfig.BlockPeriod
+		}
+
+		if genesis.Config.Tendermint.Epoch == 0 {
+			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
+		}
+	}
 }
 
 func importChain(ctx *cli.Context) error {
@@ -441,7 +492,7 @@ func copyDb(ctx *cli.Context) error {
 	if syncMode == downloader.FastSync {
 		syncBloom = trie.NewSyncBloom(uint64(ctx.GlobalInt(utils.CacheFlag.Name)/2), chainDb)
 	}
-	dl := downloader.New(0, chainDb, syncBloom, new(event.TypeMux), chain, nil, nil)
+	dl := downloader.New(0, chainDb, syncBloom, new(cmn.TypeMux), chain, nil, nil)
 
 	// Create a source peer to satisfy downloader requests from
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name)/2, 256, ctx.Args().Get(1), "")

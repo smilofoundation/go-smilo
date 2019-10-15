@@ -19,6 +19,7 @@
 package consensus
 
 import (
+	"context"
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/rpc"
@@ -56,6 +57,9 @@ type ChainReader interface {
 
 	// State returns the dual state database, public and private and a error
 	State() (*state.StateDB, *state.StateDB, error)
+
+	// Engine retrieves the chain's consensus engine.
+	Engine() Engine
 }
 
 // Engine is an algorithm agnostic consensus engine.
@@ -103,11 +107,17 @@ type Engine interface {
 	// seal place on top.
 	Seal(chain ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error)
 
+	// SealHash returns the hash of a block prior to it being sealed.
+	SealHash(header *types.Header) common.Hash
+
 	// APIs returns the RPC APIs this consensus engine provides.
 	APIs(chain ChainReader) []rpc.API
 
 	// Protocol returns the protocol for this consensus
-	Protocol() Protocol
+	ProtocolOld() Protocol
+
+	// Close terminates any background threads maintained by the consensus engine.
+	Close() error
 }
 
 // Handler should be implemented is the consensus needs to handle and send peer's message
@@ -120,6 +130,9 @@ type Handler interface {
 
 	// SetBroadcaster sets the broadcaster to send message to peers
 	SetBroadcaster(Broadcaster)
+
+	//msgCodes returns the number of extra implemented msgCodes by this consensus algorithm
+	Protocol() (protocolName string, extraMsgCodes uint64)
 }
 
 // PoW is a consensus engine based on proof-of-work.
@@ -130,13 +143,18 @@ type PoW interface {
 	Hashrate() float64
 }
 
-// SmiloBFT networks of networks golden triangle consensus engine
-type SmiloBFT interface {
+// BFT consensus implementations
+type BFT interface {
 	Engine
 
 	// Start starts the engine
-	Start(chain ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error
-
+	Start(ctx context.Context, chain ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error
 	// Stop stops the engine
 	Stop() error
+}
+
+type Syncer interface {
+	SyncPeer(address common.Address)
+
+	ResetPeerCache(address common.Address)
 }

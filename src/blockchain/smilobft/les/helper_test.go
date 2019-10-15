@@ -22,6 +22,7 @@ package les
 import (
 	"context"
 	"crypto/rand"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"testing"
@@ -36,8 +37,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
-
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -172,7 +171,7 @@ func testIndexers(db ethdb.Database, odr light.OdrBackend, config *light.Indexer
 // channels for different events and relative chain indexers array.
 func newTestProtocolManager(lightSync bool, blocks int, odr *LesOdr, indexers []*core.ChainIndexer, peers *peerSet, db ethdb.Database, ulcServers []string, ulcFraction int, testCost uint64, clock mclock.Clock) (*ProtocolManager, *backends.SimulatedBackend, error) {
 	var (
-		evmux  = new(event.TypeMux)
+		evmux  = new(cmn.TypeMux)
 		engine = ethash.NewFaker()
 		gspec  = core.Genesis{
 			Config: params.AllEthashProtocolChanges,

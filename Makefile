@@ -258,3 +258,9 @@ geth-windows-amd64:
 
 
 
+
+
+
+mockgen:
+	mockgen -source=src/blockchain/smilobft/consensus/tendermint/core/core_backend.go -destination=src/blockchain/smilobft/consensus/tendermint/core/backend_mock.go
+	mockgen -source=src/blockchain/smilobft/consensus/tendermint/validator/validator_interface.go -destination=src/blockchain/smilobft/consensus/tendermint/validator/validator_mock.go

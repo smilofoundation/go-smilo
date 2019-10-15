@@ -18,11 +18,11 @@
 package sport
 
 import (
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 )
 
 // Backend provides application specific functions for Sport core
@@ -32,10 +32,10 @@ type Backend interface {
 	Address() common.Address
 
 	// Fullnodes returns the fullnode set
-	Fullnodes(blockproposal BlockProposal) FullnodeSet
+	Fullnodes(number uint64) FullnodeSet
 
 	// EventMux returns the event mux in backend
-	EventMux() *event.TypeMux
+	EventMux() *cmn.TypeMux
 
 	// Broadcast sends a message to all fullnodes (include self)
 	Broadcast(fullnodeSet FullnodeSet, payload []byte) error
@@ -64,11 +64,11 @@ type Backend interface {
 	// HasBlockProposal checks if the combination of the given hash and height matches any existing blocks
 	HasBlockProposal(hash common.Hash, number *big.Int) bool
 
+	// Setter for proposed block hash
+	SetProposedBlockHash(hash common.Hash)
+
 	// GetSpeaker returns the speaker of the given block height
 	GetSpeaker(number uint64) common.Address
-
-	// ParentFullnodes returns the fullnode set of the given proposal's parent block
-	ParentFullnodes(proposal BlockProposal) FullnodeSet
 
 	// HasBadBlock returns whether the block with the hash is a bad block
 	HasBadBlockProposal(hash common.Hash) bool

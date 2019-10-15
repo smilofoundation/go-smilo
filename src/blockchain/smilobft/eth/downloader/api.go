@@ -18,9 +18,8 @@ package downloader
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
-
-	"github.com/ethereum/go-ethereum/event"
 
 	"go-smilo/src/blockchain/smilobft/rpc"
 
@@ -31,7 +30,7 @@ import (
 // It offers only methods that operates on data that can be available to anyone without security risks.
 type PublicDownloaderAPI struct {
 	d                         *Downloader
-	mux                       *event.TypeMux
+	mux                       *cmn.TypeMux
 	installSyncSubscription   chan chan interface{}
 	uninstallSyncSubscription chan *uninstallSyncSubscriptionRequest
 }
@@ -40,7 +39,7 @@ type PublicDownloaderAPI struct {
 // listens for events from the downloader through the global event mux. In case it receives one of
 // these events it broadcasts it to all syncing subscriptions that are installed through the
 // installSyncSubscription channel.
-func NewPublicDownloaderAPI(d *Downloader, m *event.TypeMux) *PublicDownloaderAPI {
+func NewPublicDownloaderAPI(d *Downloader, m *cmn.TypeMux) *PublicDownloaderAPI {
 	api := &PublicDownloaderAPI{
 		d:                         d,
 		mux:                       m,

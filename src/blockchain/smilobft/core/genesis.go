@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 
@@ -44,6 +45,7 @@ import (
 //go:generate gencodec -type GenesisAccount -field-override genesisAccountMarshaling -out gen_genesis_account.go
 
 var errGenesisNoConfig = errors.New("genesis has no chain configuration")
+var errGenesisBadWhitelist = errors.New("whitelist badly formatted")
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
@@ -63,6 +65,8 @@ type Genesis struct {
 	Number     uint64      `json:"number"`
 	GasUsed    uint64      `json:"gasUsed"`
 	ParentHash common.Hash `json:"parentHash"`
+
+	mu sync.RWMutex
 }
 
 // GenesisAlloc specifies the initial state that is part of the genesis block.
@@ -291,15 +295,25 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		}
 	}
 	root := statedb.IntermediateRoot(false)
+
+	g.mu.RLock()
+	diff := big.NewInt(0)
+	if g.Difficulty == nil {
+		diff.Set(params.GenesisDifficulty)
+	} else {
+		diff.Set(g.Difficulty)
+	}
+	g.mu.RUnlock()
+
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
 		Time:       g.Timestamp,
 		ParentHash: g.ParentHash,
-		Extra:      g.ExtraData,
+		Extra:      g.GetExtraData(),
 		GasLimit:   g.GasLimit,
 		GasUsed:    g.GasUsed,
-		Difficulty: g.Difficulty,
+		Difficulty: diff,
 		MixDigest:  g.Mixhash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
@@ -319,11 +333,26 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 // Commit writes the block and state of a genesis specification to the database.
 // The block is committed as the canonical head block.
 func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
+
+	if g.Config == nil {
+		g.Config = params.AllEthashProtocolChanges
+	}
+
+	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil) {
+		err := g.SetBFT()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	block := g.ToBlock(db)
+
 	if block.Number().Sign() != 0 {
 		return nil, fmt.Errorf("can't commit genesis block with number > 0")
 	}
+	g.mu.RLock()
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
+	g.mu.RUnlock()
 	rawdb.WriteBlock(db, block)
 	rawdb.WriteReceipts(db, block.Hash(), block.NumberU64(), nil)
 	rawdb.WriteCanonicalHash(db, block.Hash(), block.NumberU64())
@@ -331,13 +360,48 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	rawdb.WriteHeadFastBlockHash(db, block.Hash())
 	rawdb.WriteHeadHeaderHash(db, block.Hash())
 
-	config := g.Config
-	if config == nil {
-		config = params.AllEthashProtocolChanges
+	if g.Config.AutonityContractConfig != nil {
+		enodes := []string{}
+		for _, v := range g.Config.AutonityContractConfig.Users {
+			if v.Enode != "" {
+				enodes = append(enodes, v.Enode)
+			}
+		}
+
+		rawdb.WriteEnodeWhitelist(db, types.NewNodes(enodes, true))
 	}
-	rawdb.WriteChainConfig(db, block.Hash(), config)
+	rawdb.WriteChainConfig(db, block.Hash(), g.Config)
 	return block, nil
 }
+
+
+// SetBFT sets default BFT(IBFT or Tendermint) config values
+func (g *Genesis) SetBFT() error {
+	if g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.Tendermint != nil && g.Config.AutonityContractConfig != nil {
+		var validators []string
+		for _, v := range g.Config.AutonityContractConfig.Users {
+			validators = append(validators, v.Address.String())
+		}
+
+		if len(validators) != 0 {
+			extraData, err := g.bftValidatorExtraData(validators)
+			if err != nil {
+				return fmt.Errorf("can't commit genesis block with incorrect validators: %s", err)
+			}
+			g.SetExtraData(extraData)
+		}
+	}
+
+	log.Info("starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()))
+
+	// we have to use '1' to have TD == BlockNumber for xBFT consensus
+	g.mu.Lock()
+	g.Difficulty = big.NewInt(1)
+	g.mu.Unlock()
+
+	return nil
+}
+
 
 // MustCommit writes the genesis block and state to db, panicking on error.
 // The block is committed as the canonical head block.
@@ -347,6 +411,30 @@ func (g *Genesis) MustCommit(db ethdb.Database) *types.Block {
 		panic(err)
 	}
 	return block
+}
+
+// bftValidatorExtraData updates Genesis ExtraData field with a new list of validators
+func (g *Genesis) bftValidatorExtraData(addressList []string) ([]byte, error) {
+	var validators []common.Address
+	for _, address := range addressList {
+		validators = append(validators, common.HexToAddress(address))
+	}
+
+	return types.PrepareExtra(g.GetExtraData(), validators)
+}
+
+func (g *Genesis) GetExtraData() []byte {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	return append([]byte{}, g.ExtraData...)
+}
+
+func (g *Genesis) SetExtraData(extraData []byte) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.ExtraData = extraData
 }
 
 // GenesisBlockForTesting creates and writes a block in which addr has the given wei balance.

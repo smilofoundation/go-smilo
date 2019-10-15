@@ -73,7 +73,9 @@ func newFullnodeSet(addrs []common.Address, policy sport.SpeakerPolicy) *fullnod
 		log.Debug("newFullnodeSet, Going to set initial speaker, ", "new speaker", fullnodeSet.speaker.String())
 	}
 	fullnodeSet.selector = roundRobinSpeaker
-
+	if policy == sport.Sticky {
+		fullnodeSet.selector = stickyProposer
+	}
 	return fullnodeSet
 }
 

@@ -21,11 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru"
 
-	"bytes"
-	"io/ioutil"
-	"math/big"
-	"reflect"
-
 	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -50,7 +45,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 			return true, errDecodeFailed
 		}
 
-		hash := sport.RLPHash(data)
+		hash := types.RLPHash(data)
 
 		// Mark peer's message
 		ms, ok := sb.recentMessages.Get(addr)
@@ -82,31 +77,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 
 		return true, nil
 	}
-	if msg.Code == NewBlockMsg && sb.core.IsSpeaker() {
-		// avoid race conditions
-		log.Debug("Speaker received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr)
-		if reader, ok := msg.Payload.(*bytes.Reader); ok {
-			payload, err := ioutil.ReadAll(reader)
-			if err != nil {
-				return true, err
-			}
-			reader.Reset(payload)
-			defer reader.Reset(payload)
-			var request struct {
-				Block *types.Block
-				TD    *big.Int
-			}
-			if err := msg.Decode(&request); err != nil {
-				log.Debug("Speaker was unable to decode the NewBlockMsg", "error", err)
-				return false, nil
-			}
-			newRequestedBlock := request.Block
-			if newRequestedBlock.Header().MixDigest == types.SportDigest && sb.core.IsCurrentBlockProposal(newRequestedBlock.Hash()) {
-				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr)
-				return true, nil
-			}
-		}
-	}
+
 	return false, nil
 }
 

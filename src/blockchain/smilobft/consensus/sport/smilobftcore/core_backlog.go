@@ -90,7 +90,7 @@ func (c *core) storeBacklog(msg *message, src sport.Fullnode) {
 	defer c.backlogsMu.Unlock()
 
 	logger.Debug("Retrieving backlog queue", "for", src.Address(), "backlogs_size", len(c.backlogs))
-	backlog := c.backlogs[src.Address()]
+	backlog := c.backlogs[src]
 	if backlog == nil {
 		backlog = prque.New()
 	}
@@ -109,7 +109,7 @@ func (c *core) storeBacklog(msg *message, src sport.Fullnode) {
 			backlog.Push(msg, toPriority(msg.Code, p.View))
 		}
 	}
-	c.backlogs[src.Address()] = backlog
+	c.backlogs[src] = backlog
 }
 
 func (c *core) processBacklog() {
@@ -120,13 +120,8 @@ func (c *core) processBacklog() {
 		if backlog == nil {
 			continue
 		}
-		_, src := c.fullnodeSet.GetByAddress(srcAddress)
-		if src == nil {
-			// fullnode is not available
-			delete(c.backlogs, srcAddress)
-			continue
-		}
-		logger := c.logger.New("from", src, "state", c.state)
+
+		logger := c.logger.New("from", srcAddress, "state", c.state)
 		isFuture := false
 
 		// We stop processing if
@@ -170,7 +165,7 @@ func (c *core) processBacklog() {
 			logger.Trace("Post backlog event", "msg", msg)
 
 			go c.sendEvent(backlogEvent{
-				src: src,
+				src: srcAddress,
 				msg: msg,
 			})
 		}

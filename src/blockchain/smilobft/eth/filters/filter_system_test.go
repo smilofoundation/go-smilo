@@ -19,6 +19,7 @@ package filters
 import (
 	"context"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -41,7 +42,7 @@ import (
 )
 
 type testBackend struct {
-	mux        *event.TypeMux
+	mux        *cmn.TypeMux
 	db         ethdb.Database
 	sections   uint64
 	txFeed     *event.Feed
@@ -54,7 +55,7 @@ func (b *testBackend) ChainDb() ethdb.Database {
 	return b.db
 }
 
-func (b *testBackend) EventMux() *event.TypeMux {
+func (b *testBackend) EventMux() *cmn.TypeMux {
 	return b.mux
 }
 
@@ -162,7 +163,7 @@ func TestBlockSubscription(t *testing.T) {
 	t.Parallel()
 
 	var (
-		mux         = new(event.TypeMux)
+		mux         = new(cmn.TypeMux)
 		db          = rawdb.NewMemoryDatabase()
 		txFeed      = new(event.Feed)
 		rmLogsFeed  = new(event.Feed)
@@ -219,7 +220,7 @@ func TestPendingTxFilter(t *testing.T) {
 	t.Parallel()
 
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
@@ -279,7 +280,7 @@ func TestPendingTxFilter(t *testing.T) {
 // If not it must return an error.
 func TestLogFilterCreation(t *testing.T) {
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
@@ -328,7 +329,7 @@ func TestInvalidLogFilterCreation(t *testing.T) {
 	t.Parallel()
 
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
@@ -355,7 +356,7 @@ func TestInvalidLogFilterCreation(t *testing.T) {
 
 func TestInvalidGetLogsRequest(t *testing.T) {
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
@@ -385,7 +386,7 @@ func TestLogFilter(t *testing.T) {
 	t.Parallel()
 
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
@@ -504,7 +505,7 @@ func TestPendingLogsSubscription(t *testing.T) {
 	t.Parallel()
 
 	var (
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		db         = rawdb.NewMemoryDatabase()
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)

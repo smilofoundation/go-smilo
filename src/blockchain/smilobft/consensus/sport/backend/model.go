@@ -19,17 +19,17 @@ package backend
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/core"
+	"go-smilo/src/blockchain/smilobft/core/vm"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
-	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/smilobftcore"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
@@ -38,12 +38,13 @@ import (
 // backend is the override for Clique backend, with extra functions for Smilo BFT
 type backend struct {
 	config           *sport.Config
-	smilobftEventMux *event.TypeMux
+	smilobftEventMux *cmn.TypeMux
 	privateKey       *ecdsa.PrivateKey
 	address          common.Address
 	core             smilobftcore.Engine
 	logger           log.Logger
 	db               ethdb.Database
+	blockchain       *core.BlockChain
 	chain            consensus.ChainReader
 	currentBlock     func() *types.Block
 	hasBadBlock      func(hash common.Hash) bool
@@ -67,6 +68,10 @@ type backend struct {
 
 	recentMessages *lru.ARCCache // the cache of peer's messages
 	knownMessages  *lru.ARCCache // the cache of self messages
+
+
+	autonityContractAddress common.Address // Ethereum address of the autonity contract
+	vmConfig                *vm.Config
 }
 
 // ----------------------------------------------------------------------------
@@ -87,67 +92,6 @@ type Vote struct {
 type Tally struct {
 	Authorize bool `json:"authorize"` // Whether the vote it about authorizing or kicking someone
 	Votes     int  `json:"votes"`     // Number of votes until now wanting to pass the proposal
-}
-
-// ----------------------------------------------------------------------------
-
-// Snapshot is the state of the authorization voting at a given point in time.
-type Snapshot struct {
-	Epoch uint64 // The number of blocks after which to checkpoint and reset the pending votes
-
-	Number      uint64                   // Block number where the snapshot was created
-	Hash        common.Hash              // Block hash where the snapshot was created
-	Votes       []*Vote                  // List of votes cast in chronological order
-	Tally       map[common.Address]Tally // Current vote tally to avoid recalculating
-	FullnodeSet sport.FullnodeSet        // Set of authorized fullnodes at this moment
-}
-
-// ----------------------------------------------------------------------------
-
-type snapshotJSON struct {
-	Epoch  uint64                   `json:"epoch"`
-	Number uint64                   `json:"number"`
-	Hash   common.Hash              `json:"hash"`
-	Votes  []*Vote                  `json:"votes"`
-	Tally  map[common.Address]Tally `json:"tally"`
-
-	// for fullnode set
-	Fullnodes []common.Address    `json:"fullnodes"`
-	Policy    sport.SpeakerPolicy `json:"policy"`
-}
-
-func (s *Snapshot) toJSONStruct() *snapshotJSON {
-	return &snapshotJSON{
-		Epoch:     s.Epoch,
-		Number:    s.Number,
-		Hash:      s.Hash,
-		Votes:     s.Votes,
-		Tally:     s.Tally,
-		Fullnodes: s.fullnodes(),
-		Policy:    s.FullnodeSet.Policy(),
-	}
-}
-
-// Unmarshal from a json byte array
-func (s *Snapshot) UnmarshalJSON(b []byte) error {
-	var j snapshotJSON
-	if err := json.Unmarshal(b, &j); err != nil {
-		return err
-	}
-
-	s.Epoch = j.Epoch
-	s.Number = j.Number
-	s.Hash = j.Hash
-	s.Votes = j.Votes
-	s.Tally = j.Tally
-	s.FullnodeSet = fullnode.NewFullnodeSet(j.Fullnodes, j.Policy)
-	return nil
-}
-
-// Marshal to a json byte array
-func (s *Snapshot) MarshalJSON() ([]byte, error) {
-	j := s.toJSONStruct()
-	return json.Marshal(j)
 }
 
 // ----------------------------------------------------------------------------

@@ -48,3 +48,17 @@ func roundRobinSpeaker(fullnodeSet sport.FullnodeSet, speaker common.Address, ro
 	pick := seed % uint64(fullnodeSet.Size())
 	return fullnodeSet.GetByIndex(pick)
 }
+
+func stickyProposer(fullnodeSet sport.FullnodeSet, proposer common.Address, round uint64) sport.Fullnode {
+	if fullnodeSet.Size() == 0 {
+		return nil
+	}
+	seed := uint64(0)
+	if emptyAddress(proposer) {
+		seed = round
+	} else {
+		seed = calcSeed(fullnodeSet, proposer, round)
+	}
+	pick := seed % uint64(fullnodeSet.Size())
+	return fullnodeSet.GetByIndex(pick)
+}

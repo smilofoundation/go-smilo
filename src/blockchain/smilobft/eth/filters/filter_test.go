@@ -18,6 +18,7 @@ package filters
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -52,7 +53,7 @@ func BenchmarkFilters(b *testing.B) {
 
 	var (
 		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
 		logsFeed   = new(event.Feed)
@@ -111,7 +112,7 @@ func TestFilters(t *testing.T) {
 
 	var (
 		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
 		logsFeed   = new(event.Feed)

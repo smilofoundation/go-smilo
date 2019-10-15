@@ -746,9 +746,22 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+
 	EmitCheckpointsFlag = cli.BoolFlag{
 		Name:  "emitcheckpoints",
 		Usage: "If enabled, emit specially formatted logging checkpoints",
+	}
+
+	// Istanbul settings
+	IstanbulRequestTimeoutFlag = cli.Uint64Flag{
+		Name:  "istanbul.requesttimeout",
+		Usage: "Timeout for each Istanbul round in milliseconds",
+		Value: eth.DefaultConfig.Istanbul.RequestTimeout,
+	}
+	IstanbulBlockPeriodFlag = cli.Uint64Flag{
+		Name:  "istanbul.blockperiod",
+		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
+		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
 	}
 
 	// Smilo settings
@@ -1328,6 +1341,15 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	}
 }
 
+func setIstanbul(ctx *cli.Context, cfg *eth.Config) {
+	if ctx.GlobalIsSet(IstanbulRequestTimeoutFlag.Name) {
+		cfg.Istanbul.RequestTimeout = ctx.GlobalUint64(IstanbulRequestTimeoutFlag.Name)
+	}
+	if ctx.GlobalIsSet(IstanbulBlockPeriodFlag.Name) {
+		cfg.Istanbul.BlockPeriod = ctx.GlobalUint64(IstanbulBlockPeriodFlag.Name)
+	}
+}
+
 func setEthash(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
 		cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
@@ -1503,6 +1525,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
 	setMiner(ctx, &cfg.Miner)
+	setIstanbul(ctx, cfg)
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
 	setSport(ctx, cfg)
@@ -1625,7 +1648,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	} else {
 		log.Info("Going to register a Smilo full Client to the stack")
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(ctx, cfg)
+			fullNode, err := eth.New(ctx, cfg, nil)
 			if fullNode != nil && cfg.LightServ > 0 {
 				ls, _ := les.NewLesServer(fullNode, cfg)
 				fullNode.AddLesServer(ls)

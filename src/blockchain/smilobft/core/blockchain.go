@@ -20,6 +20,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"io"
 	"math/big"
 	mrand "math/rand"
@@ -147,6 +148,8 @@ type BlockChain struct {
 	chainHeadFeed event.Feed
 	logsFeed      event.Feed
 	blockProcFeed event.Feed
+	glienickeFeed event.Feed
+	autonityFeed  event.Feed
 	scope         event.SubscriptionScope
 	genesisBlock  *types.Block
 
@@ -181,6 +184,8 @@ type BlockChain struct {
 	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
 	vaultStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
+
+	autonityContract *autonity.Contract
 
 }
 
@@ -240,6 +245,14 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if err := bc.loadLastState(); err != nil {
 		return nil, err
 	}
+
+	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.Sport != nil) && chainConfig.AutonityContractConfig != nil {
+		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
+			return GetHashFn(ref, chain)
+		})
+		bc.processor.SetAutonityContract(bc.autonityContract)
+	}
+
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
@@ -302,7 +315,9 @@ func (bc *BlockChain) getProcInterrupt() bool {
 
 // GetVMConfig returns the block chain VM config.
 func (bc *BlockChain) GetVMConfig() *vm.Config {
-	return &bc.vmConfig
+	cp := bc.vmConfig
+	cp.Debug = false
+	return &cp
 }
 
 // empty returns an indicator whether the blockchain is empty.
@@ -1315,6 +1330,9 @@ var lastWrite uint64
 // but does not write any state. This is used to construct competing side forks
 // up to the point where they exceed the canonical total difficulty.
 func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (err error) {
+	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+		return
+	}
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1329,6 +1347,9 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 // writeKnownBlock updates the head block flag with a known block
 // and introduces chain reorg if necessary.
 func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
+	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+		return nil
+	}
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1348,6 +1369,9 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 
 // WriteBlockWithState writes the block and all associated state to the database.
 func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state, vaultState *state.StateDB) (status WriteStatus, err error) {
+	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+		return
+	}
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1368,6 +1392,15 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {
 		return NonStatTy, err
 	}
+
+	// Call network permissioning logic before committing the state
+	if bc.chainConfig.Istanbul != nil || bc.chainConfig.Tendermint != nil {
+		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state,vaultState, block)
+		if err != nil && err != autonity.ErrAutonityContract {
+			return NonStatTy, err
+		}
+	}
+
 	rawdb.WriteBlock(bc.db, block)
 
 	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
@@ -1420,12 +1453,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 				} else {
 					// If we're exceeding limits but haven't reached a large enough memory gap,
 					// warn the user that the system is becoming unstable.
-					if chosen < lastWrite+TriesInMemory && bc.gcproc >= 2*bc.cacheConfig.TrieTimeLimit {
-						log.Info("State in memory for too long, committing", "time", bc.gcproc, "allowance", bc.cacheConfig.TrieTimeLimit, "optimum", float64(chosen-lastWrite)/TriesInMemory)
+					if chosen < atomic.LoadUint64(&lastWrite)+TriesInMemory && bc.gcproc >= 2*bc.cacheConfig.TrieTimeLimit {
+						log.Info("State in memory for too long, committing", "time", bc.gcproc, "allowance", bc.cacheConfig.TrieTimeLimit, "optimum", float64(chosen-atomic.LoadUint64(&lastWrite))/TriesInMemory)
 					}
 					// Flush an entire trie and restart the counters
 					triedb.Commit(header.Root, true)
-					lastWrite = chosen
+					atomic.StoreUint64(&lastWrite, chosen)
 					bc.gcproc = 0
 				}
 			}
@@ -1535,6 +1568,9 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 		}
 	}
 	// Pre-checks passed, start the full block imports
+	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+		return 0, nil
+	}
 	bc.wg.Add(1)
 	bc.chainmu.Lock()
 	n, events, logs, err := bc.insertChain(chain, true)
@@ -1781,6 +1817,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		blockValidationTimer.Update(time.Since(substart) - (thisstate.AccountHashes + thisstate.StorageHashes - triehash))
 
+		// Write the block to the chain and get the status.
 		substart = time.Now()
 		// Smilo
 		// Write vault state changes to database
@@ -2336,6 +2373,7 @@ func (bc *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
 
 // Config retrieves the blockchain's chain configuration.
 func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
+func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
 
 // Engine retrieves the blockchain's consensus engine.
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
@@ -2364,6 +2402,21 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
 }
+
+
+func (bc *BlockChain) SubscribeAutonityEvents(ch chan<- WhitelistEvent) event.Subscription {
+	return bc.scope.Track(bc.autonityFeed.Subscribe(ch))
+}
+
+func (bc *BlockChain) UpdateEnodeWhitelist(newWhitelist *types.Nodes) {
+	rawdb.WriteEnodeWhitelist(bc.db, newWhitelist)
+	go bc.autonityFeed.Send(WhitelistEvent{Whitelist: newWhitelist.List})
+}
+
+func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
+	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
+}
+
 
 // Given a slice of public receipts and an overlapping (smaller) slice of
 // vault receipts, return a new slice where the default for each location is

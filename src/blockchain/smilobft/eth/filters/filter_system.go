@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
 	"time"
 
@@ -92,7 +93,7 @@ type subscription struct {
 // EventSystem creates subscriptions, processes events and broadcasts them to the
 // subscription which match the subscription criteria.
 type EventSystem struct {
-	mux       *event.TypeMux
+	mux       *cmn.TypeMux
 	backend   Backend
 	lightMode bool
 	lastHead  *types.Header
@@ -102,7 +103,7 @@ type EventSystem struct {
 	logsSub       event.Subscription         // Subscription for new log event
 	rmLogsSub     event.Subscription         // Subscription for removed log event
 	chainSub      event.Subscription         // Subscription for new chain event
-	pendingLogSub *event.TypeMuxSubscription // Subscription for pending log event
+	pendingLogSub *cmn.TypeMuxSubscription // Subscription for pending log event
 
 	// Channels
 	install   chan *subscription         // install filter for event notification
@@ -119,7 +120,7 @@ type EventSystem struct {
 //
 // The returned manager has a loop that needs to be stopped with the Stop function
 // or by stopping the given mux.
-func NewEventSystem(mux *event.TypeMux, backend Backend, lightMode bool) *EventSystem {
+func NewEventSystem(mux *cmn.TypeMux, backend Backend, lightMode bool) *EventSystem {
 	m := &EventSystem{
 		mux:       mux,
 		backend:   backend,
@@ -143,7 +144,13 @@ func NewEventSystem(mux *event.TypeMux, backend Backend, lightMode bool) *EventS
 	// Make sure none of the subscriptions are empty
 	if m.txsSub == nil || m.logsSub == nil || m.rmLogsSub == nil || m.chainSub == nil ||
 		m.pendingLogSub.Closed() {
-		log.Crit("Subscribe for event system failed")
+		log.Crit("Subscribe for event system failed",
+			"txsSub", m.txsSub == nil,
+			"logsSub", m.logsSub == nil,
+			"rmLogsSub", m.rmLogsSub == nil,
+			"chainSub", m.chainSub == nil,
+			"pendingLogSub.Closed", m.pendingLogSub.Closed(),
+		)
 	}
 
 	go m.eventLoop()
@@ -340,7 +347,7 @@ func (es *EventSystem) broadcast(filters filterIndex, ev interface{}) {
 				f.logs <- matchedLogs
 			}
 		}
-	case *event.TypeMuxEvent:
+	case *cmn.TypeMuxEvent:
 		if muxe, ok := e.Data.(core.PendingLogsEvent); ok {
 			for _, f := range filters[PendingLogsSubscription] {
 				if e.Time.After(f.created) {

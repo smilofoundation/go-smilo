@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math"
 	"math/big"
 	"sync"
@@ -63,9 +64,12 @@ var (
 	syncChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the sync progress challenge
 )
 
-// errIncompatibleConfig is returned if the requested protocols and configs are
-// not compatible (low protocol version restrictions and high requirements).
-var errIncompatibleConfig = errors.New("incompatible configuration")
+var (
+	// errIncompatibleConfig is returned if the requested protocols and configs are
+	// not compatible (low protocol version restrictions and high requirements).
+	errIncompatibleConfig = errors.New("incompatible configuration")
+	errUnauthaurizedPeer  = errors.New("peer is not authorized")
+)
 
 func errResp(code errCode, format string, v ...interface{}) error {
 	return fmt.Errorf("%v - %v", code, fmt.Sprintf(format, v...))
@@ -91,10 +95,10 @@ type ProtocolManager struct {
 
 	SubProtocols []p2p.Protocol
 
-	eventMux      *event.TypeMux
+	eventMux      *cmn.TypeMux
 	txsCh         chan core.NewTxsEvent
 	txsSub        event.Subscription
-	minedBlockSub *event.TypeMuxSubscription
+	minedBlockSub *cmn.TypeMuxSubscription
 
 	whitelist map[uint64]common.Hash
 
@@ -104,16 +108,22 @@ type ProtocolManager struct {
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
+	whitelistCh         chan core.WhitelistEvent
+	whitelistSub        event.Subscription
+	enodesWhitelist     []*enode.Node
+	enodesWhitelistLock sync.RWMutex
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
 
 	engine consensus.Engine
+
+	openNetwork bool
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, openNetwork bool) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -128,6 +138,8 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
 		engine:      engine,
+		openNetwork: openNetwork,
+		whitelistCh: make(chan core.WhitelistEvent, 64),
 	}
 
 	if handler, ok := manager.engine.(consensus.Handler); ok {
@@ -164,7 +176,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		manager.checkpointHash = checkpoint.SectionHead
 	}
 
-	protocol := engine.Protocol()
+	protocol := engine.ProtocolOld()
 	// Initiate a sub-protocol for every implemented version we can handle
 	manager.SubProtocols = make([]p2p.Protocol, 0, len(protocol.Versions))
 	for i, version := range protocol.Versions {
@@ -249,7 +261,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		return n, err
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
-
+	manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, openNetwork).List
 	return manager, nil
 }
 
@@ -317,6 +329,12 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	pm.minedBlockSub = pm.eventMux.Subscribe(core.NewMinedBlockEvent{})
 	go pm.minedBroadcastLoop()
 
+	// update peers whitelist
+	if !pm.openNetwork {
+		pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
+		go pm.glienickeEventLoop()
+	}
+
 	// start sync handlers
 	go pm.syncer()
 	go pm.txsyncLoop()
@@ -327,6 +345,9 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
+	if !pm.openNetwork {
+		pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
+	}
 
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
@@ -345,6 +366,21 @@ func (pm *ProtocolManager) Stop() {
 	pm.wg.Wait()
 
 	log.Info("Ethereum protocol stopped")
+}
+
+// Whitelist updating loop.
+func (pm *ProtocolManager) glienickeEventLoop() {
+	for {
+		select {
+		case event := <-pm.whitelistCh:
+			pm.enodesWhitelistLock.Lock()
+			pm.enodesWhitelist = event.Whitelist
+			pm.enodesWhitelistLock.Unlock()
+		// Err() channel will be closed when unsubscribing.
+		case <-pm.whitelistSub.Err():
+			return
+		}
+	}
 }
 
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -372,6 +408,31 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		p.Log().Debug("Ethereum handshake failed", "err", err)
 		return err
 	}
+
+	if !pm.openNetwork {
+		whitelisted := false
+		pm.enodesWhitelistLock.RLock()
+		for _, enode := range pm.enodesWhitelist {
+			if p.Node().ID() == enode.ID() {
+				whitelisted = true
+				break
+			}
+		}
+
+		pm.enodesWhitelistLock.RUnlock()
+		if !whitelisted && p.td.Uint64() <= head.Number.Uint64()+1 {
+			p.Log().Info("dropping unauthorized peer with old TD",
+				"whitelisted", whitelisted,
+				"enode", p.Node().ID(),
+				"peersTD", p.td.Uint64(),
+				"currentTD", head.Number.Uint64()+1,
+			)
+
+			return errUnauthaurizedPeer
+		}
+		// Todo : pause relaying if not whitelisted until full sync
+	}
+
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
 		rw.Init(p.version)
 	}
@@ -389,6 +450,13 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// Propagate existing transactions. new transactions appearing
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
+
+	if pm.blockchain.Config().Tendermint != nil {
+		syncer := pm.blockchain.Engine().(consensus.Syncer)
+		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
+		syncer.ResetPeerCache(address)
+		syncer.SyncPeer(address)
+	}
 
 	// If we have a trusted CHT, reject all peers below that (avoid fast sync eclipse)
 	if pm.checkpointHash != (common.Hash{}) {
@@ -439,6 +507,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	if handler, ok := pm.engine.(consensus.Handler); ok {
 		pubKey := p.Node().Pubkey()
+		if pubKey == nil {
+			return errResp(ErrNoPubKeyFound, "%s", p.Node().ID().GoString())
+		}
 		addr := crypto.PubkeyToAddress(*pubKey)
 		handled, err := handler.HandleMsg(addr, msg)
 		if handled {
@@ -921,14 +992,19 @@ func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 	}
 }
 
-func (self *ProtocolManager) FindPeers(targets map[common.Address]bool) map[common.Address]consensus.Peer {
+func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[common.Address]consensus.Peer {
 	m := make(map[common.Address]consensus.Peer)
-	for _, p := range self.peers.Peers() {
+
+	for _, p := range pm.peers.Peers() {
 		pubKey := p.Node().Pubkey()
+		if pubKey == nil {
+			continue
+		}
 		addr := crypto.PubkeyToAddress(*pubKey)
-		if targets[addr] {
+		if _, ok := targets[addr]; ok {
 			m[addr] = p
 		}
 	}
+
 	return m
 }

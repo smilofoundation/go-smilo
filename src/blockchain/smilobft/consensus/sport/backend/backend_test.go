@@ -36,7 +36,9 @@ import (
 )
 
 func TestSign(t *testing.T) {
-	b := newBackend()
+	b, err := newBackend()
+	require.Nil(t, err)
+
 	data := []byte("Here is a string....")
 	sig, err := b.Sign(data)
 	if err != nil {
@@ -57,16 +59,18 @@ func TestCheckSignature(t *testing.T) {
 	data := []byte("Here is a string....")
 	hashData := crypto.Keccak256([]byte(data))
 	sig, _ := crypto.Sign(hashData, key)
-	b := newBackend()
+	b, err := newBackend()
+	require.Nil(t, err)
+
 	a := getAddress()
-	err := b.CheckSignature(data, a, sig)
+	err = b.CheckSignature(data, a, sig)
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want nil", err)
 	}
 	a = getInvalidAddress()
 	err = b.CheckSignature(data, a, sig)
-	if err != errInvalidSignature {
-		t.Errorf("error mismatch: have %v, want %v", err, errInvalidSignature)
+	if err != types.ErrInvalidSignature {
+		t.Errorf("error mismatch: have %v, want %v", err, types.ErrInvalidSignature)
 	}
 }
 
@@ -116,7 +120,8 @@ func TestCheckFullnodeSignature(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
-	backend := newBackend()
+	backend, err := newBackend()
+	require.Nil(t, err)
 
 	commitCh := make(chan *types.Block)
 	// Case: it's a speaker, so the backend.commit will receive channel result from backend.Commit function
@@ -129,71 +134,77 @@ func TestCommit(t *testing.T) {
 		{
 			"normal case",
 			nil,
-			[][]byte{append([]byte{1}, bytes.Repeat([]byte{0x00}, types.SportExtraSeal-1)...)},
+			[][]byte{append([]byte{1}, bytes.Repeat([]byte{0x00}, types.BFTExtraSeal-1)...)},
 			func() *types.Block {
-				chain, engine := newBlockChain(1)
+				chain, engine, err := newBlockChain(1)
+				require.Nil(t, err)
+
 				block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-				expectedBlock, _ := engine.updateBlock(engine.chain.GetHeader(block.ParentHash(), block.NumberU64()-1), block)
+				expectedBlock, _ := engine.updateBlock(block)
 				return expectedBlock
 			},
 		},
 		{
 			"invalid signature",
-			errInvalidCommittedSeals,
+			types.ErrInvalidCommittedSeals,
 			nil,
 			func() *types.Block {
-				chain, engine := newBlockChain(1)
+				chain, engine, err := newBlockChain(1)
+				require.Nil(t, err)
+
 				block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-				expectedBlock, _ := engine.updateBlock(engine.chain.GetHeader(block.ParentHash(), block.NumberU64()-1), block)
+				expectedBlock, _ := engine.updateBlock(block)
 				return expectedBlock
 			},
 		},
 	}
 
 	for _, test := range testCases {
-
-		t.Run(test.name, func(t *testing.T) {
-
-			expBlock := test.expectedBlock()
-			go func() {
-				result := <-backend.commitChBlock
+		expBlock := test.expectedBlock()
+		go func() {
+			select {
+			case result := <-backend.commitChBlock:
 				commitCh <- result
-			}()
-
-			backend.proposedBlockHash = expBlock.Hash()
-			if err := backend.Commit(expBlock, test.expectedSignature); err != nil {
-				if err != test.expectedErr {
-					t.Errorf("error mismatch: have %v, want %v", err, test.expectedErr)
-				}
+				return
 			}
+		}()
 
-			if test.expectedErr == nil {
-				// to avoid race condition is occurred by goroutine
-				select {
-				case result := <-commitCh:
-					if result.Hash() != expBlock.Hash() {
-						t.Errorf("hash mismatch: have %v, want %v", result.Hash(), expBlock.Hash())
-					}
-				case <-time.After(10 * time.Second):
-					t.Fatal("timeout")
-				}
+		backend.proposedBlockHash = expBlock.Hash()
+		if err := backend.Commit(expBlock, test.expectedSignature); err != nil {
+			if err.Error() != test.expectedErr.Error() {
+				t.Errorf("error mismatch: have %v, want %v", err, test.expectedErr)
 			}
-		})
+		}
+
+		if test.expectedErr == nil {
+			// to avoid race condition is occurred by goroutine
+			select {
+			case result := <-commitCh:
+				if result.Hash() != expBlock.Hash() {
+					t.Errorf("hash mismatch: have %v, want %v", result.Hash(), expBlock.Hash())
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("timeout")
+			}
+		}
 	}
 }
 
-func TestCreateChainAndGetSpeaker(t *testing.T) {
-	chain, engine := newBlockChain(1)
-	block := makeBlock(chain, engine, chain.Genesis())
-	_, err := chain.InsertChain(types.Blocks{block})
-	require.Empty(t, err)
-
-	actualAddress := engine.GetSpeaker(1)
-
-	expectedAddress := engine.Address()
-
-	require.Equal(t, expectedAddress.Hex(), actualAddress.Hex())
-
+func TestGetProposer(t *testing.T) {
+	chain, engine,_ := newBlockChain(1)
+	block, err := makeBlock(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = chain.InsertChain(types.Blocks{block})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := engine.GetSpeaker(1)
+	actual := engine.Address()
+	if actual != expected {
+		t.Errorf("proposer mismatch: have %v, want %v", actual.Hex(), expected.Hex())
+	}
 }
 
 /**
@@ -243,9 +254,16 @@ func (slice Keys) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func newBackend() (b *backend) {
-	_, b = newBlockChain(4)
-	key, _ := generatePrivateKey()
+func newBackend() (b *backend, err error) {
+	_, b, err = newBlockChain(4)
+	if err != nil {
+		return nil, err
+	}
+	key, err := generatePrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
 	b.privateKey = key
-	return
+	return b, nil
 }

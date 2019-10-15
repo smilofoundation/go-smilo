@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math/big"
 	"strings"
 	"time"
@@ -555,6 +556,10 @@ func (s *PublicBlockChainAPI) ChainId() *hexutil.Big {
 func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {
 	header, _ := s.b.HeaderByNumber(context.Background(), rpc.LatestBlockNumber) // latest header should always be available
 	return hexutil.Uint64(header.Number.Uint64())
+}
+
+func (s *PublicBlockChainAPI) AutonityContract() *autonity.Contract {
+	return s.b.AutonityContract()
 }
 
 // GetBalance returns the amount of wei for the given address in the state of the
@@ -1839,6 +1844,8 @@ func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
 	return ldb.LDB().GetProperty(property)
 }
 
+// ChaindbCompact flattens the entire key-value database into a single level,
+// removing all unused slots and merging all keys.
 func (api *PrivateDebugAPI) ChaindbCompact() error {
 	for b := byte(0); b < 255; b++ {
 		log.Info("Compacting chain database", "range", fmt.Sprintf("0x%0.2X-0x%0.2X", b, b+1))

@@ -112,7 +112,7 @@
   version = "v0.10.4"
 
 [[projects]]
-  digest = "1:4e8b2bfffe1da477607a589cccf673e4e5fad980a748343e214a8a60900a71f3"
+  digest = "1:ef27d0b2fe617cecce81905419708de2ab5788015e6774163b00721c5453efc7"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -216,6 +216,14 @@
   pruneopts = "UT"
   revision = "2fee6af1a9795aafbe0253a0cfbdf668e1fb8a9a"
   version = "v1.8.0"
+
+[[projects]]
+  digest = "1:be408f349cae090a7c17a279633d6e62b00068e64af66a582cae0983de8890ea"
+  name = "github.com/golang/mock"
+  packages = ["gomock"]
+  pruneopts = "UT"
+  revision = "9fa652df1129bef0e734c9cf9bf6dbae9ef3b9fa"
+  version = "1.3.1"
 
 [[projects]]
   digest = "1:a02bd86b9a3a64546d2d34b8c1082a41c5ed1f6621c15f66e7730606681f98e2"
@@ -685,9 +693,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9f303486d623f840492bfeb48eb906a94e9d3fe638a761639b72ce64bf7bfcc3"
+  digest = "1:39485a034b89a9f2892b9c0cc24e2330e1c9981794c35281c2febfcc55b90a34"
   name = "golang.org/x/sync"
-  packages = ["syncmap"]
+  packages = [
+    "errgroup",
+    "syncmap",
+  ]
   pruneopts = "UT"
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
@@ -813,20 +824,21 @@
     "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/common/mclock",
     "github.com/ethereum/go-ethereum/common/prque",
-    "github.com/ethereum/go-ethereum/core/rawdb",
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/crypto/bn256",
     "github.com/ethereum/go-ethereum/crypto/ecies",
+    "github.com/ethereum/go-ethereum/crypto/secp256k1",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/log",
     "github.com/ethereum/go-ethereum/metrics",
     "github.com/ethereum/go-ethereum/metrics/exp",
     "github.com/ethereum/go-ethereum/metrics/influxdb",
-    "github.com/ethereum/go-ethereum/p2p/enode",
     "github.com/ethereum/go-ethereum/rlp",
+    "github.com/ethereum/go-ethereum/rpc",
     "github.com/fatih/color",
     "github.com/fjl/memsize/memsizeui",
     "github.com/gballet/go-libpcsclite",
+    "github.com/golang/mock/gomock",
     "github.com/golang/protobuf/proto",
     "github.com/golang/snappy",
     "github.com/gorilla/websocket",
@@ -876,6 +888,7 @@
     "golang.org/x/crypto/ssh",
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/websocket",
+    "golang.org/x/sync/errgroup",
     "golang.org/x/sync/syncmap",
     "golang.org/x/text/unicode/norm",
     "gopkg.in/check.v1",

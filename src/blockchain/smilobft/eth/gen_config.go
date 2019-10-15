@@ -3,6 +3,8 @@
 package eth
 
 import (
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/miner"
@@ -44,6 +46,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		TrieTimeout             time.Duration
 		Miner                   miner.Config
 		Ethash                  ethash.Config
+		Istanbul                istanbul.Config
+		Tendermint              config.Config
 		TxPool                  core.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
@@ -78,6 +82,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.TrieTimeout = c.TrieTimeout
 	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
+	enc.Istanbul = c.Istanbul
+	enc.Tendermint = c.Tendermint
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
@@ -116,6 +122,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		TrieTimeout             *time.Duration
 		Miner                   *miner.Config
 		Ethash                  *ethash.Config
+		Istanbul                *istanbul.Config
+		Tendermint              *config.Config
 		TxPool                  *core.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
@@ -196,6 +204,12 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.Ethash != nil {
 		c.Ethash = *dec.Ethash
+	}
+	if dec.Istanbul != nil {
+		c.Istanbul = *dec.Istanbul
+	}
+	if dec.Tendermint != nil {
+		c.Tendermint = *dec.Tendermint
 	}
 	if dec.TxPool != nil {
 		c.TxPool = *dec.TxPool

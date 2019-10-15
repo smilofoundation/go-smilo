@@ -19,6 +19,7 @@ package backend
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -36,9 +37,12 @@ import (
 )
 
 func TestPrepare(t *testing.T) {
-	chain, engine := newBlockChain(1)
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	header := makeHeader(chain.Genesis(), engine.config)
-	err := engine.Prepare(chain, header)
+	err = engine.Prepare(chain, header)
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want nil", err)
 	}
@@ -50,18 +54,22 @@ func TestPrepare(t *testing.T) {
 }
 
 func TestSealStopChannel(t *testing.T) {
-	chain, engine := newBlockChain(4)
+	chain, engine, err := newBlockChain(4)
+	if err != nil {
+		t.Fatal(err)
+	}
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	stop := make(chan struct{}, 1)
 	eventSub := engine.EventMux().Subscribe(sport.RequestEvent{})
 	eventLoop := func() {
-		ev := <-eventSub.Chan()
-		_, ok := ev.Data.(sport.RequestEvent)
-		if !ok {
-			t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
+		select {
+		case ev := <-eventSub.Chan():
+			_, ok := ev.Data.(sport.RequestEvent)
+			if !ok {
+				t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
+			}
+			stop <- struct{}{}
 		}
-		stop <- struct{}{}
-
 		eventSub.Unsubscribe()
 	}
 	go eventLoop()
@@ -75,57 +83,75 @@ func TestSealStopChannel(t *testing.T) {
 }
 
 func TestSealCommittedOtherHash(t *testing.T) {
-	chain, engine := newBlockChain(4)
+	chain, engine,err := newBlockChain(4)
+	if err != nil {
+		t.Fatal(err)
+	}
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	otherBlock := makeBlockWithoutSeal(chain, engine, block)
 	eventSub := engine.EventMux().Subscribe(sport.RequestEvent{})
 	eventLoop := func() {
-		ev := <-eventSub.Chan()
-		_, ok := ev.Data.(sport.RequestEvent)
-		if !ok {
-			t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
+		select {
+		case ev := <-eventSub.Chan():
+			_, ok := ev.Data.(sport.RequestEvent)
+			if !ok {
+				t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
+			}
+			engine.Commit(otherBlock, [][]byte{})
 		}
-		engine.Commit(otherBlock, [][]byte{})
-
 		eventSub.Unsubscribe()
 	}
 	go eventLoop()
 	seal := func() {
-		engine.Seal(chain, block, nil)
+		resultCh := make(chan *types.Block)
+		engine.Seal(chain, block,  nil)
+		<-resultCh
 		t.Error("seal should not be completed")
 	}
 	go seal()
 
-	// wait 2 seconds to ensure we cannot get any blocks from Sport
 	const timeoutDura = 2 * time.Second
 	timeout := time.NewTimer(timeoutDura)
-	<-timeout.C
-
+	select {
+	case <-timeout.C:
+		// wait 2 seconds to ensure we cannot get any blocks
+	}
 }
 
 func TestSealCommitted(t *testing.T) {
-	chain, engine := newBlockChain(1)
-	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-	expectedBlock, _ := engine.updateBlock(engine.chain.GetHeader(block.ParentHash(), block.NumberU64()-1), block)
-
-	finalBlock, err := engine.Seal(chain, block, nil)
+	chain, engine,err := newBlockChain(1)
 	if err != nil {
-		t.Errorf("error mismatch: have %v, want nil", err)
+		t.Fatal(err)
 	}
+	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	expectedBlock, _ := engine.updateBlock(block)
+	resultCh := make(chan *types.Block, 10)
+	go func() {
+		block, err := engine.Seal(chain, block,  nil)
+		resultCh <- block
+
+		if err != nil {
+			t.Errorf("error mismatch: have %v, want %v", err, expectedBlock)
+		}
+	}()
+
+	finalBlock := <-resultCh
 	if finalBlock.Hash() != expectedBlock.Hash() {
 		t.Errorf("hash mismatch: have %v, want %v", finalBlock.Hash(), expectedBlock.Hash())
 	}
 }
 
 func TestVerifyHeader(t *testing.T) {
-	chain, engine := newBlockChain(1)
-
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	// errEmptyCommittedSeals case
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-	block, _ = engine.updateBlock(chain.Genesis().Header(), block)
-	err := engine.VerifyHeader(chain, block.Header(), false)
-	if err != errEmptyCommittedSeals {
-		t.Errorf("error mismatch: have %v, want %v", err, errEmptyCommittedSeals)
+	block, _ = engine.updateBlock(block)
+	err = engine.VerifyHeader(chain, block.Header(), false)
+	if err != types.ErrEmptyCommittedSeals {
+		t.Errorf("error mismatch: have %v, want %v", err, types.ErrEmptyCommittedSeals)
 	}
 
 	// short extra data
@@ -199,34 +225,47 @@ func TestVerifyHeader(t *testing.T) {
 }
 
 func TestVerifySeal(t *testing.T) {
-	chain, engine := newBlockChain(1)
-	genesis := chain.Genesis()
-	// cannot verify genesis
-	err := engine.VerifySeal(chain, genesis.Header())
-	if err != errUnknownBlock {
-		t.Errorf("error mismatch: have %v, want %v", err, errUnknownBlock)
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	block := makeBlock(chain, engine, genesis)
-	// change block content
+	genesis := chain.Genesis()
+	// cannot verify genesis
+	err = engine.VerifySeal(chain, genesis.Header())
+	if err != errUnknownBlock {
+		t.Errorf("error cannot verify genesis mismatch: have %v, want %v", err, errUnknownBlock)
+	}
+
+	block, err := makeBlock(chain, engine, genesis)
+	if err != nil {
+		t.Fatal(err)
+	}	// change block content
 	header := block.Header()
 	header.Number = big.NewInt(4)
+	number := header.Number.Uint64()
+	fmt.Println("number before", number)
+
 	block1 := block.WithSeal(header)
 	err = engine.VerifySeal(chain, block1.Header())
-	if err != errUnauthorized {
-		t.Errorf("error mismatch: have %v, want %v", err, errUnauthorized)
+	if err != errUnknownBlock {
+		t.Errorf("error change block content mismatch: have %v, want %v", err, errUnknownBlock)
 	}
 
 	// unauthorized users but still can get correct signer address
 	engine.privateKey, _ = crypto.GenerateKey()
 	err = engine.VerifySeal(chain, block.Header())
 	if err != nil {
-		t.Errorf("error mismatch: have %v, want nil", err)
+		t.Errorf("error unauthorized users but still can get correct signer address mismatch: have %v, want nil", err)
 	}
 }
 
 func TestVerifyHeaders(t *testing.T) {
-	chain, engine := newBlockChain(1)
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	genesis := chain.Genesis()
 
 	// success case
@@ -238,18 +277,21 @@ func TestVerifyHeaders(t *testing.T) {
 		var b *types.Block
 		if i == 0 {
 			b = makeBlockWithoutSeal(chain, engine, genesis)
-			b, _ = engine.updateBlock(genesis.Header(), b)
+			b, _ = engine.updateBlock(b)
 		} else {
 			b = makeBlockWithoutSeal(chain, engine, blocks[i-1])
-			b, _ = engine.updateBlock(blocks[i-1].Header(), b)
+			b, _ = engine.updateBlock(b)
 		}
 		blocks = append(blocks, b)
 		headers = append(headers, blocks[i].Header())
 	}
+
 	now = func() time.Time {
 		return time.Unix(int64(headers[size-1].Time), 0)
 	}
+
 	_, results := engine.VerifyHeaders(chain, headers, nil)
+
 	const timeoutDura = 2 * time.Second
 	timeout := time.NewTimer(timeoutDura)
 	index := 0
@@ -258,7 +300,8 @@ OUT1:
 		select {
 		case err := <-results:
 			if err != nil {
-				if err != errEmptyCommittedSeals && err != errInvalidCommittedSeals {
+				/*  The two following errors mean that the processing has gone right */
+				if err != types.ErrEmptyCommittedSeals && err != types.ErrInvalidCommittedSeals {
 					t.Errorf("error mismatch: have %v, want errEmptyCommittedSeals|errInvalidCommittedSeals", err)
 					break OUT1
 				}
@@ -271,6 +314,7 @@ OUT1:
 			break OUT1
 		}
 	}
+
 	// abort cases
 	abort, results := engine.VerifyHeaders(chain, headers, nil)
 	timeout = time.NewTimer(timeoutDura)
@@ -280,7 +324,7 @@ OUT2:
 		select {
 		case err := <-results:
 			if err != nil {
-				if err != errEmptyCommittedSeals && err != errInvalidCommittedSeals {
+				if err != types.ErrEmptyCommittedSeals && err != types.ErrInvalidCommittedSeals {
 					t.Errorf("error mismatch: have %v, want errEmptyCommittedSeals|errInvalidCommittedSeals", err)
 					break OUT2
 				}
@@ -304,12 +348,13 @@ OUT2:
 	index = 0
 	errors := 0
 	expectedErrors := 2
+
 OUT3:
 	for {
 		select {
 		case err := <-results:
 			if err != nil {
-				if err != errEmptyCommittedSeals && err != errInvalidCommittedSeals {
+				if err != types.ErrEmptyCommittedSeals && err != types.ErrInvalidCommittedSeals {
 					errors++
 				}
 			}
@@ -333,25 +378,28 @@ func TestPrepareExtra(t *testing.T) {
 	fullnodes[2] = common.BytesToAddress(hexutil.MustDecode("0x6beaaed781d2d2ab6350f5c4566a2c6eaac407a6"))
 	fullnodes[3] = common.BytesToAddress(hexutil.MustDecode("0x8be76812f765c24641ec63dc2852b378aba2b440"))
 
-	vanity := make([]byte, types.SportExtraVanity)
+	vanity := make([]byte, types.BFTExtraVanity)
 	expectedResult := append(vanity, hexutil.MustDecode("0xf858f8549444add0ec310f115a0e603b2d7db9f067778eaf8a94294fc7e8f22b3bcdcf955dd7ff3ba2ed833f8212946beaaed781d2d2ab6350f5c4566a2c6eaac407a6948be76812f765c24641ec63dc2852b378aba2b44080c0")...)
 
 	h := &types.Header{
 		Extra: vanity,
 	}
 
-	payload, err := prepareExtra(h, fullnodes)
+	payload, err := types.PrepareExtra(h.Extra, fullnodes)
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want: nil", err)
 	}
 	if !reflect.DeepEqual(payload, expectedResult) {
-		t.Errorf("payload mismatch: have %v, want %v", payload, expectedResult)
+		t.Errorf("payload mismatch: have %v(%d)\n, want %v(%d)", payload, len(payload), expectedResult, len(expectedResult))
 	}
 
 	// append useless information to extra-data
 	h.Extra = append(vanity, make([]byte, 15)...)
 
-	payload, err = prepareExtra(h, fullnodes)
+	payload, err = types.PrepareExtra(h.Extra, fullnodes)
+	if err != nil {
+		t.Errorf("error PrepareExtra: have %v, want: nil", err)
+	}
 	if !reflect.DeepEqual(payload, expectedResult) {
 		t.Errorf("payload mismatch: have %v, want %v", payload, expectedResult)
 	}
@@ -492,8 +540,32 @@ func TestWriteCommittedSeals(t *testing.T) {
 
 	// invalid seal
 	unexpectedCommittedSeal := append(expectedCommittedSeal, make([]byte, 1)...)
-	err = writeCommittedSeals(h, [][]byte{unexpectedCommittedSeal})
-	if err != errInvalidCommittedSeals {
-		t.Errorf("error mismatch: have %v, want %v", err, errInvalidCommittedSeals)
+	err = types.WriteCommittedSeals(h, [][]byte{unexpectedCommittedSeal})
+	if err != types.ErrInvalidCommittedSeals {
+		t.Errorf("error mismatch: have %v, want %v", err, types.ErrInvalidCommittedSeals)
+	}
+}
+
+func TestValidatorsSaved(t *testing.T) {
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := makeHeader(chain.Genesis(), engine.config)
+	sdb, _, err := chain.State()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = chain.GetAutonityContract().DeployAutonityContract(chain, h, sdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := chain.GetAutonityContract().ContractGetValidators(chain, h, sdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) == 0 {
+		t.FailNow()
 	}
 }

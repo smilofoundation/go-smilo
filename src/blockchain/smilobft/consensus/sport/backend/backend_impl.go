@@ -18,12 +18,12 @@
 package backend
 
 import (
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -35,31 +35,44 @@ import (
 )
 
 // Fullnodes implements sport.Backend.Fullnodes
-func (sb *backend) Fullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
-	return sb.getFullnodes(proposal.Number().Uint64(), proposal.Hash())
+func (sb *backend) Fullnodes(number uint64) sport.FullnodeSet {
+	validators, err := sb.retrieveSavedValidators(number, sb.chain)
+	proposerPolicy := sb.config.GetProposerPolicy()
+	if err != nil {
+		return fullnode.NewSet(nil, proposerPolicy)
+	}
+	return fullnode.NewSet(validators, proposerPolicy)
 }
 
 // Broadcast implements sport.Backend.Broadcast
 func (sb *backend) Broadcast(fullnodeSet sport.FullnodeSet, payload []byte) error {
 	// send to others
-	sb.Gossip(fullnodeSet, payload)
+	err := sb.Gossip(fullnodeSet, payload)
+	if err != nil {
+		sb.logger.Error("Failed to boadcast Gossip", "err", err)
+	}
 	// send to self
 	msg := sport.MessageEvent{
 		Payload: payload,
 	}
-	go sb.smilobftEventMux.Post(msg)
+	go func(){
+		err = sb.smilobftEventMux.Post(msg)
+		if err != nil {
+			sb.logger.Error("Failed to boadcast smilobftEventMux.Post(msg)", "err", err)
+		}
+	}()
 	return nil
 }
 
 // Gossip implements sport.Backend.Gossip
 func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
-	hash := sport.RLPHash(payload)
+	hash := types.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 
-	targets := make(map[common.Address]bool)
+	targets := make(map[common.Address]struct{})
 	for _, val := range fullnodeSet.List() {
 		if val.Address() != sb.Address() {
-			targets[val.Address()] = true
+			targets[val.Address()] = struct{}{}
 		}
 	}
 
@@ -84,12 +97,15 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			err := p.Send(smilobftMsg, payload)
-			if err != nil {
-				log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
-			} else {
-				//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
-			}
+			go func() {
+				err := p.Send(smilobftMsg, payload)
+
+				if err != nil {
+					log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+				} else {
+					//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+				}
+			}()
 
 		}
 	}
@@ -108,7 +124,7 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 
 	h := block.Header()
 	// Append seals into extra-data
-	err := writeCommittedSeals(h, seals)
+	err := types.WriteCommittedSeals(h, seals)
 	if err != nil {
 		return err
 	}
@@ -140,7 +156,7 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 }
 
 // EventMux implements sport.Backend.EventMux
-func (sb *backend) EventMux() *event.TypeMux {
+func (sb *backend) EventMux() *cmn.TypeMux {
 	return sb.smilobftEventMux
 }
 
@@ -173,9 +189,56 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 	}
 
 	// verify the header of proposed block
-	err := sb.VerifyHeader(sb.chain, block.Header(), false)
+	err := sb.VerifyHeader(sb.blockchain, block.Header(), false)
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
-	if err == nil || err == errEmptyCommittedSeals {
+	if err == nil || err == types.ErrEmptyCommittedSeals {
+		// the current blockchain state is synchronised with Istanbul's state
+		// and we know that the proposed block was mined by a valid validator
+		header := block.Header()
+		//We need at this point to process all the transactions in the block
+		//in order to extract the list of the next validators and validate the extradata field
+		var validators []common.Address
+		var err error
+		if header.Number.Uint64() > 1 {
+
+			state,vaultstate, _ := sb.blockchain.State()
+			state = state.Copy() // copy the state, we don't want to save modifications
+			gp := new(core.GasPool).AddGas(block.GasLimit())
+			usedGas := new(uint64)
+			// blockchain.Processor().Process() would have been a better choice but it calls back Finalize()
+			for i, tx := range block.Transactions() {
+				state.Prepare(tx.Hash(), block.Hash(), i)
+				// Might be vulnerable to DoS Attack depending on gaslimit
+				// Todo : Double check
+				_,_, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil,
+					gp, state,vaultstate, header, tx, usedGas, *sb.vmConfig)
+
+				if err != nil {
+					return 0, err
+				}
+			}
+
+			validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(sb.blockchain, header, state)
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
+		}
+		istanbulExtra, _ := types.ExtractBFTHeaderExtra(header)
+
+		//Perform the actual comparison
+		if len(istanbulExtra.Validators) != len(validators) {
+			return 0, errInconsistentValidatorSet
+		}
+
+		for i := range validators {
+			if istanbulExtra.Validators[i] != validators[i] {
+				return 0, errInconsistentValidatorSet
+			}
+		}
+		// At this stage extradata field is consistent with the validator list returned by Soma-contract
+
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
 		sb.logger.Error("Invalid proposal, consensus.ErrFutureBlock %v", proposal)
@@ -192,47 +255,30 @@ func (sb *backend) Sign(data []byte) ([]byte, error) {
 
 // CheckSignature implements sport.Backend.CheckSignature
 func (sb *backend) CheckSignature(data []byte, address common.Address, sig []byte) error {
-	signer, err := sport.GetSignatureAddress(data, sig)
+	signer, err := types.GetSignatureAddress(data, sig)
 	if err != nil {
 		log.Error("CheckSignature, Failed to GetSignatureAddress, ", "err", err)
 		return err
 	}
 	// Compare derived addresses
 	if signer != address {
-		return errInvalidSignature
+		return types.ErrInvalidSignature
 	}
 	return nil
 }
 
 // HasBlockProposal implements sport.Backend.HashBlock
 func (sb *backend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
-	return sb.chain.GetHeader(hash, number.Uint64()) != nil
+	return sb.blockchain.GetHeader(hash, number.Uint64()) != nil
 }
 
 // GetSpeaker implements sport.Backend.GetSpeaker
 func (sb *backend) GetSpeaker(number uint64) common.Address {
-	if h := sb.chain.GetHeaderByNumber(number); h != nil {
+	if h := sb.blockchain.GetHeaderByNumber(number); h != nil {
 		a, _ := sb.Author(h)
 		return a
 	}
 	return common.Address{}
-}
-
-// ParentFullnodes implements sport.Backend.GetParentFullnodes
-func (sb *backend) ParentFullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
-	if block, ok := proposal.(*types.Block); ok {
-		return sb.getFullnodes(block.Number().Uint64()-1, block.ParentHash())
-	}
-	return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
-}
-
-func (sb *backend) getFullnodes(number uint64, hash common.Hash) sport.FullnodeSet {
-	snap, err := sb.snapshot(sb.chain, number, hash, nil)
-	if err != nil {
-		sb.logger.Error("Failed to getFullnodes from snapshot", "err", err)
-		return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
-	}
-	return snap.FullnodeSet
 }
 
 // LastBlockProposal returns the last block header and speaker
@@ -260,3 +306,21 @@ func (sb *backend) HasBadBlockProposal(hash common.Hash) bool {
 	}
 	return sb.hasBadBlock(hash)
 }
+
+// Whitelist for the current block
+func (sb *backend) WhiteList() []string {
+	state,vaultstate, err := sb.blockchain.State()
+	if err != nil {
+		sb.logger.Error("Failed to get block white list", "err", err)
+		return nil
+	}
+
+	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state, vaultstate)
+	if err != nil {
+		sb.logger.Error("Failed to get block white list", "err", err)
+		return nil
+	}
+
+	return enodes.StrList
+}
+

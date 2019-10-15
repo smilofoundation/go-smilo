@@ -20,10 +20,15 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/event"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
 
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	//"go-smilo/src/blockchain/smilobft/p2p/enr"
+	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
+	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
+	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"math/big"
 	"runtime"
 	"sync"
@@ -32,7 +37,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -88,7 +92,7 @@ type Smilo struct {
 	// DB interfaces
 	chainDb ethdb.Database // Block chain database
 
-	eventMux       *event.TypeMux
+	eventMux       *cmn.TypeMux
 	engine         consensus.Engine
 	accountManager *accounts.Manager
 
@@ -105,6 +109,10 @@ type Smilo struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+	protocol Protocol
+
+	glienickeCh  chan core.WhitelistEvent
+	glienickeSub event.Subscription
 }
 
 func (s *Smilo) ChainConfig() *params.ChainConfig {
@@ -126,7 +134,7 @@ func (s *Smilo) SetContractBackend(backend bind.ContractBackend) {
 
 // New creates a new Smilo object (including the
 // initialisation of the common Smilo object)
-func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
+func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.Engine) consensus.Engine) (*Smilo, error) {
 	log.Info("$$$$$$$ Going to creates a new Smilo backend config object ")
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
@@ -156,8 +164,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	}
 	log.Info("Initialised chain configuration", "config", chainConfig, "config", config)
 
-	// changes to manipulate the chain id for migration from 2.0.2 and below version to 2.0.3
-	// version of Smilo  - this is applicable for v2.0.3 onwards
 	if chainConfig.IsSmilo {
 		if (chainConfig.ChainID != nil && chainConfig.ChainID.Int64() == 1) || config.NetworkId == 1 {
 			return nil, errors.New("cannot have chain id or network id as 1")
@@ -169,41 +175,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 		core.WriteSmiloEIP155Activation(chainDb)
 	}
 
-	eth := &Smilo{
-		config:         config,
-		chainDb:        chainDb,
-		chainConfig:    chainConfig,
-		eventMux:       ctx.EventMux,
-		accountManager: ctx.AccountManager,
-		engine:         CreateConsensusEngine(ctx, config, chainConfig, chainDb),
-		shutdownChan:   make(chan bool),
-		networkID:      config.NetworkId,
-		gasPrice:       config.Miner.GasPrice,
-		etherbase:      config.Miner.Etherbase,
-		bloomRequests:  make(chan chan *bloombits.Retrieval),
-		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-	}
-
-	//// force to set the sport etherbase to node key address
-	if chainConfig.Sport != nil {
-		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
-	}
-
-	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
-	var dbVer = "<nil>"
-	if bcVersion != nil {
-		dbVer = fmt.Sprintf("%d", *bcVersion)
-	}
-	log.Info("$$$$$$$$$$$$ Initialising Smilo protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
-
-	if !config.SkipBcVersionCheck {
-		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
-			return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
-		} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
-			log.Warn("Upgrade blockchain database version", "from", dbVer, "to", core.BlockChainVersion)
-			rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
-		}
-	}
 	var (
 		vmConfig = vm.Config{
 			EnablePreimageRecording: config.EnablePreimageRecording,
@@ -216,6 +187,69 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 			TrieTimeLimit:  config.TrieTimeout,
 		}
 	)
+
+	consEngine := CreateConsensusEngine(ctx, chainConfig, config, config.Miner.Notify, config.Miner.Noverify, chainDb, &vmConfig)
+	if cons != nil {
+		consEngine = cons(consEngine)
+	}
+
+
+	eth := &Smilo{
+		config:         config,
+		chainDb:        chainDb,
+		chainConfig:    chainConfig,
+		eventMux:       ctx.EventMux,
+		accountManager: ctx.AccountManager,
+		engine:         consEngine,
+		shutdownChan:   make(chan bool),
+		networkID:      config.NetworkId,
+		gasPrice:       config.Miner.GasPrice,
+		etherbase:      config.Miner.Etherbase,
+		bloomRequests:  make(chan chan *bloombits.Retrieval),
+		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
+		glienickeCh:    make(chan core.WhitelistEvent),
+	}
+
+	//// force to set the sport etherbase to node key address
+	if chainConfig.Sport != nil {
+		log.Info("force to set the sport etherbase to node key address")
+		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
+	}
+
+	// force to set the istanbul etherbase to node key address
+	if chainConfig.Istanbul != nil || chainConfig.Tendermint != nil {
+		log.Info("force to set the Istanbul or Tendermint etherbase to node key address")
+		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
+	}
+
+	if h, ok := eth.engine.(consensus.Handler); ok {
+		protocolName, extraMsgCodes := h.Protocol()
+		eth.protocol.Name = protocolName
+		eth.protocol.Versions = ProtocolVersions
+		eth.protocol.Lengths = make([]uint64, len(protocolLengths))
+		for i := range eth.protocol.Lengths {
+			eth.protocol.Lengths[i] = protocolLengths[uint(i)] + extraMsgCodes
+		}
+	} else {
+		eth.protocol = EthDefaultProtocol
+	}
+
+	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
+	var dbVer = "<nil>"
+	if bcVersion != nil {
+		dbVer = fmt.Sprintf("%d", *bcVersion)
+	}
+	log.Info("$$$$$$$$$$$$ Initialising protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer, "eth.protocol", eth.protocol)
+
+	if !config.SkipBcVersionCheck {
+		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
+			return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
+		} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
+			log.Warn("Upgrade blockchain database version", "from", dbVer, "to", core.BlockChainVersion)
+			rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
+		}
+	}
+
 	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
 	if err != nil {
 		return nil, err
@@ -239,7 +273,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Smilo, error) {
 	if checkpoint == nil {
 		checkpoint = params.TrustedCheckpoints[genesisHash]
 	}
-	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.SportEnableNodePermissionFlag); err != nil {
 		return nil, err
 	}
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, config.Sport.MinBlocksEmptyMining)
@@ -280,7 +314,7 @@ func makeExtraData(extra []byte, isSmilo bool) []byte {
 }
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Smilo service
-func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
+func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *Config, notify []string, noverify bool, db ethdb.Database, vmConfig *vm.Config) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
 		return clique.New(chainConfig.Clique, db)
@@ -297,7 +331,15 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 			config.Sport.MinFunds = chainConfig.Sport.MinFunds
 		}
 
-		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
+		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db, chainConfig, vmConfig)
+	}
+
+	if chainConfig.Istanbul != nil {
+		return istanbulBackend.New(&config.Istanbul, ctx.NodeKey(), db, chainConfig, vmConfig)
+	}
+	if chainConfig.Tendermint != nil {
+		back := tendermintBackend.New(&config.Tendermint, ctx.NodeKey(), db, chainConfig, vmConfig)
+		return tendermintCore.New(back, &config.Tendermint)
 	}
 
 	// Otherwise assume proof-of-work
@@ -462,7 +504,7 @@ func (s *Smilo) shouldPreserve(block *types.Block) bool {
 		return false
 	}
 
-	//if _, ok := s.engine.(*consensus.SmiloBFT); ok {
+	//if _, ok := s.engine.(*consensus.BFT); ok {
 	//	return false
 	//}
 
@@ -473,8 +515,8 @@ func (s *Smilo) shouldPreserve(block *types.Block) bool {
 func (s *Smilo) SetEtherbase(etherbase common.Address) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if _, ok := s.engine.(consensus.SmiloBFT); ok {
-		log.Error("Cannot set etherbase in Sport consensus")
+	if _, ok := s.engine.(consensus.BFT); ok {
+		log.Error("Cannot set etherbase in BFT consensus")
 		return
 	}
 	s.etherbase = etherbase
@@ -486,6 +528,7 @@ func (s *Smilo) SetEtherbase(etherbase common.Address) {
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
 func (s *Smilo) StartMining(threads int) error {
+	log.Error("mining", "n", threads)
 	// Update the thread count within the consensus engine
 	type threaded interface {
 		SetThreads(threads int)
@@ -550,11 +593,11 @@ func (s *Smilo) Miner() *miner.Miner { return s.miner }
 func (s *Smilo) AccountManager() *accounts.Manager  { return s.accountManager }
 func (s *Smilo) BlockChain() *core.BlockChain       { return s.blockchain }
 func (s *Smilo) TxPool() *core.TxPool               { return s.txPool }
-func (s *Smilo) EventMux() *event.TypeMux           { return s.eventMux }
+func (s *Smilo) EventMux() *cmn.TypeMux           { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
-func (s *Smilo) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
+func (s *Smilo) EthVersion() int                    { return int(ProtocolVersions[0]) }
 func (s *Smilo) NetVersion() uint64                 { return s.networkID }
 func (s *Smilo) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 func (s *Smilo) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
@@ -563,15 +606,14 @@ func (s *Smilo) ArchiveMode() bool                  { return s.config.NoPruning 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Smilo) Protocols() []p2p.Protocol {
-	var protos []p2p.Protocol
-	//
-	//for i, vsn := range ProtocolVersions {
-	//	protos[i] = s.protocolManager.makeProtocol(vsn)
-	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
-	//}
-	//if s.lesServer != nil {
-	//	protos = append(protos, s.lesServer.Protocols()...)
-	//}
+	protos := make([]p2p.Protocol, len(ProtocolVersions))
+	for i, vsn := range ProtocolVersions {
+		protos[i] = s.protocolManager.makeProtocol(vsn)
+		protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
+	}
+	if s.lesServer != nil {
+		protos = append(protos, s.lesServer.Protocols()...)
+	}
 
 	protos = append(protos, s.protocolManager.SubProtocols...)
 
@@ -581,6 +623,14 @@ func (s *Smilo) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Smilo protocol implementation.
 func (s *Smilo) Start(srvr *p2p.Server) error {
+	if !srvr.SportEnableNodePermissionFlag {
+		// Subscribe to Autonity updates events
+		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
+		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.SportEnableNodePermissionFlag)
+		log.Info("Reading Whitelist", "list", savedList.StrList)
+		go s.glienickeEventLoop(srvr)
+		srvr.UpdateWhitelist(savedList.List)
+	}
 	s.startEthEntryUpdate(srvr.LocalNode())
 
 	// Start the bloom bits servicing goroutines
@@ -605,12 +655,48 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 	return nil
 }
 
+// Whitelist updating loop. Act as a relay between state processing logic and DevP2P
+// for updating the list of authorized enodes
+func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
+	for {
+		select {
+		case event := <-s.glienickeCh:
+			whitelist := append([]*enode.Node{}, event.Whitelist...)
+			// Filter the list of need to be dropped peers depending on TD.
+			for _, connectedPeer := range s.protocolManager.peers.Peers() {
+				found := false
+				connectedEnode := connectedPeer.Node()
+				for _, whitelistedEnode := range whitelist {
+					if connectedEnode.ID() == whitelistedEnode.ID() {
+						found = true
+						break
+					}
+				}
+
+				if !found { // this node is no longer in the whitelist
+					peerID := fmt.Sprintf("%x", connectedEnode.ID().Bytes()[:8])
+					peer := s.protocolManager.peers.Peer(peerID)
+					localTd := s.blockchain.CurrentHeader().Number.Uint64() + 1
+					if peer != nil && peer.td.Uint64() > localTd {
+						whitelist = append(whitelist, connectedEnode)
+					}
+				}
+			}
+			server.UpdateWhitelist(whitelist)
+		// Err() channel will be closed when unsubscribing.
+		case <-s.glienickeSub.Err():
+			return
+		}
+	}
+}
+
 // Stop implements node.Service, terminating all internal goroutines used by the
 // Smilo protocol.
 func (s *Smilo) Stop() error {
 	s.bloomIndexer.Close()
+	s.glienickeSub.Unsubscribe()
 	s.blockchain.Stop()
-	//s.engine.Close()
+	s.engine.Close()
 	s.protocolManager.Stop()
 	if s.lesServer != nil {
 		s.lesServer.Stop()

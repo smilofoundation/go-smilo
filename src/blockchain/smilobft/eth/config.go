@@ -17,6 +17,8 @@
 package eth
 
 import (
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"math/big"
 	"os"
 	"os/user"
@@ -134,6 +136,12 @@ type Config struct {
 	// Ethash options
 	Ethash ethash.Config
 
+	// Istanbul options
+	Istanbul istanbul.Config
+
+	// Tendermint options
+	Tendermint config.Config
+
 	// Transaction pool options
 	TxPool core.TxPoolConfig
 
@@ -168,6 +176,7 @@ type Config struct {
 	PowMode               Mode
 	SolcPath              string
 	SmiloCodeAnalysisPath string
+
 }
 
 type Mode uint

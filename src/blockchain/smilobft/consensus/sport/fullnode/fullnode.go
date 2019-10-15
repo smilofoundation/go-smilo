@@ -17,7 +17,31 @@
 
 package fullnode
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/consensus/sport"
+)
+
+
+func New(addr common.Address) sport.Fullnode {
+	return &fullnode{
+		address: addr,
+	}
+}
+
+func NewSet(addrs []common.Address, policy sport.SpeakerPolicy) sport.FullnodeSet {
+	return newFullnodeSet(addrs, policy)
+}
+
+func ExtractValidators(extraData []byte) []common.Address {
+	// get the validator addresses
+	addrs := make([]common.Address, (len(extraData) / common.AddressLength))
+	for i := 0; i < len(addrs); i++ {
+		copy(addrs[i][:], extraData[i*common.AddressLength:])
+	}
+
+	return addrs
+}
 
 func (theFullNode *fullnode) Address() common.Address {
 	return theFullNode.address

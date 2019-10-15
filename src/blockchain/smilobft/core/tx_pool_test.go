@@ -19,6 +19,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -72,6 +73,14 @@ func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, *state.StateDB, 
 
 func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {
 	return bc.chainHeadFeed.Subscribe(ch)
+}
+
+func (bc *testBlockChain) Config() *params.ChainConfig {
+	return params.TestnetChainConfig
+}
+
+func (bc *testBlockChain) GetAutonityContract() *autonity.Contract {
+	return nil
 }
 
 func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Transaction {
@@ -143,7 +152,7 @@ func validateEvents(events chan NewTxsEvent, count int) error {
 		case ev := <-events:
 			received = append(received, ev.Txs...)
 		case <-time.After(time.Second):
-			return fmt.Errorf("event #%d not fired", len(received))
+			return fmt.Errorf("more than %d events fired: %v", count, received[count:])
 		}
 	}
 	if len(received) > count {
