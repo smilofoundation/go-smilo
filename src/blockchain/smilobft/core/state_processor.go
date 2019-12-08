@@ -17,6 +17,7 @@
 package core
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
@@ -99,6 +100,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 	if p.autonityContract != nil {
 		err := p.autonityContract.ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), statedb)
 		if err != nil {
+			log.Error("Could not ApplyPerformRedistribution on smart contract, ","err", err)
 			return nil, nil, nil, 0, err
 		}
 	}

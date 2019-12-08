@@ -42,28 +42,7 @@ const protocolName = "eth"
 var ProtocolVersions = []uint{eth63}
 
 // protocolLengths are the number of implemented message corresponding to different protocol versions.
-var protocolLengths = map[uint]uint64{eth63: 18, eth62: 8}
-
-// Protocol defines the protocol of the consensus
-type Protocol struct {
-	// Official short name of the protocol used during capability negotiation.
-	Name string
-	// Supported versions of the eth protocol (first is primary).
-	Versions []uint
-	// Number of implemented message corresponding to different protocol versions.
-	Lengths []uint64
-}
-
-var EthDefaultProtocol = Protocol{
-	// ProtocolName is the official short name of the protocol used during capability negotiation.
-	Name: "eth",
-
-	// ProtocolVersions are the supported versions of the eth protocol (first is primary).
-	Versions: []uint{eth63},
-
-	// ProtocolLengths are the number of implemented message corresponding to different protocol versions.
-	Lengths: []uint64{17, 8},
-}
+var protocolLengths = map[uint]uint64{eth63: 17, eth62: 8}
 
 const protocolMaxMsgSize = 10 * 1024 * 1024 // Maximum cap on the size of a protocol message
 

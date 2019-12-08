@@ -60,15 +60,22 @@ if (!fs.existsSync(nodePath)) {
 
 const enodeURLs = [];
 
-for (let i = 1; i <= totalNodes; i++) {
+for (let i = 0; i <= totalNodes; i++) {
 
     const keyFileName = `${nodePath}/nodekey${i}`;
 
     const privateKey = fs.readFileSync(keyFileName, "utf8");
 
-    const enode = execSync(`go run ${smiloPATH}/cmd/bootnode/main.go -v5 -nodekeyhex ${privateKey} -writeaddress`).toString('utf8').replace('\n', '');
+    const getEnodeCMD = `go run ${smiloPATH}/cmd/bootnode/main.go -v5 -nodekeyhex ${privateKey} -writeaddress`
+    console.log(getEnodeCMD);
 
-    enodeURLs.push(`enode://${enode}@127.0.0.1:${20999 + i}?discport=0`);
+    const enode = execSync(getEnodeCMD).toString('utf8').replace('\n', '');
+
+    const fullEnode = `enode://${enode}@127.0.0.1:${21000 + i}?discport=0`;
+
+    console.log(fullEnode);
+    
+    enodeURLs.push(fullEnode);
 
     console.log(`Key ${i} readed.`);
 

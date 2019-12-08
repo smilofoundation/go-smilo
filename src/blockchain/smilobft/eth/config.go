@@ -176,7 +176,6 @@ type Config struct {
 	PowMode               Mode
 	SolcPath              string
 	SmiloCodeAnalysisPath string
-
 }
 
 type Mode uint

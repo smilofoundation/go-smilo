@@ -21,14 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/event"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
-
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
 	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
 	"runtime"
 	"sync"
@@ -109,7 +107,7 @@ type Smilo struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
-	protocol Protocol
+	//protocol Protocol
 
 	glienickeCh  chan core.WhitelistEvent
 	glienickeSub event.Subscription
@@ -222,24 +220,24 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
 	}
 
-	if h, ok := eth.engine.(consensus.Handler); ok {
-		protocolName, extraMsgCodes := h.Protocol()
-		eth.protocol.Name = protocolName
-		eth.protocol.Versions = ProtocolVersions
-		eth.protocol.Lengths = make([]uint64, len(protocolLengths))
-		for i := range eth.protocol.Lengths {
-			eth.protocol.Lengths[i] = protocolLengths[uint(i)] + extraMsgCodes
-		}
-	} else {
-		eth.protocol = EthDefaultProtocol
-	}
+	//if h, ok := eth.engine.(consensus.Handler); ok {
+	//	protocolName, extraMsgCodes := h.Protocol()
+	//	eth.protocol.Name = protocolName
+	//	eth.protocol.Versions = ProtocolVersions
+	//	eth.protocol.Lengths = make([]uint64, len(protocolLengths))
+	//	for i := range eth.protocol.Lengths {
+	//		eth.protocol.Lengths[i] = protocolLengths[uint(i)] + extraMsgCodes
+	//	}
+	//} else {
+	//	eth.protocol = EthDefaultProtocol
+	//}
 
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
 	var dbVer = "<nil>"
 	if bcVersion != nil {
 		dbVer = fmt.Sprintf("%d", *bcVersion)
 	}
-	log.Info("$$$$$$$$$$$$ Initialising protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer, "eth.protocol", eth.protocol)
+	//log.Info("$$$$$$$$$$$$ Initialising protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer, "eth.protocol", eth.protocol)
 
 	if !config.SkipBcVersionCheck {
 		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
@@ -528,7 +526,7 @@ func (s *Smilo) SetEtherbase(etherbase common.Address) {
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
 func (s *Smilo) StartMining(threads int) error {
-	log.Error("mining", "n", threads)
+	log.Warn("mining", "n", threads)
 	// Update the thread count within the consensus engine
 	type threaded interface {
 		SetThreads(threads int)
@@ -606,14 +604,15 @@ func (s *Smilo) ArchiveMode() bool                  { return s.config.NoPruning 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Smilo) Protocols() []p2p.Protocol {
-	protos := make([]p2p.Protocol, len(ProtocolVersions))
-	for i, vsn := range ProtocolVersions {
-		protos[i] = s.protocolManager.makeProtocol(vsn)
-		protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
-	}
-	if s.lesServer != nil {
-		protos = append(protos, s.lesServer.Protocols()...)
-	}
+	var protos []p2p.Protocol
+	//
+	//for i, vsn := range ProtocolVersions {
+	//	protos[i] = s.protocolManager.makeProtocol(vsn)
+	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
+	//}
+	//if s.lesServer != nil {
+	//	protos = append(protos, s.lesServer.Protocols()...)
+	//}
 
 	protos = append(protos, s.protocolManager.SubProtocols...)
 

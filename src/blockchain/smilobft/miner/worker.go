@@ -146,7 +146,6 @@ type worker struct {
 	atWork int32
 
 	minBlocksEmptyMining *big.Int // Min Blocks to mine before Stop Mining Empty Blocks
-
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *cmn.TypeMux, minBlocksEmptyMining *big.Int) *worker {
@@ -236,12 +235,9 @@ func (self *worker) start() {
 	defer self.mu.Unlock()
 
 	atomic.StoreInt32(&self.mining, 1)
-	test := self.engine.(consensus.BFT)
-	log.Warn("karai",test)
-
 	if sport, ok := self.engine.(consensus.BFT); ok {
 		log.Info("BFT consensus will start ...")
-		err := sport.Start(context.Background(),self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+		err := sport.Start(context.Background(), self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
 		if err != nil {
 			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}

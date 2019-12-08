@@ -19,6 +19,7 @@ package backend
 
 import (
 	"errors"
+	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
 	"go-smilo/src/blockchain/smilobft/core"
 	"math/big"
 	"time"
@@ -154,7 +155,7 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Ensure that the extra data format is satisfied
-	if _, err := types.ExtractBFTHeaderExtra(header); err != nil {
+	if _, err := types.ExtractSportExtra(header); err != nil {
 		return errInvalidExtraDataFormat
 	}
 
@@ -163,7 +164,7 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 		return errInvalidNonce
 	}
 	// Ensure that the mix digest is zero as we don't have fork protection currently
-	if header.MixDigest != types.BFTDigest {
+	if header.MixDigest != types.SportDigest {
 		return errInvalidMixDigest
 	}
 	// Ensure that the block doesn't contain any uncles which are meaningless in Sport
@@ -262,7 +263,7 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// unused fields, force to set to empty
 	header.Coinbase = sb.address
 	header.Nonce = emptyNonce
-	header.MixDigest = types.BFTDigest
+	header.MixDigest = types.SportDigest
 
 	// copy the parent extra data as the header extra data
 	number := header.Number.Uint64()
@@ -272,6 +273,34 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	}
 	// use the same difficulty for all blocks
 	header.Difficulty = defaultDifficulty
+
+	var parents []*types.Header
+	parents = append(parents, parent)
+	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
+	if err != nil {
+		return err
+	}
+	fullnodeSet := fullnode.NewSet(fullnodeAddresses, sb.config.GetProposerPolicy())
+
+	fullnodes := make([]common.Address, 0, fullnodeSet.Size())
+	for _, fullnode := range fullnodeSet.List() {
+		fullnodes = append(fullnodes, fullnode.Address())
+	}
+	for i := 0; i < len(fullnodes); i++ {
+		for j := i + 1; j < len(fullnodes); j++ {
+			if bytes.Compare(fullnodes[i][:], fullnodes[j][:]) > 0 {
+				fullnodes[i], fullnodes[j] = fullnodes[j], fullnodes[i]
+			}
+		}
+	}
+
+	// add fullnodes in snapshot to extraData's fullnodes section
+	extra, err := prepareExtra(header, fullnodes)
+	if err != nil {
+		log.Error("Could not add fullnodes in snapshot to extraData's fullnodes section.", "err", err)
+		return err
+	}
+	header.Extra = extra
 
 	// set header's timestamp
 	header.Time = parent.Time + sb.config.BlockPeriod

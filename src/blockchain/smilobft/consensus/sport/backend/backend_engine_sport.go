@@ -18,6 +18,7 @@
 package backend
 
 import (
+	"bytes"
 	"context"
 	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
@@ -83,7 +84,7 @@ func (sb *backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 	}
 	fullnodes := fullnode.NewSet(fullnodeAddresses, sb.config.GetProposerPolicy())
 
-	extra, err := types.ExtractBFTHeaderExtra(header)
+	extra, err := types.ExtractSportExtra(header)
 	if err != nil {
 		return err
 	}
@@ -220,6 +221,30 @@ func (sb *backend) Stop() error {
 	return nil
 }
 
+// prepareExtra returns a extra-data of the given header and fullnodes
+func prepareExtra(header *types.Header, vals []common.Address) ([]byte, error) {
+	var buf bytes.Buffer
+
+	// compensate the lack bytes if header.Extra is not enough SportExtraVanity bytes.
+	if len(header.Extra) < types.SportExtraVanity {
+		header.Extra = append(header.Extra, bytes.Repeat([]byte{0x00}, types.SportExtraVanity-len(header.Extra))...)
+	}
+	buf.Write(header.Extra[:types.SportExtraVanity])
+
+	ist := &types.SportExtra{
+		Fullnodes:     vals,
+		Seal:          []byte{},
+		CommittedSeal: [][]byte{},
+	}
+
+	payload, err := rlp.EncodeToBytes(&ist)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(buf.Bytes(), payload...), nil
+}
+
 // retrieve list of validators for the block at height passed as parameter
 func (sb *backend) retrieveSavedValidators(number uint64, chain consensus.ChainReader) ([]common.Address, error) {
 	if number == 0 {
@@ -232,13 +257,13 @@ func (sb *backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 		return nil, errUnknownBlock
 	}
 
-	istanbulExtra, err := types.ExtractBFTHeaderExtra(header)
+	istanbulExtra, err := types.ExtractSportExtra(header)
 	if err != nil {
 		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)
 		return nil, err
 	}
 
-	return istanbulExtra.Validators, nil
+	return istanbulExtra.Fullnodes, nil
 
 }
 
@@ -255,10 +280,10 @@ func (sb *backend) retrieveValidators(header *types.Header, parents []*types.Hea
 
 	if len(parents) > 0 {
 		parent := parents[len(parents)-1]
-		var istanbulExtra *types.BFTExtra
-		istanbulExtra, err = types.ExtractBFTHeaderExtra(parent)
+		var istanbulExtra *types.SportExtra
+		istanbulExtra, err = types.ExtractSportExtra(parent)
 		if err == nil {
-			validators = istanbulExtra.Validators
+			validators = istanbulExtra.Fullnodes
 		}
 	} else {
 		validators, err = sb.retrieveSavedValidators(header.Number.Uint64(), chain)

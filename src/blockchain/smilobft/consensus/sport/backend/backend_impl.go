@@ -55,10 +55,12 @@ func (sb *backend) Broadcast(fullnodeSet sport.FullnodeSet, payload []byte) erro
 	msg := sport.MessageEvent{
 		Payload: payload,
 	}
-	go func(){
+	go func() {
 		err = sb.smilobftEventMux.Post(msg)
 		if err != nil {
 			sb.logger.Error("Failed to boadcast smilobftEventMux.Post(msg)", "err", err)
+		} else {
+			log.Debug("Broadcast, smilobftMsg message, OK!!!")
 		}
 	}()
 	return nil
@@ -103,7 +105,7 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 				if err != nil {
 					log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
 				} else {
-					//log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+					log.Debug("Gossip, smilobftMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
 				}
 			}()
 
@@ -201,7 +203,7 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 		var err error
 		if header.Number.Uint64() > 1 {
 
-			state,vaultstate, _ := sb.blockchain.State()
+			state, vaultstate, _ := sb.blockchain.State()
 			state = state.Copy() // copy the state, we don't want to save modifications
 			gp := new(core.GasPool).AddGas(block.GasLimit())
 			usedGas := new(uint64)
@@ -210,8 +212,8 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 				state.Prepare(tx.Hash(), block.Hash(), i)
 				// Might be vulnerable to DoS Attack depending on gaslimit
 				// Todo : Double check
-				_,_, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil,
-					gp, state,vaultstate, header, tx, usedGas, *sb.vmConfig)
+				_, _, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil,
+					gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 
 				if err != nil {
 					return 0, err
@@ -225,15 +227,15 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
 		}
-		istanbulExtra, _ := types.ExtractBFTHeaderExtra(header)
+		istanbulExtra, _ := types.ExtractSportExtra(header)
 
 		//Perform the actual comparison
-		if len(istanbulExtra.Validators) != len(validators) {
+		if len(istanbulExtra.Fullnodes) != len(validators) {
 			return 0, errInconsistentValidatorSet
 		}
 
 		for i := range validators {
-			if istanbulExtra.Validators[i] != validators[i] {
+			if istanbulExtra.Fullnodes[i] != validators[i] {
 				return 0, errInconsistentValidatorSet
 			}
 		}
@@ -241,8 +243,10 @@ func (sb *backend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
-		sb.logger.Error("Invalid proposal, consensus.ErrFutureBlock %v", proposal)
+		sb.logger.Error("Invalid proposal, consensus.ErrFutureBlock ", "proposal", proposal, "err", err)
 		return time.Unix(int64(block.Header().Time), 0).Sub(now()), consensus.ErrFutureBlock
+	} else {
+		sb.logger.Error("Invalid proposal", "proposal", proposal, "err", err)
 	}
 	return 0, err
 }
@@ -309,7 +313,7 @@ func (sb *backend) HasBadBlockProposal(hash common.Hash) bool {
 
 // Whitelist for the current block
 func (sb *backend) WhiteList() []string {
-	state,vaultstate, err := sb.blockchain.State()
+	state, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
@@ -323,4 +327,3 @@ func (sb *backend) WhiteList() []string {
 
 	return enodes.StrList
 }
-

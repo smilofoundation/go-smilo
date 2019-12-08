@@ -112,7 +112,7 @@
   version = "v0.10.4"
 
 [[projects]]
-  digest = "1:ef27d0b2fe617cecce81905419708de2ab5788015e6774163b00721c5453efc7"
+  digest = "1:4e8b2bfffe1da477607a589cccf673e4e5fad980a748343e214a8a60900a71f3"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",

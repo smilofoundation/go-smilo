@@ -188,7 +188,7 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 	}
 
 	configNode := &node.Config{
-		Name:    "autonity",
+		Name:    "geth",
 		Version: params.Version,
 		DataDir: datadir,
 		P2P: p2p.Config{

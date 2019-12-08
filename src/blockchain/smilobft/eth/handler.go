@@ -118,12 +118,12 @@ type ProtocolManager struct {
 
 	engine consensus.Engine
 
-	openNetwork bool
+	SportEnableNodePermissionFlag bool
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, openNetwork bool) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, SportEnableNodePermissionFlag bool) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:   networkID,
@@ -138,7 +138,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
 		engine:      engine,
-		openNetwork: openNetwork,
+		SportEnableNodePermissionFlag: SportEnableNodePermissionFlag,
 		whitelistCh: make(chan core.WhitelistEvent, 64),
 	}
 
@@ -261,7 +261,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		return n, err
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
-	manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, openNetwork).List
+	manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
 	return manager, nil
 }
 
@@ -330,7 +330,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.minedBroadcastLoop()
 
 	// update peers whitelist
-	if !pm.openNetwork {
+	if !pm.SportEnableNodePermissionFlag {
 		pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
 		go pm.glienickeEventLoop()
 	}
@@ -345,7 +345,7 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
-	if !pm.openNetwork {
+	if !pm.SportEnableNodePermissionFlag {
 		pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
 	}
 
@@ -409,7 +409,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 
-	if !pm.openNetwork {
+	if !pm.SportEnableNodePermissionFlag {
 		whitelisted := false
 		pm.enodesWhitelistLock.RLock()
 		for _, enode := range pm.enodesWhitelist {

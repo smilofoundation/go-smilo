@@ -188,6 +188,9 @@ type Engine interface {
 	Start() error
 	Stop() error
 
+	IsSpeaker() bool
+
+	IsCurrentBlockProposal(blockHash common.Hash) bool
 }
 
 // ----------------------------------------------------------------------------

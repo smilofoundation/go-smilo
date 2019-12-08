@@ -89,6 +89,7 @@ func ExtractBFTHeaderExtra(h *Header) (*BFTExtra, error) {
 
 func ExtractBFTExtra(extra []byte) (*BFTExtra, error) {
 	if len(extra) < BFTExtraVanity {
+		log.Error("ExtractBFTExtra, ", "len(extra)", len(extra), "BFTExtraVanity", BFTExtraVanity)
 		return nil, ErrInvalidBFTHeaderExtra
 	}
 
