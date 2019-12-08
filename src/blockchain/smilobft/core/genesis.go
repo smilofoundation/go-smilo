@@ -338,11 +338,15 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		g.Config = params.AllEthashProtocolChanges
 	}
 
-	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil) {
+	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil || g.Config.Sport != nil ) {
+		log.Warn("core/genesis.go, Commit(), Will SetBFT ")
 		err := g.SetBFT()
 		if err != nil {
+			log.Error("core/genesis.go, Commit(), Could not SetBFT ", "err", err)
 			return nil, err
 		}
+	} else {
+		log.Warn("core/genesis.go, Commit(), NOT Will SetBFT ", "g.Config", g.Config)
 	}
 
 	block := g.ToBlock(db)
@@ -364,8 +368,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	if config == nil {
 		config = params.AllEthashProtocolChanges
 	}
-	
+
 	if config.AutonityContractConfig != nil {
+		log.Warn("AutonityContractConfig is defined, will get AutonityContractConfig.Users and WriteEnodeWhitelist")
 		enodes := []string{}
 		for _, v := range config.AutonityContractConfig.Users {
 			if v.Enode != "" {
@@ -374,6 +379,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		}
 
 		rawdb.WriteEnodeWhitelist(db, types.NewNodes(enodes, true))
+		log.Warn("AutonityContractConfig is defined, WriteEnodeWhitelist, ", "enodes", enodes)
 	}
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	return block, nil
@@ -382,7 +388,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 
 // SetBFT sets default BFT(IBFT or Tendermint) config values
 func (g *Genesis) SetBFT() error {
-	if g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.Tendermint != nil && g.Config.AutonityContractConfig != nil {
+	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
 		var validators []string
 		for _, v := range g.Config.AutonityContractConfig.Users {
 			validators = append(validators, v.Address.String())
@@ -395,6 +401,8 @@ func (g *Genesis) SetBFT() error {
 			}
 			g.SetExtraData(extraData)
 		}
+	} else {
+		log.Warn("core/genesis.go, SetBFT(), consensus invalid for call or AutonityContractConfig is nil, is this right ? ", "g.Config", g.Config)
 	}
 
 	log.Info("starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()))

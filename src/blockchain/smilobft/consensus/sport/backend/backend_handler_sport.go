@@ -39,7 +39,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	defer sb.coreMu.Unlock()
 
 	if msg.Code == smilobftMsg {
-		//log.Debug("HandleMsg, Gossip, smilobftMsg message, GOT IT!!! ", "msg", msg.String())
+		log.Debug("backend/backend_handler_sport.go, HandleMsg(), Gossip, smilobftMsg message, GOT IT!!! ", "msg", msg.String())
 		if !sb.coreStarted {
 			return true, sport.ErrStoppedEngine
 		}
@@ -73,9 +73,9 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 				Payload: data,
 			})
 			if err != nil {
-				log.Error("Could not send sb.smilobftEventMux.Post, sport.MessageEvent", "err", err)
+				log.Error("Could not send sb.smilobftEventMux.Post, sport.MessageEvent", "err", err, "msg", msg.String())
 			} else {
-				log.Error("Sent sb.smilobftEventMux.Post, sport.MessageEvent")
+				log.Error("Sent sb.smilobftEventMux.Post, sport.MessageEvent", "msg", msg.String())
 			}
 		}()
 
@@ -83,7 +83,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	}
 	if msg.Code == NewBlockMsg && sb.core.IsSpeaker() {
 		// avoid race conditions
-		log.Debug("Speaker received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr)
+		log.Debug("Speaker received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr, "msg", msg.String())
 		if reader, ok := msg.Payload.(*bytes.Reader); ok {
 			payload, err := ioutil.ReadAll(reader)
 			if err != nil {
@@ -96,12 +96,12 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 				TD    *big.Int
 			}
 			if err := msg.Decode(&request); err != nil {
-				log.Debug("Speaker was unable to decode the NewBlockMsg", "error", err)
+				log.Debug("Speaker was unable to decode the NewBlockMsg", "error", err, "msg", msg.String())
 				return false, nil
 			}
 			newRequestedBlock := request.Block
 			if newRequestedBlock.Header().MixDigest == types.SportDigest && sb.core.IsCurrentBlockProposal(newRequestedBlock.Hash()) {
-				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr)
+				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr, "msg", msg.String())
 				return true, nil
 			}
 		}

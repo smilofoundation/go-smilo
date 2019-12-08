@@ -20,8 +20,8 @@ const (
 	defaultTTL        = 120
 )
 
-func NewNodes(strList []string, openNetwork bool) *Nodes {
-	getEnode := getParseFunc(openNetwork)
+func NewNodes(strList []string, SportEnableNodePermissionFlag bool) *Nodes {
+	getEnode := getParseFunc(SportEnableNodePermissionFlag)
 
 	idx := new(int32)
 	wg := sync.WaitGroup{}
@@ -59,16 +59,16 @@ func NewNodes(strList []string, openNetwork bool) *Nodes {
 	}
 
 	if len(errs) != 0 {
-		if !openNetwork {
+		if SportEnableNodePermissionFlag {
 			panic(errs)
 		}
 		log.Error("enodes parse errors", "errs", errs)
 	}
 
-	return filterNodes(n, openNetwork)
+	return filterNodes(n, SportEnableNodePermissionFlag)
 }
 
-func filterNodes(n *Nodes, openNetwork bool) *Nodes {
+func filterNodes(n *Nodes, SportEnableNodePermissionFlag bool) *Nodes {
 	filtered := &Nodes{
 		make([]*enode.Node, 0, len(n.List)),
 		make([]string, 0, len(n.StrList)),
@@ -78,7 +78,7 @@ func filterNodes(n *Nodes, openNetwork bool) *Nodes {
 		if node != nil {
 			filtered.List = append(filtered.List, node)
 			filtered.StrList = append(filtered.StrList, n.StrList[i])
-		} else if openNetwork {
+		} else if !SportEnableNodePermissionFlag {
 			// we want to store raw enodes for later checks
 			filtered.StrList = append(filtered.StrList, n.StrList[i])
 		}
@@ -87,9 +87,9 @@ func filterNodes(n *Nodes, openNetwork bool) *Nodes {
 	return filtered
 }
 
-func getParseFunc(openNetwork bool) func(string) (*enode.Node, error) {
+func getParseFunc(SportEnableNodePermissionFlag bool) func(string) (*enode.Node, error) {
 	getEnode := enode.ParseV4WithResolve
-	if !openNetwork {
+	if SportEnableNodePermissionFlag {
 		getEnode = enode.GetParseV4WithResolveMaxTry(maxParseTries, delayBetweenTries)
 	}
 	return getEnode

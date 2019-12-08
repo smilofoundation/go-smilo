@@ -186,7 +186,6 @@ type BlockChain struct {
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
 	autonityContract *autonity.Contract
-
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -247,10 +246,13 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	}
 
 	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.Sport != nil) && chainConfig.AutonityContractConfig != nil {
+		log.Warn("willl set new Autonity contract", "chainConfig", chainConfig)
 		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
 			return GetHashFn(ref, chain)
 		})
 		bc.processor.SetAutonityContract(bc.autonityContract)
+	} else {
+		log.Warn("Wont set Autonity contract, is this correct ? ", "chainConfig", chainConfig)
 	}
 
 	// The first thing the node will do is reconstruct the verification data for
@@ -1382,14 +1384,14 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 
-	// Call network permissioning logic before committing the state
-	if bc.chainConfig.Istanbul != nil || bc.chainConfig.Tendermint != nil {
-		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state,vaultState, block)
-		if err != nil && err != autonity.ErrAutonityContract {
-			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
-			return NonStatTy, err
-		}
+	log.Warn("Call network permissioning logic before committing the state, UpdateEnodesWhitelist")
+	//if bc.chainConfig.Istanbul != nil || bc.chainConfig.Tendermint != nil {
+	err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, vaultState, block)
+	if err != nil && err != autonity.ErrAutonityContract {
+		log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
+		return NonStatTy, err
 	}
+	//}
 
 	rawdb.WriteBlock(bc.db, block)
 
@@ -2359,7 +2361,7 @@ func (bc *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
 }
 
 // Config retrieves the blockchain's chain configuration.
-func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
+func (bc *BlockChain) Config() *params.ChainConfig             { return bc.chainConfig }
 func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
 
 // Engine retrieves the blockchain's consensus engine.
@@ -2390,7 +2392,6 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
 }
 
-
 func (bc *BlockChain) SubscribeAutonityEvents(ch chan<- WhitelistEvent) event.Subscription {
 	return bc.scope.Track(bc.autonityFeed.Subscribe(ch))
 }
@@ -2403,7 +2404,6 @@ func (bc *BlockChain) UpdateEnodeWhitelist(newWhitelist *types.Nodes) {
 func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
 	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
 }
-
 
 // Given a slice of public receipts and an overlapping (smaller) slice of
 // vault receipts, return a new slice where the default for each location is

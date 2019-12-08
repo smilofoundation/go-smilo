@@ -46,7 +46,7 @@ type Blockchainer interface {
 	Config() *params.ChainConfig
 
 	UpdateEnodeWhitelist(newWhitelist *types.Nodes)
-	ReadEnodeWhitelist(openNetwork bool) *types.Nodes
+	ReadEnodeWhitelist(SportEnableNodePermissionFlag bool) *types.Nodes
 }
 
 type Contract struct {

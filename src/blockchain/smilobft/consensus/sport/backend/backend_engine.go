@@ -278,6 +278,7 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	parents = append(parents, parent)
 	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
 	if err != nil {
+		log.Error("Could not assemble the voting snapshot from retrieveValidators", "err", err)
 		return err
 	}
 	fullnodeSet := fullnode.NewSet(fullnodeAddresses, sb.config.GetProposerPolicy())

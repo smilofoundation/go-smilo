@@ -208,15 +208,9 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 		glienickeCh:    make(chan core.WhitelistEvent),
 	}
 
-	//// force to set the sport etherbase to node key address
-	if chainConfig.Sport != nil {
-		log.Info("force to set the sport etherbase to node key address")
-		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
-	}
-
-	// force to set the istanbul etherbase to node key address
-	if chainConfig.Istanbul != nil || chainConfig.Tendermint != nil {
-		log.Info("force to set the Istanbul or Tendermint etherbase to node key address")
+	// force to set the etherbase to node key address
+	if chainConfig.Istanbul != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
+		log.Info("force to set the Istanbul or Tendermint or Sport etherbase to node key address")
 		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
 	}
 
@@ -237,7 +231,7 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 	if bcVersion != nil {
 		dbVer = fmt.Sprintf("%d", *bcVersion)
 	}
-	//log.Info("$$$$$$$$$$$$ Initialising protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer, "eth.protocol", eth.protocol)
+	log.Info("$$$$$$$$$$$$ Initialising protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
 
 	if !config.SkipBcVersionCheck {
 		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
@@ -595,7 +589,7 @@ func (s *Smilo) EventMux() *cmn.TypeMux           { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
-func (s *Smilo) EthVersion() int                    { return int(ProtocolVersions[0]) }
+func (s *Smilo) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
 func (s *Smilo) NetVersion() uint64                 { return s.networkID }
 func (s *Smilo) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 func (s *Smilo) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
@@ -622,13 +616,16 @@ func (s *Smilo) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Smilo protocol implementation.
 func (s *Smilo) Start(srvr *p2p.Server) error {
-	if !srvr.SportEnableNodePermissionFlag {
+	if srvr.SportEnableNodePermissionFlag {
 		// Subscribe to Autonity updates events
+		log.Warn("eth/backend.go, Start(), Will Subscribe to Autonity updates events")
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
 		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.SportEnableNodePermissionFlag)
-		log.Info("Reading Whitelist", "list", savedList.StrList)
+		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
 		go s.glienickeEventLoop(srvr)
 		srvr.UpdateWhitelist(savedList.List)
+	} else {
+		log.Warn("eth/backend.go, Start(), SportEnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
 	}
 	s.startEthEntryUpdate(srvr.LocalNode())
 
@@ -693,7 +690,9 @@ func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
 // Smilo protocol.
 func (s *Smilo) Stop() error {
 	s.bloomIndexer.Close()
-	s.glienickeSub.Unsubscribe()
+	if s.glienickeSub != nil {
+		s.glienickeSub.Unsubscribe()
+	}
 	s.blockchain.Stop()
 	s.engine.Close()
 	s.protocolManager.Stop()

@@ -257,13 +257,13 @@ func (sb *backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 		return nil, errUnknownBlock
 	}
 
-	istanbulExtra, err := types.ExtractSportExtra(header)
+	sportExtra, err := types.ExtractSportExtra(header)
 	if err != nil {
 		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)
 		return nil, err
 	}
 
-	return istanbulExtra.Fullnodes, nil
+	return sportExtra.Fullnodes, nil
 
 }
 
@@ -280,10 +280,10 @@ func (sb *backend) retrieveValidators(header *types.Header, parents []*types.Hea
 
 	if len(parents) > 0 {
 		parent := parents[len(parents)-1]
-		var istanbulExtra *types.SportExtra
-		istanbulExtra, err = types.ExtractSportExtra(parent)
+		var sportExtra *types.SportExtra
+		sportExtra, err = types.ExtractSportExtra(parent)
 		if err == nil {
-			validators = istanbulExtra.Fullnodes
+			validators = sportExtra.Fullnodes
 		}
 	} else {
 		validators, err = sb.retrieveSavedValidators(header.Number.Uint64(), chain)
@@ -297,7 +297,7 @@ func (sb *backend) retrieveValidators(header *types.Header, parents []*types.Hea
 // writeSeal writes the extra-data field of the given header with the given seals.
 // suggest to rename to writeSeal.
 func writeSeal(h *types.Header, seal []byte) error {
-	if len(seal)%types.SportExtraSeal != 0 {
+	if len(seal)%types.BFTExtraSeal != 0 {
 		return errInvalidSignature
 	}
 

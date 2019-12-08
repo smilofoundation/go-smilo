@@ -126,20 +126,20 @@ type ProtocolManager struct {
 func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, SportEnableNodePermissionFlag bool) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		networkID:   networkID,
-		eventMux:    mux,
-		txpool:      txpool,
-		blockchain:  blockchain,
-		chainconfig: config,
-		peers:       newPeerSet(),
-		whitelist:   whitelist,
-		newPeerCh:   make(chan *peer),
-		noMorePeers: make(chan struct{}),
-		txsyncCh:    make(chan *txsync),
-		quitSync:    make(chan struct{}),
-		engine:      engine,
+		networkID:                     networkID,
+		eventMux:                      mux,
+		txpool:                        txpool,
+		blockchain:                    blockchain,
+		chainconfig:                   config,
+		peers:                         newPeerSet(),
+		whitelist:                     whitelist,
+		newPeerCh:                     make(chan *peer),
+		noMorePeers:                   make(chan struct{}),
+		txsyncCh:                      make(chan *txsync),
+		quitSync:                      make(chan struct{}),
+		engine:                        engine,
 		SportEnableNodePermissionFlag: SportEnableNodePermissionFlag,
-		whitelistCh: make(chan core.WhitelistEvent, 64),
+		whitelistCh:                   make(chan core.WhitelistEvent, 64),
 	}
 
 	if handler, ok := manager.engine.(consensus.Handler); ok {
@@ -182,7 +182,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	for i, version := range protocol.Versions {
 		// Skip protocol version if incompatible with the mode of operation
 		if mode == downloader.FastSync && version < eth63 {
-			log.Error("&**&*&*&*&*&*&* handler, Skip protocol version if incompatible with the mode of operation")
+			log.Error("&**&*&*&*&*&*&* ERROR: handler, Skip protocol version if incompatible with the mode of operation")
 			continue
 		}
 		// Compatible; initialise the sub-protocol
@@ -214,7 +214,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		})
 	}
 	if len(manager.SubProtocols) == 0 {
-		log.Error("handler, errIncompatibleConfig")
+		log.Error("handler, errIncompatibleConfig", "len(manager.SubProtocols)", len(manager.SubProtocols))
 		return nil, errIncompatibleConfig
 	}
 
@@ -262,6 +262,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 	manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
+	log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
 	return manager, nil
 }
 
@@ -330,9 +331,11 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.minedBroadcastLoop()
 
 	// update peers whitelist
-	if !pm.SportEnableNodePermissionFlag {
+	if pm.SportEnableNodePermissionFlag {
 		pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
 		go pm.glienickeEventLoop()
+	} else {
+		log.Warn("eth/handler.go, Start(), SportEnableNodePermissionFlag false, wont SubscribeAutonityEvents whitelistCh")
 	}
 
 	// start sync handlers
@@ -345,8 +348,10 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
-	if !pm.SportEnableNodePermissionFlag {
+	if pm.SportEnableNodePermissionFlag {
 		pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
+	} else {
+		log.Warn("eth/handler.go, Stop(), could not whitelistSub.Unsubscribe")
 	}
 
 	// Quit the sync loop.
@@ -373,11 +378,13 @@ func (pm *ProtocolManager) glienickeEventLoop() {
 	for {
 		select {
 		case event := <-pm.whitelistCh:
+			log.Warn("glienickeEventLoop, got Whitelist, ", event.Whitelist)
 			pm.enodesWhitelistLock.Lock()
 			pm.enodesWhitelist = event.Whitelist
 			pm.enodesWhitelistLock.Unlock()
 		// Err() channel will be closed when unsubscribing.
-		case <-pm.whitelistSub.Err():
+		case err := <-pm.whitelistSub.Err():
+			log.Warn("glienickeEventLoop, got err, ", "err", err)
 			return
 		}
 	}
@@ -409,13 +416,18 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 
-	if !pm.SportEnableNodePermissionFlag {
+	if pm.SportEnableNodePermissionFlag {
 		whitelisted := false
+		log.Warn("eth/handler.go, pm.SportEnableNodePermissionFlag, enodesWhitelist, ", pm.enodesWhitelist)
+
 		pm.enodesWhitelistLock.RLock()
 		for _, enode := range pm.enodesWhitelist {
 			if p.Node().ID() == enode.ID() {
+				log.Warn("eth/handler.go, range pm.enodesWhitelist, ", enode)
 				whitelisted = true
 				break
+			} else {
+				log.Warn("eth/handler.go, range pm.enodesWhitelist, ELSE ", enode)
 			}
 		}
 
@@ -431,6 +443,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 			return errUnauthaurizedPeer
 		}
 		// Todo : pause relaying if not whitelisted until full sync
+	} else {
+		log.Warn("eth/handler.go, handle(), SportEnableNodePermissionFlag, ELSE")
 	}
 
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -456,6 +470,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 		syncer.ResetPeerCache(address)
 		syncer.SyncPeer(address)
+	} else {
+		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
 	}
 
 	// If we have a trusted CHT, reject all peers below that (avoid fast sync eclipse)
@@ -508,7 +524,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	if handler, ok := pm.engine.(consensus.Handler); ok {
 		pubKey := p.Node().Pubkey()
 		if pubKey == nil {
+			log.Warn("eth/handler.go, handleMsg, pubKey == nil")
 			return errResp(ErrNoPubKeyFound, "%s", p.Node().ID().GoString())
+		} else {
+			log.Warn("eth/handler.go, handleMsg, pubKey valid, ", "msg", msg)
 		}
 		addr := crypto.PubkeyToAddress(*pubKey)
 		handled, err := handler.HandleMsg(addr, msg)
@@ -998,6 +1017,7 @@ func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[co
 	for _, p := range pm.peers.Peers() {
 		pubKey := p.Node().Pubkey()
 		if pubKey == nil {
+			log.Error("p.Node().Pubkey() is nil")
 			continue
 		}
 		addr := crypto.PubkeyToAddress(*pubKey)
@@ -1005,6 +1025,8 @@ func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[co
 			m[addr] = p
 		}
 	}
+
+	log.Debug("eth/handler.go, FindPeers(), ","len(foundPeers)", len(m))
 
 	return m
 }
