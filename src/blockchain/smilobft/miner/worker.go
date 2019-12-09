@@ -182,7 +182,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		go worker.wait()
 		worker.commitNewWork(time.Now().Unix())
 	} else {
-		panic("$$$ Could not set consensus.BFT params for the miner.worker")
+		//panic("$$$ Could not set consensus.BFT params for the miner.worker")
+		log.Warn("Could not start non BFT Consensus Engine")
 	}
 
 	return worker
@@ -243,7 +244,8 @@ func (self *worker) start() {
 			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}
 	} else {
-		panic("$$$ Could not start non BFT Consensus Engine")
+		//panic("$$$ Could not start non BFT Consensus Engine")
+		log.Warn("Could not start non BFT Consensus Engine")
 	}
 
 	// spin up agents
@@ -269,7 +271,8 @@ func (self *worker) stop() {
 			log.Error("$$$ Error stopping Consensus Engine", "error", err)
 		}
 	} else {
-		panic("$$$ Could not stop non BFT Consensus Engine")
+		//panic("$$$ Could not stop non BFT Consensus Engine")
+		log.Warn("Could not stop non BFT Consensus Engine")
 	}
 	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.atWork, 0)

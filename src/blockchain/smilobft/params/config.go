@@ -270,19 +270,19 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(20080914), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, false, true, false, 0, 32, nil, nil, nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(20080914), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, false, true, false, 0, 32, nil, nil, nil,nil}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, false, false, false, 0, 32,nil, nil, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, false, false, false, 0, 32,nil, nil, nil,nil}
 
-	TestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, false, true, false, 0, 32,nil, nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, false, true, false, 0, 32,nil, nil, nil,nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
-	SmiloTestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, nil, common.Hash{}, nil, nil, big.NewInt(300000), nil, nil, big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, true, true, false, 0, 32,nil, nil, nil}
+	SmiloTestChainConfig = &ChainConfig{big.NewInt(10), big.NewInt(0), nil, false, nil, common.Hash{}, nil, nil, big.NewInt(300000), nil, nil, big.NewInt(0), nil, nil, new(EthashConfig), nil, nil, true, true, false, 0, 32,nil, nil, nil,nil}
 )
 
 // TrustedCheckpoint represents a set of post-processed trie roots (CHT and
@@ -371,6 +371,7 @@ type ChainConfig struct {
 	Tendermint             *TendermintConfig        `json:"tendermint,omitempty"`
 	AutonityContractConfig *AutonityContractGenesis `json:"autonityContract,omitempty"`
 	Istanbul               *IstanbulConfig          `json:"istanbul,omitempty"`
+	SportDAO               *SportDAOConfig          `json:"istanbul,omitempty"`
 
 }
 
@@ -405,6 +406,19 @@ func (c *SportConfig) String() string {
 	return "smilobft"
 }
 
+// IstanbulConfig is the consensus engine configs for Istanbul based sealing.
+type SportDAOConfig struct {
+	Epoch         uint64 `json:"epoch"`    // Epoch length to reset votes and checkpoint
+	SpeakerPolicy uint64 `json:"policy"`   // The policy for speaker selection
+	MinFunds      int64  `json:"minfunds"` // The policy for speaker selection
+	BlockPeriod    uint64 `json:"block-period"`
+	RequestTimeout uint64 `json:"request-timeout"`
+}
+
+//String implements the stringer interface, returning the consensus engine details.
+func (c *SportDAOConfig) String() string {
+	return "sportdao"
+}
 
 // IstanbulConfig is the consensus engine configs for Istanbul based sealing.
 type IstanbulConfig struct {
@@ -444,6 +458,8 @@ func (c *ChainConfig) String() string {
 		engine = c.Clique
 	case c.Istanbul != nil:
 		engine = c.Istanbul
+	case c.SportDAO != nil:
+		engine = c.SportDAO
 	case c.Tendermint != nil:
 		engine = c.Tendermint
 	default:

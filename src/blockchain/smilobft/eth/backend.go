@@ -46,6 +46,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	smiloBackend "go-smilo/src/blockchain/smilobft/consensus/sport/backend"
+	smiloDAOBackend "go-smilo/src/blockchain/smilobft/consensus/sportdao/backend"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/bloombits"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -132,7 +133,7 @@ func (s *Smilo) SetContractBackend(backend bind.ContractBackend) {
 
 // New creates a new Smilo object (including the
 // initialisation of the common Smilo object)
-func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.Engine) consensus.Engine) (*Smilo, error) {
+func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Engine) consensus.Engine) (*Smilo, error) {
 	log.Info("$$$$$$$ Going to creates a new Smilo backend config object ")
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
@@ -191,7 +192,6 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 		consEngine = cons(consEngine)
 	}
 
-
 	eth := &Smilo{
 		config:         config,
 		chainDb:        chainDb,
@@ -209,7 +209,7 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 	}
 
 	// force to set the etherbase to node key address
-	if chainConfig.Istanbul != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
+	if chainConfig.Istanbul != nil || chainConfig.SportDAO != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
 		log.Info("force to set the etherbase to node key address")
 		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
 	}
@@ -324,6 +324,9 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		}
 
 		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
+	}
+	if chainConfig.SportDAO != nil {
+		return smiloDAOBackend.New(&config.SportDAO, ctx.NodeKey(), db, chainConfig, vmConfig)
 	}
 
 	if chainConfig.Istanbul != nil {
@@ -585,7 +588,7 @@ func (s *Smilo) Miner() *miner.Miner { return s.miner }
 func (s *Smilo) AccountManager() *accounts.Manager  { return s.accountManager }
 func (s *Smilo) BlockChain() *core.BlockChain       { return s.blockchain }
 func (s *Smilo) TxPool() *core.TxPool               { return s.txPool }
-func (s *Smilo) EventMux() *cmn.TypeMux           { return s.eventMux }
+func (s *Smilo) EventMux() *cmn.TypeMux             { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
@@ -623,7 +626,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.SportEnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
 		go s.glienickeEventLoop(srvr)
-		//srvr.UpdateWhitelist(savedList.List)
+		srvr.UpdateWhitelist(savedList.List)
 	} else {
 		log.Warn("eth/backend.go, Start(), SportEnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
 	}
@@ -678,7 +681,7 @@ func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
 					}
 				}
 			}
-			//server.UpdateWhitelist(whitelist)
+			server.UpdateWhitelist(whitelist)
 		// Err() channel will be closed when unsubscribing.
 		case <-s.glienickeSub.Err():
 			return

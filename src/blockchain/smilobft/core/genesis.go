@@ -337,7 +337,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		g.Config = params.AllEthashProtocolChanges
 	}
 
-	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil) {
+	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) {
 		log.Warn("core/genesis.go, Commit(), Will SetBFT ")
 		err := g.SetBFT()
 		if err != nil {
@@ -385,9 +385,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 }
 
 
-// SetBFT sets default BFT(IBFT or Tendermint) config values
+// SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values
 func (g *Genesis) SetBFT() error {
-	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
+	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
 		var validators []string
 		for _, v := range g.Config.AutonityContractConfig.Users {
 			validators = append(validators, v.Address.String())

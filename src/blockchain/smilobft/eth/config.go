@@ -18,6 +18,7 @@ package eth
 
 import (
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"math/big"
 	"os"
@@ -138,6 +139,9 @@ type Config struct {
 
 	// Istanbul options
 	Istanbul istanbul.Config
+
+	// SportDAO options
+	SportDAO sportdao.Config
 
 	// Tendermint options
 	Tendermint config.Config

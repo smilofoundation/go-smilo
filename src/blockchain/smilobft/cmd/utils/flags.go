@@ -764,6 +764,18 @@ var (
 		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
 	}
 
+	// SportDAO settings
+	SportDAORequestTimeoutFlag = cli.Uint64Flag{
+		Name:  "sportdao.requesttimeout",
+		Usage: "Timeout for each SportDAO round in milliseconds",
+		Value: eth.DefaultConfig.Istanbul.RequestTimeout,
+	}
+	SportDAOBlockPeriodFlag = cli.Uint64Flag{
+		Name:  "sportdao.blockperiod",
+		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
+		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
+	}
+
 	// Smilo settings
 	SportEnableNodePermissionFlag = cli.BoolFlag{
 		Name:  "smilobft.permissioned",
@@ -1350,6 +1362,15 @@ func setIstanbul(ctx *cli.Context, cfg *eth.Config) {
 	}
 }
 
+func setSportDAO(ctx *cli.Context, cfg *eth.Config) {
+		if ctx.GlobalIsSet(SportDAORequestTimeoutFlag.Name) {
+		cfg.SportDAO.RequestTimeout = ctx.GlobalUint64(SportDAORequestTimeoutFlag.Name)
+	}
+	if ctx.GlobalIsSet(SportDAOBlockPeriodFlag.Name) {
+		cfg.SportDAO.BlockPeriod = ctx.GlobalUint64(SportDAOBlockPeriodFlag.Name)
+	}
+}
+
 func setEthash(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
 		cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
@@ -1525,7 +1546,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
 	setMiner(ctx, &cfg.Miner)
+
 	setIstanbul(ctx, cfg)
+	setSportDAO(ctx, cfg)
+
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
 	setSport(ctx, cfg)

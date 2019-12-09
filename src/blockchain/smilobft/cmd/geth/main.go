@@ -165,6 +165,8 @@ var (
 		utils.MinBlocksEmptyMiningFlag,
 		utils.IstanbulRequestTimeoutFlag,
 		utils.IstanbulBlockPeriodFlag,
+		utils.SportDAORequestTimeoutFlag,
+		utils.SportDAOBlockPeriodFlag,
 	}
 
 	rpcFlags = []cli.Flag{

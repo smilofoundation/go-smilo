@@ -261,7 +261,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		return n, err
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
-	if manager.chainconfig.Istanbul != nil || manager.chainconfig.Tendermint != nil {
+	if manager.chainconfig.Istanbul != nil || manager.chainconfig.SportDAO != nil || manager.chainconfig.Tendermint != nil {
 		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
 		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
 	}
@@ -334,7 +334,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.minedBroadcastLoop()
 
 	// update peers whitelist
-	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.SportDAO != nil || pm.chainconfig.Tendermint != nil {
 		if pm.SportEnableNodePermissionFlag {
 			pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
 			go pm.glienickeEventLoop()
@@ -353,7 +353,7 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
-	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.SportDAO != nil || pm.chainconfig.Tendermint != nil {
 		if pm.SportEnableNodePermissionFlag {
 			pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
 		} else {
@@ -423,7 +423,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 
-	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.SportDAO != nil || pm.chainconfig.Tendermint != nil {
 		if pm.SportEnableNodePermissionFlag {
 			whitelisted := false
 			log.Warn("eth/handler.go, pm.SportEnableNodePermissionFlag, enodesWhitelist, ", pm.enodesWhitelist)
@@ -474,7 +474,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.SportDAO != nil || pm.chainconfig.Tendermint != nil {
 		if pm.blockchain.Config().Tendermint != nil {
 			syncer := pm.blockchain.Engine().(consensus.Syncer)
 			address := crypto.PubkeyToAddress(*p.Node().Pubkey())
@@ -1037,7 +1037,7 @@ func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[co
 		}
 	}
 
-	log.Debug("eth/handler.go, FindPeers(), ","len(foundPeers)", len(m))
+	log.Debug("eth/handler.go, FindPeers(), ", "len(foundPeers)", len(m))
 
 	return m
 }

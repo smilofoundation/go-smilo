@@ -296,6 +296,13 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.IstanbulBlockPeriodFlag,
 		},
 	},
+	{
+		Name: "SPORTDAO",
+		Flags: []cli.Flag{
+			utils.SportDAORequestTimeoutFlag,
+			utils.SportDAOBlockPeriodFlag,
+		},
+	},
 }
 
 // byCategory sorts an array of flagGroup by Name in the order

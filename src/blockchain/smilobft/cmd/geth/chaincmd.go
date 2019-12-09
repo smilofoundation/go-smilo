@@ -22,6 +22,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"io"
 	"os"
@@ -309,6 +310,18 @@ func setupBFTDefaults(genesis *core.Genesis) {
 
 		if genesis.Config.Tendermint.Epoch == 0 {
 			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
+		}
+	}
+
+	if genesis.Config.SportDAO != nil {
+		if genesis.Config.SportDAO.Epoch == 0 {
+			genesis.Config.SportDAO.Epoch = sportdao.DefaultConfig.Epoch
+		}
+		if genesis.Config.SportDAO.RequestTimeout == 0 {
+			genesis.Config.SportDAO.RequestTimeout = sportdao.DefaultConfig.RequestTimeout
+		}
+		if genesis.Config.SportDAO.BlockPeriod == 0 {
+			genesis.Config.SportDAO.BlockPeriod = sportdao.DefaultConfig.BlockPeriod
 		}
 	}
 }

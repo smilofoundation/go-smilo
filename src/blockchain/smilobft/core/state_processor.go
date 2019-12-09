@@ -97,7 +97,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 			allLogs = append(allLogs, vaultReceipt.Logs...)
 		}
 	}
-	if (p.bc.chainConfig.Istanbul != nil || p.bc.chainConfig.Tendermint != nil) && p.autonityContract != nil {
+	if (p.bc.chainConfig.Istanbul != nil || p.bc.chainConfig.SportDAO != nil || p.bc.chainConfig.Tendermint != nil) && p.autonityContract != nil {
 		err := p.autonityContract.ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), statedb)
 		if err != nil {
 			log.Error("Could not ApplyPerformRedistribution on smart contract, ","err", err)
