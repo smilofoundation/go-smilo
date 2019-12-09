@@ -19,8 +19,6 @@ package backend
 import (
 	"crypto/ecdsa"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -41,7 +39,7 @@ const (
 )
 
 // New creates an Ethereum backend for smilobft core engine.
-func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *backend {
+func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database) consensus.BFT {
 	// Allocate the snapshot caches and create the engine
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	recentMessages, _ := lru.NewARC(inmemoryPeers)
@@ -59,8 +57,6 @@ func New(config *sport.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, 
 		coreStarted:      false,
 		recentMessages:   recentMessages,
 		knownMessages:    knownMessages,
-		vmConfig:         vmConfig,
-
 	}
 	backend.core = smilobftcore.New(backend, backend.config)
 	return backend

@@ -245,7 +245,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		return nil, err
 	}
 
-	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.Sport != nil) && chainConfig.AutonityContractConfig != nil {
+	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil) && chainConfig.AutonityContractConfig != nil {
 		log.Warn("willl set new Autonity contract", "chainConfig", chainConfig)
 		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
 			return GetHashFn(ref, chain)
@@ -1385,13 +1385,13 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 
 	log.Warn("Call network permissioning logic before committing the state, UpdateEnodesWhitelist")
-	//if bc.chainConfig.Istanbul != nil || bc.chainConfig.Tendermint != nil {
-	err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, vaultState, block)
-	if err != nil && err != autonity.ErrAutonityContract {
-		log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
-		return NonStatTy, err
+	if bc.chainConfig.Istanbul != nil || bc.chainConfig.Tendermint != nil {
+		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, vaultState, block)
+		if err != nil && err != autonity.ErrAutonityContract {
+			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
+			return NonStatTy, err
+		}
 	}
-	//}
 
 	rawdb.WriteBlock(bc.db, block)
 

@@ -261,8 +261,11 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		return n, err
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
-	manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
-	log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
+	if manager.chainconfig.Istanbul != nil || manager.chainconfig.Tendermint != nil {
+		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
+		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
+	}
+
 	return manager, nil
 }
 
@@ -331,11 +334,13 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 	go pm.minedBroadcastLoop()
 
 	// update peers whitelist
-	if pm.SportEnableNodePermissionFlag {
-		pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
-		go pm.glienickeEventLoop()
-	} else {
-		log.Warn("eth/handler.go, Start(), SportEnableNodePermissionFlag false, wont SubscribeAutonityEvents whitelistCh")
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+		if pm.SportEnableNodePermissionFlag {
+			pm.whitelistSub = pm.blockchain.SubscribeAutonityEvents(pm.whitelistCh)
+			go pm.glienickeEventLoop()
+		} else {
+			log.Warn("eth/handler.go, Start(), SportEnableNodePermissionFlag false, wont SubscribeAutonityEvents whitelistCh")
+		}
 	}
 
 	// start sync handlers
@@ -348,10 +353,12 @@ func (pm *ProtocolManager) Stop() {
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
-	if pm.SportEnableNodePermissionFlag {
-		pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
-	} else {
-		log.Warn("eth/handler.go, Stop(), could not whitelistSub.Unsubscribe")
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+		if pm.SportEnableNodePermissionFlag {
+			pm.whitelistSub.Unsubscribe() // quits glienickeEventLoop
+		} else {
+			log.Warn("eth/handler.go, Stop(), could not whitelistSub.Unsubscribe")
+		}
 	}
 
 	// Quit the sync loop.
@@ -416,35 +423,37 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		return err
 	}
 
-	if pm.SportEnableNodePermissionFlag {
-		whitelisted := false
-		log.Warn("eth/handler.go, pm.SportEnableNodePermissionFlag, enodesWhitelist, ", pm.enodesWhitelist)
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+		if pm.SportEnableNodePermissionFlag {
+			whitelisted := false
+			log.Warn("eth/handler.go, pm.SportEnableNodePermissionFlag, enodesWhitelist, ", pm.enodesWhitelist)
 
-		pm.enodesWhitelistLock.RLock()
-		for _, enode := range pm.enodesWhitelist {
-			if p.Node().ID() == enode.ID() {
-				log.Warn("eth/handler.go, range pm.enodesWhitelist, ", enode)
-				whitelisted = true
-				break
-			} else {
-				log.Warn("eth/handler.go, range pm.enodesWhitelist, ELSE ", enode)
+			pm.enodesWhitelistLock.RLock()
+			for _, enode := range pm.enodesWhitelist {
+				if p.Node().ID() == enode.ID() {
+					log.Warn("eth/handler.go, range pm.enodesWhitelist, ", enode)
+					whitelisted = true
+					break
+				} else {
+					log.Warn("eth/handler.go, range pm.enodesWhitelist, ELSE ", enode)
+				}
 			}
-		}
 
-		pm.enodesWhitelistLock.RUnlock()
-		if !whitelisted && p.td.Uint64() <= head.Number.Uint64()+1 {
-			p.Log().Info("dropping unauthorized peer with old TD",
-				"whitelisted", whitelisted,
-				"enode", p.Node().ID(),
-				"peersTD", p.td.Uint64(),
-				"currentTD", head.Number.Uint64()+1,
-			)
+			pm.enodesWhitelistLock.RUnlock()
+			if !whitelisted && p.td.Uint64() <= head.Number.Uint64()+1 {
+				p.Log().Info("dropping unauthorized peer with old TD",
+					"whitelisted", whitelisted,
+					"enode", p.Node().ID(),
+					"peersTD", p.td.Uint64(),
+					"currentTD", head.Number.Uint64()+1,
+				)
 
-			return errUnauthaurizedPeer
+				return errUnauthaurizedPeer
+			}
+			// Todo : pause relaying if not whitelisted until full sync
+		} else {
+			log.Warn("eth/handler.go, handle(), SportEnableNodePermissionFlag, ELSE")
 		}
-		// Todo : pause relaying if not whitelisted until full sync
-	} else {
-		log.Warn("eth/handler.go, handle(), SportEnableNodePermissionFlag, ELSE")
 	}
 
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -465,13 +474,15 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	if pm.blockchain.Config().Tendermint != nil {
-		syncer := pm.blockchain.Engine().(consensus.Syncer)
-		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
-		syncer.ResetPeerCache(address)
-		syncer.SyncPeer(address)
-	} else {
-		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
+	if pm.chainconfig.Istanbul != nil || pm.chainconfig.Tendermint != nil {
+		if pm.blockchain.Config().Tendermint != nil {
+			syncer := pm.blockchain.Engine().(consensus.Syncer)
+			address := crypto.PubkeyToAddress(*p.Node().Pubkey())
+			syncer.ResetPeerCache(address)
+			syncer.SyncPeer(address)
+		} else {
+			log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
+		}
 	}
 
 	// If we have a trusted CHT, reject all peers below that (avoid fast sync eclipse)

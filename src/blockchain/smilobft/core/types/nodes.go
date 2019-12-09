@@ -88,10 +88,10 @@ func filterNodes(n *Nodes, SportEnableNodePermissionFlag bool) *Nodes {
 }
 
 func getParseFunc(SportEnableNodePermissionFlag bool) func(string) (*enode.Node, error) {
-	getEnode := enode.ParseV4WithResolve
-	if SportEnableNodePermissionFlag {
-		getEnode = enode.GetParseV4WithResolveMaxTry(maxParseTries, delayBetweenTries)
-	}
+	getEnode := enode.ParseV4
+	//if SportEnableNodePermissionFlag {
+	//	getEnode = enode.GetParseV4WithResolveMaxTry(maxParseTries, delayBetweenTries)
+	//}
 	return getEnode
 }
 

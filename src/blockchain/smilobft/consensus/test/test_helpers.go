@@ -201,9 +201,9 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 	}
 
 	if inRate != 0 || outRate != 0 {
-		configNode.P2P.IsRated = true
-		configNode.P2P.InRate = inRate
-		configNode.P2P.OutRate = outRate
+		//configNode.P2P.IsRated = true
+		//configNode.P2P.InRate = inRate
+		//configNode.P2P.OutRate = outRate
 	}
 
 	// Start the node and configure a full Ethereum node on it

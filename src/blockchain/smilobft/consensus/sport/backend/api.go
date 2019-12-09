@@ -19,8 +19,15 @@ package backend
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus"
+	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/core"
+	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 // API is a user facing RPC API to dump smilobft state
@@ -29,42 +36,68 @@ type API struct {
 	smilo *backend
 }
 
-// GetValidators retrieves the list of authorized validators at the specified block.
-func (api *API) GetValidators(number *rpc.BlockNumber) ([]common.Address, error) {
-	validators := api.smilo.Fullnodes(uint64(*number)).List()
-	addresses := make([]common.Address, len(validators))
-	for i, validator := range validators {
-		addresses[i] = validator.Address()
+// GetSnapshot (clique override) retrieves the state snapshot at a given block.
+func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
+	// Retrieve the requested block number (or current if none requested)
+	var header *types.Header
+	if number == nil || *number == rpc.LatestBlockNumber {
+		header = api.chain.CurrentHeader()
+	} else {
+		header = api.chain.GetHeaderByNumber(uint64(number.Int64()))
 	}
-	return addresses, nil
+	// Ensure we have an actually valid block and return its snapshot
+	if header == nil {
+		return nil, errUnknownBlock
+	}
+	return api.smilo.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
 }
 
-// GetValidatorsAtHash retrieves the state snapshot at a given block.
-func (api *API) GetValidatorsAtHash(hash common.Hash) ([]common.Address, error) {
+// GetSnapshotAtHash (clique override) retrieves the state snapshot at a given block.
+func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	header := api.chain.GetHeaderByHash(hash)
 	if header == nil {
 		return nil, errUnknownBlock
 	}
+	return api.smilo.snapshot(api.chain, header.Number.Uint64(), header.Hash(), nil)
+}
 
-	validators := api.smilo.Fullnodes(header.Number.Uint64()).List()
-	addresses := make([]common.Address, len(validators))
-	for i, validator := range validators {
-		addresses[i] = validator.Address()
+// Proposals (clique override) return a array of candidates that aim to become full-nodes (proposals)
+func (api *API) Proposals() map[common.Address]bool {
+	api.smilo.candidatesLock.RLock()
+	defer api.smilo.candidatesLock.RUnlock()
+
+	candidateToFullnodeArray := make(map[common.Address]bool)
+	for addr, candidate := range api.smilo.candidates {
+		candidateToFullnodeArray[addr] = candidate
 	}
-	return addresses, nil
+	return candidateToFullnodeArray
 }
 
-// Get Autonity contract ABI
-func (api *API) GetContractABI() string {
-	return api.chain.Config().AutonityContractConfig.ABI
+// Propose (clique override) injects a new authorization candidate that the fullnode will attempt to push through.
+func (api *API) Propose(address common.Address, auth bool) {
+	api.smilo.candidatesLock.Lock()
+	defer api.smilo.candidatesLock.Unlock()
+
+	// BEGIN SMILO SPECIFICS
+	requireSmilos := new(big.Int).Mul(big.NewInt(api.smilo.config.MinFunds), big.NewInt(1e18))
+
+	//check that the address have 10k smilos in it
+	statedb, _, err := api.chain.State()
+	if err != nil {
+		log.Error("Could not propose new candidate, got error with statedb", "error", err, "address", address, "auth", auth)
+		return
+	} else if statedb.GetBalance(address).Cmp(requireSmilos) < 0 {
+		log.Error("Could not propose new candidate", "error", core.ErrInsufficientFunds.Error(), "address", address, "auth", auth, "MinFunds", api.smilo.config.MinFunds, "balance", statedb.GetBalance(address))
+		return
+	}
+
+	api.smilo.candidates[address] = auth
 }
 
-// Get Autonity contract address
-func (api *API) GetContractAddress() common.Address {
-	return api.smilo.blockchain.GetAutonityContract().Address()
-}
+// Discard (clique override) drops a currently running candidate, stopping the fullnode from casting further votes (either for or against).
+func (api *API) Discard(address common.Address) {
+	api.smilo.candidatesLock.Lock()
+	defer api.smilo.candidatesLock.Unlock()
 
-// Get current white list
-func (api *API) GetWhitelist() []string {
-	return api.smilo.WhiteList()
+	delete(api.smilo.candidates, address)
 }

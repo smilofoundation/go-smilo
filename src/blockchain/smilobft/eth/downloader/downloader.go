@@ -486,18 +486,18 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 		// the blocks might be written into the ancient store. A following mini-reorg
 		// could cause issues.
 		if d.checkpoint != 0 && d.checkpoint > maxForkAncestry+1 {
-			atomic.StoreUint64(&d.ancientLimit, d.checkpoint)
+			d.ancientLimit = d.checkpoint
 		} else if height > maxForkAncestry+1 {
-			atomic.StoreUint64(&d.ancientLimit, height-maxForkAncestry-1)
+			d.ancientLimit = height - maxForkAncestry - 1
 		}
 		frozen, _ := d.stateDB.Ancients() // Ignore the error here since light client can also hit here.
 		// If a part of blockchain data has already been written into active store,
 		// disable the ancient style insertion explicitly.
 		if origin >= frozen && frozen != 0 {
-			atomic.StoreUint64(&d.ancientLimit, 0)
+			d.ancientLimit = 0
 			log.Info("Disabling direct-ancient mode", "origin", origin, "ancient", frozen-1)
-		} else if atomic.LoadUint64(&d.ancientLimit) > 0 {
-			log.Debug("Enabling direct-ancient mode", "ancient", atomic.LoadUint64(&d.ancientLimit))
+		} else if d.ancientLimit > 0 {
+			log.Debug("Enabling direct-ancient mode", "ancient", d.ancientLimit)
 		}
 		// Rewind the ancient store and blockchain if reorg happens.
 		if origin+1 < frozen {

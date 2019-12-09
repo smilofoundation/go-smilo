@@ -117,7 +117,7 @@ func (c *core) commit() {
 	if proposal != nil {
 		committedSeals := make([][]byte, c.current.Commits.Size())
 		for i, v := range c.current.Commits.Values() {
-			committedSeals[i] = make([]byte, types.BFTExtraSeal)
+			committedSeals[i] = make([]byte, types.SportExtraSeal)
 			copy(committedSeals[i][:], v.CommittedSeal[:])
 		}
 
@@ -177,7 +177,7 @@ func (c *core) startNewRound(round *big.Int) {
 			Sequence: new(big.Int).Add(lastBlockProposal.Number(), common.Big1),
 			Round:    new(big.Int),
 		}
-		c.fullnodeSet = c.backend.Fullnodes(lastBlockProposal.Number().Uint64() + 1)
+		c.fullnodeSet = c.backend.Fullnodes(lastBlockProposal)
 	}
 
 	// Update logger
@@ -189,7 +189,6 @@ func (c *core) startNewRound(round *big.Int) {
 	// Calculate new speaker
 	c.fullnodeSet.CalcSpeaker(lastSpeaker, newView.Round.Uint64())
 	c.waitingForRoundChange = false
-	c.sentPreprepare = false
 	c.setState(StateAcceptRequest)
 	if roundChange && c.IsSpeaker() && c.current != nil {
 		// If it is locked, propose the old proposal
@@ -262,9 +261,6 @@ func (c *core) stopFuturePreprepareTimer() {
 
 func (c *core) stopTimer() {
 	c.stopFuturePreprepareTimer()
-
-	c.roundChangeTimerMu.RLock()
-	defer c.roundChangeTimerMu.RUnlock()
 	if c.roundChangeTimer != nil {
 		c.roundChangeTimer.Stop()
 	}
@@ -287,8 +283,6 @@ func (c *core) newRoundChangeTimer() {
 		}
 	}
 
-	c.roundChangeTimerMu.Lock()
-	defer c.roundChangeTimerMu.Unlock()
 	c.roundChangeTimer = time.AfterFunc(timeout, func() {
 		c.logger.Debug("newRoundChangeTimer, Timeout for round !", "round", round, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		c.sendEvent(timeoutEvent{})

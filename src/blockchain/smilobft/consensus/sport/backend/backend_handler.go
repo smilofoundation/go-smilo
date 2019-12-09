@@ -19,6 +19,7 @@ package backend
 
 import (
 	"errors"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 )
 

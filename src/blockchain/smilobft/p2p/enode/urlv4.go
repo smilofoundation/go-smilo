@@ -21,13 +21,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"net"
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -36,8 +33,6 @@ import (
 )
 
 var incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")
-
-const defaultPort = ":30303"
 
 // MustParseV4 parses a node URL. It panics if the URL is not valid.
 func MustParseV4(rawurl string) *Node {
@@ -80,47 +75,8 @@ func ParseV4(rawurl string) (*Node, error) {
 		}
 		return NewV4(id, nil, 0, 0), nil
 	}
-	return parseComplete(rawurl, false)
+	return parseComplete(rawurl)
 }
-
-
-func parseV4(rawurl string, resolve bool) (*Node, error) {
-	if m := incompleteNodeURL.FindStringSubmatch(rawurl); m != nil {
-		id, err := parsePubkey(m[1])
-		if err != nil {
-			return nil, fmt.Errorf("invalid public key (%v)", err)
-		}
-		return NewV4(id, nil, 0, 0), nil
-	}
-
-	return parseComplete(rawurl, resolve)
-}
-
-func GetParseV4WithResolveMaxTry(maxTry int, wait time.Duration) func(rawurl string) (*Node, error) {
-	return func(rawurl string) (*Node, error) {
-		return ParseV4WithResolveMaxTry(rawurl, maxTry, wait)
-	}
-}
-
-func ParseV4WithResolveMaxTry(rawurl string, maxTry int, wait time.Duration) (*Node, error) {
-	var node *Node
-	var err error
-	for i := 0; i < maxTry; i++ {
-		node, err = ParseV4WithResolve(rawurl)
-		if err == nil {
-			break
-		}
-		time.Sleep(wait)
-		log.Error("trying to parse", "enode", rawurl, "attempt", i)
-	}
-
-	return node, err
-}
-
-func ParseV4WithResolve(rawurl string) (*Node, error) {
-	return parseV4(rawurl, true)
-}
-
 
 // NewV4 creates a node from discovery v4 node information. The record
 // contained in the node has a zero-length signature.
@@ -149,7 +105,7 @@ func isNewV4(n *Node) bool {
 	return n.r.IdentityScheme() == "" && n.r.Load(&k) == nil && len(n.r.Signature()) == 0
 }
 
-func parseComplete(rawurl string, resolve bool) (*Node, error) {
+func parseComplete(rawurl string) (*Node, error) {
 	var (
 		id               *ecdsa.PublicKey
 		ip               net.IP
@@ -169,28 +125,13 @@ func parseComplete(rawurl string, resolve bool) (*Node, error) {
 	if id, err = parsePubkey(u.User.String()); err != nil {
 		return nil, fmt.Errorf("invalid public key (%v)", err)
 	}
-	if strings.LastIndex(u.Host, ":") == -1 {
-		//set default port
-		u.Host += defaultPort
-	}
 	// Parse the IP address.
 	host, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		return nil, fmt.Errorf("invalid host: %v", err)
 	}
 	if ip = net.ParseIP(host); ip == nil {
-		if !resolve {
-			return nil, errors.New("invalid IP address")
-		}
-		// if host is not IPV4/6, resolve host is a domain
-
-		hostIPs, err := net.LookupIP(host)
-		if err != nil {
-			return NewV4(id, nil, 0, 0), errors.New("invalid domain or IP address")
-		}
-		if len(hostIPs) > 0 {
-			ip = hostIPs[len(hostIPs)-1]
-		}
+		return nil, errors.New("invalid IP address")
 	}
 	// Parse the port numbers.
 	if tcpPort, err = strconv.ParseUint(port, 10, 16); err != nil {
@@ -243,20 +184,6 @@ func (n *Node) URLv4() string {
 		if n.UDP() != n.TCP() {
 			u.RawQuery = "discport=" + strconv.Itoa(n.UDP())
 		}
-	}
-	return u.String()
-}
-
-func V4URL(key ecdsa.PublicKey, ip net.IP, tcp, udp int) string {
-	nodeid := fmt.Sprintf("%x", crypto.FromECDSAPub(&key)[1:])
-
-	u := url.URL{Scheme: "enode"}
-
-	addr := net.TCPAddr{IP: ip, Port: tcp}
-	u.User = url.User(nodeid)
-	u.Host = addr.String()
-	if udp != tcp {
-		u.RawQuery = "discport=" + strconv.Itoa(udp)
 	}
 	return u.String()
 }

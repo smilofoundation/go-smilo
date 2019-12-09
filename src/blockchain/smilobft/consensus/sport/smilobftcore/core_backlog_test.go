@@ -18,7 +18,6 @@
 package smilobftcore
 
 import (
-	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
 	"math/big"
 	"reflect"
 	"sync"
@@ -28,6 +27,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
@@ -172,7 +172,7 @@ func TestStoreBacklog(t *testing.T) {
 	c := &core{
 		logger:      log.New("backend", "test", "id", 0),
 		fullnodeSet: newTestFullnodeSet(1),
-		backlogs:    make(map[sport.Fullnode]*prque.Prque),
+		backlogs:    make(map[common.Address]*prque.Prque),
 		backlogsMu:  new(sync.Mutex),
 	}
 	v := &sport.View{
@@ -191,7 +191,7 @@ func TestStoreBacklog(t *testing.T) {
 		Msg:  prepreparePayload,
 	}
 	c.storeBacklog(m, p)
-	msg := c.backlogs[p].PopItem()
+	msg := c.backlogs[p.Address()].PopItem()
 	if !reflect.DeepEqual(msg, m) {
 		t.Errorf("message mismatch: have %v, want %v", msg, m)
 	}
@@ -208,7 +208,7 @@ func TestStoreBacklog(t *testing.T) {
 		Msg:  subjectPayload,
 	}
 	c.storeBacklog(m, p)
-	msg = c.backlogs[p].PopItem()
+	msg = c.backlogs[p.Address()].PopItem()
 	if !reflect.DeepEqual(msg, m) {
 		t.Errorf("message mismatch: have %v, want %v", msg, m)
 	}
@@ -219,7 +219,7 @@ func TestStoreBacklog(t *testing.T) {
 		Msg:  subjectPayload,
 	}
 	c.storeBacklog(m, p)
-	msg = c.backlogs[p].PopItem()
+	msg = c.backlogs[p.Address()].PopItem()
 	if !reflect.DeepEqual(msg, m) {
 		t.Errorf("message mismatch: have %v, want %v", msg, m)
 	}
@@ -230,7 +230,7 @@ func TestStoreBacklog(t *testing.T) {
 		Msg:  subjectPayload,
 	}
 	c.storeBacklog(m, p)
-	msg = c.backlogs[p].PopItem()
+	msg = c.backlogs[p.Address()].PopItem()
 	if !reflect.DeepEqual(msg, m) {
 		t.Errorf("message mismatch: have %v, want %v", msg, m)
 	}
@@ -243,7 +243,7 @@ func TestProcessFutureBacklog(t *testing.T) {
 	c := &core{
 		logger:      log.New("backend", "test", "id", 0),
 		fullnodeSet: newTestFullnodeSet(1),
-		backlogs:    make(map[sport.Fullnode]*prque.Prque),
+		backlogs:    make(map[common.Address]*prque.Prque),
 		backlogsMu:  new(sync.Mutex),
 		backend:     backend,
 		current: newRoundState(&sport.View{
@@ -259,7 +259,7 @@ func TestProcessFutureBacklog(t *testing.T) {
 		Round:    big.NewInt(10),
 		Sequence: big.NewInt(10),
 	}
-	p := fullnode.New(common.BytesToAddress([]byte("12345667890")))
+	p := c.fullnodeSet.GetByIndex(0)
 	// push a future msg
 	subject := &sport.Subject{
 		View:   v,
@@ -334,7 +334,7 @@ func testProcessBacklog(t *testing.T, msg *message) {
 	}
 	c := &core{
 		logger:      log.New("backend", "test", "id", 0),
-		backlogs:    make(map[sport.Fullnode]*prque.Prque),
+		backlogs:    make(map[common.Address]*prque.Prque),
 		backlogsMu:  new(sync.Mutex),
 		fullnodeSet: vset,
 		backend:     backend,

@@ -171,6 +171,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 	}
 
 	if _, ok := engine.(consensus.BFT); ok || !chainConfig.IsSmilo || chainConfig.Clique != nil {
+		log.Debug("$$$ Will start BFT miner.worker")
 		// Subscribe TxPreEvent for tx pool
 		worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 		// Subscribe events for blockchain
@@ -181,7 +182,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		go worker.wait()
 		worker.commitNewWork(time.Now().Unix())
 	} else {
-		log.Warn("Could not set consensus.BFT params for the miner.worker")
+		panic("$$$ Could not set consensus.BFT params for the miner.worker")
 	}
 
 	return worker
@@ -242,7 +243,7 @@ func (self *worker) start() {
 			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}
 	} else {
-		log.Warn("Could not start non BFT Consensus Engine")
+		panic("$$$ Could not start non BFT Consensus Engine")
 	}
 
 	// spin up agents
@@ -265,10 +266,10 @@ func (self *worker) stop() {
 	if sport, ok := self.engine.(consensus.BFT); ok {
 		err := sport.Stop()
 		if err != nil {
-			log.Error("Error stopping Consensus Engine", "error", err)
+			log.Error("$$$ Error stopping Consensus Engine", "error", err)
 		}
 	} else {
-		log.Warn("Could not stop non BFT Consensus Engine")
+		panic("$$$ Could not stop non BFT Consensus Engine")
 	}
 	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.atWork, 0)

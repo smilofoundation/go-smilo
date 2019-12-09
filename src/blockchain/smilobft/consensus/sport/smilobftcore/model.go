@@ -49,15 +49,14 @@ type core struct {
 	waitingForRoundChange bool
 	validateFn            func([]byte, []byte) (common.Address, error)
 
-	backlogs   map[sport.Fullnode]*prque.Prque
+	backlogs   map[common.Address]*prque.Prque
 	backlogsMu *sync.Mutex
 
 	current   *roundState
-	handlerStopCh chan struct{}
+	handlerWg *sync.WaitGroup
 
 	roundChangeSet   *roundChangeSet
 	roundChangeTimer *time.Timer
-	roundChangeTimerMu sync.RWMutex
 
 	pendingRequests   *prque.Prque
 	pendingRequestsMu *sync.Mutex
@@ -69,28 +68,31 @@ type core struct {
 	sequenceMeter metrics.Meter
 	// the timer to record consensus duration (from accepting a preprepare to final committed stage)
 	consensusTimer metrics.Timer
-
-	sentPreprepare bool
 }
 
 // New creates an smilobft consensus core
 func New(backend sport.Backend, config *sport.Config) Engine {
+	r := metrics.NewRegistry()
 	c := &core{
 		config:             config,
 		address:            backend.Address(),
 		state:              StateAcceptRequest,
-		handlerStopCh:      make(chan struct{}),
+		handlerWg:          new(sync.WaitGroup),
 		logger:             log.New("address", backend.Address()),
 		backend:            backend,
-		backlogs:           make(map[sport.Fullnode]*prque.Prque),
+		backlogs:           make(map[common.Address]*prque.Prque),
 		backlogsMu:         new(sync.Mutex),
 		pendingRequests:    prque.New(),
 		pendingRequestsMu:  new(sync.Mutex),
 		consensusTimestamp: time.Time{},
-		roundMeter:         metrics.NewRegisteredMeter("consensus/sport/smilobftcore/round", nil),
-		sequenceMeter:      metrics.NewRegisteredMeter("consensus/sport/smilobftcore/sequence", nil),
-		consensusTimer:     metrics.NewRegisteredTimer("consensus/sport/smilobftcore/consensus", nil),
+		roundMeter:         metrics.NewMeter(),
+		sequenceMeter:      metrics.NewMeter(),
+		consensusTimer:     metrics.NewTimer(),
 	}
+
+	r.Register("consensus/sport/smilobftcore/round", c.roundMeter)
+	r.Register("consensus/sport/smilobftcore/sequence", c.sequenceMeter)
+	r.Register("consensus/sport/smilobftcore/consensus", c.consensusTimer)
 
 	c.validateFn = c.checkFullnodeSignature
 	return c

@@ -18,9 +18,10 @@
 package backend
 
 import (
-	"bytes"
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru"
+
+	"bytes"
 	"io/ioutil"
 	"math/big"
 	"reflect"

@@ -19,9 +19,7 @@ package backend
 
 import (
 	"bytes"
-	"context"
 	"crypto/ecdsa"
-	"errors"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -37,50 +35,43 @@ import (
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
-const EnodeStub = "enode://d73b857969c86415c0c000371bcebd9ed3cca6c376032b3f65e58e9e2b79276fbc6f59eb1e22fcd6356ab95f42a666f70afd4985933bd8f3e05beb1a2bf8fdde@172.25.0.11:30303"
-
 // in this test, we can set n to 1, and it means we can process Sport and commit a
 // block by one node. Otherwise, if n is larger than 1, we have to generate
 // other fake events to process Sport.
-func newBlockChain(n int) (*core.BlockChain, *backend, error) {
-	genesis, nodeKeys, err := getGenesisAndKeys(n)
-	if err != nil {
-		return nil, nil, err
-	}
+func newBlockChain(n int) (*core.BlockChain, *backend) {
+	genesis, nodeKeys := getGenesisAndKeys(n)
 	memDB := rawdb.NewMemoryDatabase()
 	config := sport.DefaultConfig
 	// Use the first key as private key
-	b := New(config, nodeKeys[0], memDB, genesis.Config, &vm.Config{})
+	b, _ := New(config, nodeKeys[0], memDB).(*backend)
 	genesis.MustCommit(memDB)
 	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-
-	err = b.Start(context.Background(), blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
+	b.Start(blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
+	snap, err := b.snapshot(blockchain, 0, common.Hash{}, nil)
 	if err != nil {
 		panic(err)
 	}
-
-	validators := b.Fullnodes(0)
-	if validators.Size() == 0 {
-		return nil, nil, errors.New("failed to get validators")
+	if snap == nil {
+		panic("failed to get snapshot")
 	}
-	proposerAddr := validators.GetSpeaker().Address()
+	speakerAddr := snap.FullnodeSet.GetSpeaker().Address()
 
 	// find speaker key
 	for _, key := range nodeKeys {
 		addr := crypto.PubkeyToAddress(key.PublicKey)
-		if addr.String() == proposerAddr.String() {
+		if addr.String() == speakerAddr.String() {
 			b.privateKey = key
 			b.address = addr
 		}
 	}
 
-	return blockchain, b, nil
+	return blockchain, b
 }
 
-func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
+func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey) {
 	// Setup fullnodes
 	var nodeKeys = make([]*ecdsa.PrivateKey, n)
 	var addrs = make([]common.Address, n)
@@ -94,28 +85,21 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	genesis.Config = params.TestChainConfig
 	// force enable Sport engine
 	genesis.Config.Sport = &params.SportConfig{}
-	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
-
 	genesis.Config.Ethash = nil
 	genesis.Difficulty = defaultDifficulty
 	genesis.Nonce = emptyNonce.Uint64()
-	genesis.Mixhash = types.BFTDigest
+	genesis.Mixhash = types.SportDigest
 
 	appendFullnodes(genesis, addrs)
-	err := genesis.Config.AutonityContractConfig.AddDefault().Validate()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return genesis, nodeKeys, nil
+	return genesis, nodeKeys
 }
 
 func appendFullnodes(genesis *core.Genesis, addrs []common.Address) {
 
-	if len(genesis.ExtraData) < types.BFTExtraVanity {
-		genesis.ExtraData = append(genesis.ExtraData, bytes.Repeat([]byte{0x00}, types.BFTExtraVanity)...)
+	if len(genesis.ExtraData) < types.SportExtraVanity {
+		genesis.ExtraData = append(genesis.ExtraData, bytes.Repeat([]byte{0x00}, types.SportExtraVanity)...)
 	}
-	genesis.ExtraData = genesis.ExtraData[:types.BFTExtraVanity]
+	genesis.ExtraData = genesis.ExtraData[:types.SportExtraVanity]
 
 	ist := &types.SportExtra{
 		Fullnodes:     addrs,
@@ -128,24 +112,13 @@ func appendFullnodes(genesis *core.Genesis, addrs []common.Address) {
 		panic("failed to encode sport extra")
 	}
 	genesis.ExtraData = append(genesis.ExtraData, istPayload...)
-
-	for i := range addrs {
-		genesis.Config.AutonityContractConfig.Users = append(
-			genesis.Config.AutonityContractConfig.Users,
-			params.User{
-				Address: addrs[i],
-				Type:    params.UserValidator,
-				Enode:   EnodeStub,
-				Stake:   100,
-			})
-	}
 }
 
 func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     parent.Number().Add(parent.Number(), common.Big1),
-		GasLimit:   core.CalcGasLimit(parent, 8000000, 8000000),
+		GasLimit:   core.CalcGasLimit(parent, 9223372036854775807, 9223372036854775807),
 		GasUsed:    0,
 		Extra:      parent.Extra(),
 		Time:       new(big.Int).Add(new(big.Int).SetUint64(parent.Time()), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
@@ -154,10 +127,10 @@ func makeHeader(parent *types.Block, config *sport.Config) *types.Header {
 	return header
 }
 
-func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) (*types.Block, error) {
+func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
 	block := makeBlockWithoutSeal(chain, engine, parent)
-	block, err := engine.Seal(chain, block, nil)
-	return block, err
+	block, _ = engine.Seal(chain, block, nil)
+	return block
 }
 
 func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
@@ -165,15 +138,5 @@ func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types
 	engine.Prepare(chain, header)
 	state, _, _ := chain.StateAt(parent.Root())
 	block, _ := engine.Finalize(chain, header, state, nil, nil, nil)
-
-	// Write state changes to db
-	root, err := state.Commit(chain.Config().IsEIP158(block.Header().Number))
-	if err != nil {
-		return nil
-	}
-	if err := state.Database().TrieDB().Commit(root, false); err != nil {
-		return nil
-	}
-
 	return block
 }

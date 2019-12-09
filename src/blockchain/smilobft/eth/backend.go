@@ -210,7 +210,7 @@ func New(ctx *node.ServiceContext, config *Config,  cons func(basic consensus.En
 
 	// force to set the etherbase to node key address
 	if chainConfig.Istanbul != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
-		log.Info("force to set the Istanbul or Tendermint or Sport etherbase to node key address")
+		log.Info("force to set the etherbase to node key address")
 		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
 	}
 
@@ -323,7 +323,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 			config.Sport.MinFunds = chainConfig.Sport.MinFunds
 		}
 
-		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db, chainConfig, vmConfig)
+		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
 	}
 
 	if chainConfig.Istanbul != nil {
@@ -616,14 +616,14 @@ func (s *Smilo) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Smilo protocol implementation.
 func (s *Smilo) Start(srvr *p2p.Server) error {
-	if srvr.SportEnableNodePermissionFlag {
+	if (s.blockchain.Config().Tendermint != nil || s.blockchain.Config().Tendermint != nil) && srvr.SportEnableNodePermissionFlag {
 		// Subscribe to Autonity updates events
 		log.Warn("eth/backend.go, Start(), Will Subscribe to Autonity updates events")
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
 		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.SportEnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
 		go s.glienickeEventLoop(srvr)
-		srvr.UpdateWhitelist(savedList.List)
+		//srvr.UpdateWhitelist(savedList.List)
 	} else {
 		log.Warn("eth/backend.go, Start(), SportEnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
 	}
@@ -678,7 +678,7 @@ func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
 					}
 				}
 			}
-			server.UpdateWhitelist(whitelist)
+			//server.UpdateWhitelist(whitelist)
 		// Err() channel will be closed when unsubscribing.
 		case <-s.glienickeSub.Err():
 			return

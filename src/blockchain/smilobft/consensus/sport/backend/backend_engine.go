@@ -19,8 +19,6 @@ package backend
 
 import (
 	"errors"
-	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
-	"go-smilo/src/blockchain/smilobft/core"
 	"math/big"
 	"time"
 
@@ -28,14 +26,22 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 
 	"bytes"
+	"math/rand"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/orinocopay/go-etherutils"
 
+	"golang.org/x/crypto/sha3"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
+	"go-smilo/src/blockchain/smilobft/consensus/sport/fullnode"
+	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
@@ -68,8 +74,6 @@ var (
 	errInvalidNonce = errors.New("invalid nonce")
 	// errInvalidUncleHash is returned if a block contains an non-empty uncle list.
 	errInvalidUncleHash = errors.New("non empty uncle hash")
-	// errInconsistentValidatorSet is returned if the validator set is inconsistent
-	errInconsistentValidatorSet = errors.New("inconsistent validator set")
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
 	// errInvalidVotingChain is returned if an authorization list is attempted to
@@ -130,7 +134,7 @@ func getSmiloValue(value string) *big.Int {
 // block, which may be different from the header's coinbase if a consensus
 // engine is based on signatures.
 func (sb *backend) Author(header *types.Header) (common.Address, error) {
-	return types.Ecrecover(header)
+	return ecrecover(header)
 }
 
 // VerifyHeader (clique override) checks whether a header conforms to the consensus rules of a
@@ -202,7 +206,15 @@ func (sb *backend) verifyCascadingFields(chain consensus.ChainReader, header *ty
 	if parent.Time+sb.config.BlockPeriod > header.Time {
 		return errInvalidTimestamp
 	}
-
+	// Verify fullnodes in extraData. Fullnodes in snapshot and extraData should be the same.
+	snap, err := sb.snapshot(chain, number-1, header.ParentHash, parents)
+	if err != nil {
+		return err
+	}
+	fullnodes := make([]byte, len(snap.fullnodes())*common.AddressLength)
+	for i, f := range snap.fullnodes() {
+		copy(fullnodes[i*common.AddressLength:], f[:])
+	}
 	if err := sb.verifySigner(chain, header, parents); err != nil {
 		return err
 	}
@@ -240,7 +252,6 @@ func (sb *backend) VerifyUncles(chain consensus.ChainReader, block *types.Block)
 	return nil
 }
 
-
 // VerifySeal (clique override) checks whether the crypto seal on a header is valid according to
 // the consensus rules of the given engine.
 func (sb *backend) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
@@ -261,7 +272,6 @@ func (sb *backend) VerifySeal(chain consensus.ChainReader, header *types.Header)
 // rules of a particular engine. The changes are executed inline.
 func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// unused fields, force to set to empty
-	header.Coinbase = sb.address
 	header.Nonce = emptyNonce
 	header.MixDigest = types.SportDigest
 
@@ -274,29 +284,65 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// use the same difficulty for all blocks
 	header.Difficulty = defaultDifficulty
 
-	var parents []*types.Header
-	parents = append(parents, parent)
-	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
+	// Assemble the voting snapshot
+	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
 	if err != nil {
-		log.Error("Could not assemble the voting snapshot from retrieveValidators", "err", err)
+		log.Error("Could not assemble the voting snapshot.", "err", err)
 		return err
 	}
-	fullnodeSet := fullnode.NewSet(fullnodeAddresses, sb.config.GetProposerPolicy())
 
-	fullnodes := make([]common.Address, 0, fullnodeSet.Size())
-	for _, fullnode := range fullnodeSet.List() {
-		fullnodes = append(fullnodes, fullnode.Address())
-	}
-	for i := 0; i < len(fullnodes); i++ {
-		for j := i + 1; j < len(fullnodes); j++ {
-			if bytes.Compare(fullnodes[i][:], fullnodes[j][:]) > 0 {
-				fullnodes[i], fullnodes[j] = fullnodes[j], fullnodes[i]
+	// get valid candidate list
+	sb.candidatesLock.RLock()
+	var addresses []common.Address
+	var authorizes []bool
+
+	if sb.coreStarted {
+		statedb, _, err := sb.chain.State()
+		if err != nil {
+			log.Error("Could not Prepare candidates, got error with statedb", "error", err)
+			sb.candidatesLock.RUnlock()
+			return err
+		}
+		for address, authorize := range sb.candidates {
+			if snap.checkVote(address, authorize) {
+
+				//check that the address have 10k smilos in it
+				if statedb.GetBalance(address).Cmp(big.NewInt(sb.config.MinFunds)) < 0 {
+					log.Error("Could not Prepare candidate, failed to check that the address have enough smilos in it",
+						"error", core.ErrInsufficientFunds.Error(), "address", address)
+				} else {
+					log.Debug("Prepared candidate with MinFunds ok",
+						"error", core.ErrInsufficientFunds.Error(), "address", address)
+					addresses = append(addresses, address)
+					authorizes = append(authorizes, authorize)
+				}
 			}
+		}
+	} else {
+		log.Debug("****** sb core is not yet started, will not check that the candidates have 10k smilos in it ******")
+		for address, authorize := range sb.candidates {
+			if snap.checkVote(address, authorize) {
+				addresses = append(addresses, address)
+				authorizes = append(authorizes, authorize)
+			}
+		}
+	}
+	sb.candidatesLock.RUnlock()
+
+	// pick one of the candidates randomly
+	if len(addresses) > 0 {
+		index := rand.Intn(len(addresses))
+		// add fullnode voting in coinbase
+		header.Coinbase = addresses[index]
+		if authorizes[index] {
+			copy(header.Nonce[:], nonceAuthVote)
+		} else {
+			copy(header.Nonce[:], nonceDropVote)
 		}
 	}
 
 	// add fullnodes in snapshot to extraData's fullnodes section
-	extra, err := prepareExtra(header, fullnodes)
+	extra, err := prepareExtra(header, snap.fullnodes())
 	if err != nil {
 		log.Error("Could not add fullnodes in snapshot to extraData's fullnodes section.", "err", err)
 		return err
@@ -318,10 +364,6 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 // consensus rules that happen at finalization (e.g. block rewards).
 func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-
-	if sb.blockchain == nil {
-		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
-	}
 
 	// warn for empty blocks
 	number := header.Number.Int64()
@@ -348,8 +390,13 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	number := header.Number.Uint64()
 
 	// Bail out if we're unauthorized to sign a block
-	if _, v := sb.Fullnodes(number).GetByAddress(sb.address); v == nil {
-		sb.logger.Error("Seal, Bail out if we're unauthorized to sign a block", "addr", sb.address.String())
+	snap, err := sb.snapshot(chain, number-1, header.ParentHash, nil)
+	if err != nil {
+		log.Error("Seal, Bail out if we're unauthorized to sign a block", "err", err)
+		return nil, err
+	}
+	if _, v := snap.FullnodeSet.GetByAddress(sb.address); v == nil {
+		log.Error("Seal, Bail out errUnauthorized")
 		return nil, errUnauthorized
 	}
 
@@ -358,7 +405,7 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		log.Error("Seal, Bail out ErrUnknownAncestor")
 		return nil, consensus.ErrUnknownAncestor
 	}
-	block, err := sb.updateBlock(block)
+	block, err = sb.updateBlock(parent, block)
 	if err != nil {
 		log.Error("Seal, Bail out updateBlock", "err", err)
 		return nil, err
@@ -429,8 +476,102 @@ func (sb *backend) APIs(chain consensus.ChainReader) []rpc.API {
 	}}
 }
 
+// snapshot (clique override) retrieves the authorization snapshot at a given point in time.
+func (sb *backend) snapshot(chain consensus.ChainReader, number uint64, hash common.Hash, parents []*types.Header) (*Snapshot, error) {
+	// Search for a snapshot in memory or on disk for checkpoints
+	var (
+		headers []*types.Header
+		snap    *Snapshot
+	)
+	for snap == nil {
+		// If an in-memory snapshot was found, use that
+		if s, ok := sb.recents.Get(hash); ok {
+			snap = s.(*Snapshot)
+			break
+		}
+		// If an on-disk checkpoint snapshot can be found, use that
+		if number%checkpointInterval == 0 {
+			if s, err := loadSnapshot(sb.config.Epoch, sb.db, hash); err == nil {
+				log.Info("Loaded voting snapshot from disk", "number", number, "hash", hash, "fullnodes", s.fullnodes())
+				snap = s
+				break
+			}
+		}
+		// If we're at block zero, make a snapshot
+		if number == 0 {
+			genesis := chain.GetHeaderByNumber(0)
+			if err := sb.VerifyHeader(chain, genesis, false); err != nil {
+				return nil, err
+			}
+			sportExtra, err := types.ExtractSportExtra(genesis)
+			if err != nil {
+				return nil, err
+			}
+			snap = newSnapshot(sb.config.Epoch, 0, genesis.Hash(), fullnode.NewFullnodeSet(sportExtra.Fullnodes, sb.config.SpeakerPolicy))
+			if err := snap.store(sb.db); err != nil {
+				log.Error("Could not store the genesis snapshot to disk!! ")
+				return nil, err
+			}
+			log.Info("Stored genesis voting snapshot to disk")
+			break
+		}
+		// No snapshot for this header, gather the header and move backward
+		var header *types.Header
+		if len(parents) > 0 {
+			// If we have explicit parents, pick from there (enforced)
+			header = parents[len(parents)-1]
+			if header.Hash() != hash || header.Number.Uint64() != number {
+				return nil, consensus.ErrUnknownAncestor
+			}
+			parents = parents[:len(parents)-1]
+		} else {
+			// No explicit parents (or no more left), reach out to the database
+			header = chain.GetHeader(hash, number)
+			if header == nil {
+				return nil, consensus.ErrUnknownAncestor
+			}
+		}
+		headers = append(headers, header)
+		number, hash = number-1, header.ParentHash
+	}
+	// Previous snapshot found, apply any pending headers on top of it
+	for i := 0; i < len(headers)/2; i++ {
+		headers[i], headers[len(headers)-1-i] = headers[len(headers)-1-i], headers[i]
+	}
+	snap, err := snap.apply(headers)
+	if err != nil {
+		return nil, err
+	}
+	sb.recents.Add(snap.Hash, snap)
+
+	// If we've generated a new checkpoint snapshot, save to disk
+	if snap.Number%checkpointInterval == 0 && len(headers) > 0 {
+		if err = snap.store(sb.db); err != nil {
+			return nil, err
+		}
+		log.Trace("Stored voting snapshot to disk", "number", snap.Number, "hash", snap.Hash)
+	}
+	return snap, err
+}
+
+// sigHash (clique override) returns the hash which is used as input for the Sport
+// signing. It is the hash of the entire header apart from the 65 byte signature
+// contained at the end of the extra data.
+//
+// Note, the method requires the extra data to be at least 65 bytes, otherwise it
+// panics. This is done to avoid accidentally using both forms (signature present
+// or not), which could be abused to produce different hashes for the same header.
+// FIXME: Need to update this for Sport
+func sigHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+
+	// Clean seal is required for calculating speaker seal.
+	rlp.Encode(hasher, types.SportFilteredHeader(header, false))
+	hasher.Sum(hash[:0])
+	return hash
+}
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (sb *backend) SealHash(header *types.Header) common.Hash {
-	return types.SigHash(header)
+	return sigHash(header)
 }

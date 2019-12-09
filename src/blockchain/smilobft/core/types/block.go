@@ -100,15 +100,14 @@ type headerMarshaling struct {
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding.
 func (h *Header) Hash() common.Hash {
-	// If the mix digest is equivalent to the predefined BFT digest, use BFT
+	// If the mix digest is equivalent to the predefined Sport digest, use Sport
 	// specific hash calculation.
 	if h.MixDigest == SportDigest {
 		// Seal is reserved in extra-data. To prove block is signed by the speaker.
 		if sportHeader := SportFilteredHeader(h, true); sportHeader != nil {
 			return rlpHash(sportHeader)
 		}
-	}
-	if h.MixDigest == BFTDigest {
+	} else  if h.MixDigest == BFTDigest {
 		// Seal is reserved in extra-data. To prove block is signed by the proposer.
 		if posHeader := BFTFilteredHeader(h, true); posHeader != nil {
 			return rlpHash(posHeader)

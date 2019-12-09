@@ -26,6 +26,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/event"
 	elog "github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -61,111 +62,107 @@ type testCommittedMsgs struct {
 //
 // define the functions that needs to be provided for sport.
 
-func (b *testSystemBackend) Address() common.Address {
-	return b.address
+func (self *testSystemBackend) Address() common.Address {
+	return self.address
 }
 
 // Peers returns all connected peers
-func (b *testSystemBackend) Fullnodes(number uint64) sport.FullnodeSet {
-	return b.peers
+func (self *testSystemBackend) Fullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
+	return self.peers
 }
 
-func (b *testSystemBackend) EventMux() *cmn.TypeMux {
-	return b.events
+func (self *testSystemBackend) EventMux() *cmn.TypeMux {
+	return self.events
 }
 
-func (b *testSystemBackend) Send(message []byte, target common.Address) error {
-	testLogger.Info("enqueuing a message...", "address", b.Address())
-	b.sentMsgs = append(b.sentMsgs, message)
-	b.sys.queuedMessage <- sport.MessageEvent{
+func (self *testSystemBackend) Send(message []byte, target common.Address) error {
+	testLogger.Info("enqueuing a message...", "address", self.Address())
+	self.sentMsgs = append(self.sentMsgs, message)
+	self.sys.queuedMessage <- sport.MessageEvent{
 		Payload: message,
 	}
 	return nil
 }
 
-func (b *testSystemBackend) Broadcast(fullnodeSet sport.FullnodeSet, message []byte) error {
-	testLogger.Info("enqueuing a message...", "address", b.Address())
-	b.sentMsgs = append(b.sentMsgs, message)
-	b.sys.queuedMessage <- sport.MessageEvent{
+func (self *testSystemBackend) Broadcast(fullnodeSet sport.FullnodeSet, message []byte) error {
+	testLogger.Info("enqueuing a message...", "address", self.Address())
+	self.sentMsgs = append(self.sentMsgs, message)
+	self.sys.queuedMessage <- sport.MessageEvent{
 		Payload: message,
 	}
 	return nil
 }
 
-func (b *testSystemBackend) Gossip(fullnodeSet sport.FullnodeSet, message []byte) error {
+func (self *testSystemBackend) Gossip(fullnodeSet sport.FullnodeSet, message []byte) error {
 	testLogger.Warn("not sign any data")
 	return nil
 }
 
-func (b *testSystemBackend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
-	testLogger.Info("commit message", "address", b.Address())
-	b.committedMsgs = append(b.committedMsgs, testCommittedMsgs{
+func (self *testSystemBackend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
+	testLogger.Info("commit message", "address", self.Address())
+	self.committedMsgs = append(self.committedMsgs, testCommittedMsgs{
 		commitBlockProposal: proposal,
 		committedSeals:      seals,
 	})
 
 	// fake new head events
-	go b.events.Post(sport.FinalCommittedEvent{})
+	go self.events.Post(sport.FinalCommittedEvent{})
 	return nil
 }
 
-func (b *testSystemBackend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
+func (self *testSystemBackend) Verify(proposal sport.BlockProposal) (time.Duration, error) {
 	return 0, nil
 }
 
-func (b *testSystemBackend) Sign(data []byte) ([]byte, error) {
+func (self *testSystemBackend) Sign(data []byte) ([]byte, error) {
 	testLogger.Warn("not sign any data")
 	return data, nil
 }
 
-func (b *testSystemBackend) CheckSignature([]byte, common.Address, []byte) error {
+func (self *testSystemBackend) CheckSignature([]byte, common.Address, []byte) error {
 	return nil
 }
 
-func (b *testSystemBackend) CheckFullnodeSignature(data []byte, sig []byte) (common.Address, error) {
+func (self *testSystemBackend) CheckFullnodeSignature(data []byte, sig []byte) (common.Address, error) {
 	return common.Address{}, nil
 }
 
-func (b *testSystemBackend) Hash(i interface{}) common.Hash {
+func (self *testSystemBackend) Hash(b interface{}) common.Hash {
 	return cmn.StringToHash("Test")
 }
 
-func (b *testSystemBackend) NewRequest(request sport.BlockProposal) {
-	go b.events.Post(sport.RequestEvent{
+func (self *testSystemBackend) NewRequest(request sport.BlockProposal) {
+	go self.events.Post(sport.RequestEvent{
 		BlockProposal: request,
 	})
 }
 
-func (b *testSystemBackend) HasBadBlockProposal(hash common.Hash) bool {
+func (self *testSystemBackend) HasBadBlockProposal(hash common.Hash) bool {
 	return false
 }
 
-func (b *testSystemBackend) LastBlockProposal() (sport.BlockProposal, common.Address) {
-	l := len(b.committedMsgs)
+func (self *testSystemBackend) LastBlockProposal() (sport.BlockProposal, common.Address) {
+	l := len(self.committedMsgs)
 	if l > 0 {
-		return b.committedMsgs[l-1].commitBlockProposal, common.Address{}
+		return self.committedMsgs[l-1].commitBlockProposal, common.Address{}
 	}
 	return makeBlock(0), common.Address{}
 }
 
 // Only block height 5 will return true
-func (b *testSystemBackend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
+func (self *testSystemBackend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
 	return number.Cmp(big.NewInt(5)) == 0
 }
 
-func (b *testSystemBackend) GetSpeaker(number uint64) common.Address {
+func (self *testSystemBackend) GetSpeaker(number uint64) common.Address {
 	return common.Address{}
 }
 
-func (b *testSystemBackend) SetProposedBlockHash(hash common.Hash) {
-	return
+func (self *testSystemBackend) ParentFullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
+	return self.peers
 }
 
-func (b *testSystemBackend) ParentFullnodes(proposal sport.BlockProposal) sport.FullnodeSet {
-	return b.peers
-}
-
-func (b *testSystemBackend) Close() error {
+func (sb *testSystemBackend) Close() error {
 	return nil
 }
 

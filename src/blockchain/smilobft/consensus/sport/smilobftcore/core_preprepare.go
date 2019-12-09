@@ -30,7 +30,7 @@ func (c *core) sendPreprepare(request *sport.Request) {
 	logger := c.logger.New("state", c.state)
 
 	// If I'm the speaker and I have the same sequence with the proposal
-	if c.current.Sequence().Cmp(request.BlockProposal.Number()) == 0 && c.IsSpeaker() && !c.sentPreprepare {
+	if c.current.Sequence().Cmp(request.BlockProposal.Number()) == 0 && c.IsSpeaker() {
 		curView := c.currentView()
 		preprepare, err := Encode(&sport.Preprepare{
 			View:          curView,
@@ -41,8 +41,7 @@ func (c *core) sendPreprepare(request *sport.Request) {
 			return
 		}
 		logger.Info("$$$ SmiloBFT, I'm the speaker and I have the same sequence with the proposal, will c.broadcast ", "preprepare", preprepare)
-		c.sentPreprepare = true
-		c.backend.SetProposedBlockHash(request.BlockProposal.Hash())
+
 		c.broadcast(&message{
 			Code: msgPreprepare,
 			Msg:  preprepare,
@@ -73,7 +72,7 @@ func (c *core) handlePreprepare(msg *message, src sport.Fullnode) error {
 		if err == errOldMessage {
 			logger.Debug("$$$ SmiloBFT, handlePrepare, msgPreprepare, errOldMessage, ", "err", err)
 			// Get fullnode set for the given proposal
-			fullnodeSet := c.backend.Fullnodes(preprepare.BlockProposal.Number().Uint64()).Copy()
+			fullnodeSet := c.backend.ParentFullnodes(preprepare.BlockProposal).Copy()
 			previousSpeaker := c.backend.GetSpeaker(preprepare.BlockProposal.Number().Uint64() - 1)
 			fullnodeSet.CalcSpeaker(previousSpeaker, preprepare.View.Round.Uint64())
 			// Broadcast COMMIT if it is an existing block

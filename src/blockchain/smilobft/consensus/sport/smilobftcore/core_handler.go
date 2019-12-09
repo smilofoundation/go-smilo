@@ -42,7 +42,7 @@ func (c *core) Stop() error {
 	c.unsubscribeEvents()
 
 	// Make sure the handler goroutine exits
-	c.handlerStopCh <- struct{}{}
+	c.handlerWg.Wait()
 	return nil
 }
 
@@ -76,8 +76,10 @@ func (c *core) handleEvents() {
 	// Clear state
 	defer func() {
 		c.current = nil
-		<-c.handlerStopCh
+		c.handlerWg.Done()
 	}()
+
+	c.handlerWg.Add(1)
 
 	for {
 		select {

@@ -22,11 +22,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"strings"
 	"sync"
-
-	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/params"
 
@@ -338,7 +337,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		g.Config = params.AllEthashProtocolChanges
 	}
 
-	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil || g.Config.Sport != nil ) {
+	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.Tendermint != nil) {
 		log.Warn("core/genesis.go, Commit(), Will SetBFT ")
 		err := g.SetBFT()
 		if err != nil {

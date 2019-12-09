@@ -520,10 +520,10 @@ func (n *Node) Attach() (*rpc.Client, error) {
 		return nil, ErrNodeStopped
 	}
 
-	if n.config.P2P.IsRated {
-		log.Warn("n.config.P2P.IsRated, will config rate limit for P2P")
-		return rpc.DialInProcWithRate(n.inprocHandler, n.config.P2P.InRate, n.config.P2P.OutRate), nil
-	}
+	//if n.config.P2P.IsRated {
+	//	log.Warn("n.config.P2P.IsRated, will config rate limit for P2P")
+	//	return rpc.DialInProcWithRate(n.inprocHandler, n.config.P2P.InRate, n.config.P2P.OutRate), nil
+	//}
 
 	return rpc.DialInProc(n.inprocHandler), nil
 }

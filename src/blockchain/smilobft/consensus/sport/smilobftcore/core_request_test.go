@@ -18,7 +18,6 @@
 package smilobftcore
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"reflect"
 	"sync"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
