@@ -299,28 +299,43 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		log.Debug("############### state_transition, VM returned with NO error after executing evm, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 	}
 
-	// avoid 'BAD BLOCK' crash
-	if !isVault {
-		st.gas = gasNotUsed
-	}
+	if  st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil ){
 
-	//give back gas if no err on EVM && IsSmilo=true,IsGas=true,IsGasRefund=true
-	if vmerr == nil && isSmilo && isGas && isGasRefunded {
-		log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
-		st.refundGasSmiloVersion()
-		// miners do not get reward in gas for transactions on smilo
-		//st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
-		//running normal node should do the default
-	} else {
-		log.Debug("############### state_transition, refund gas left if err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 		st.refundGas()
-		st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
-	}
+		address := st.evm.Coinbase
+		addr, innerErr := st.evm.ChainConfig().AutonityContractConfig.GetContractAddress()
+		if innerErr != nil {
+			return nil, 0, true, innerErr
+		}
+		address = addr
+		st.state.AddBalance(address, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
 
-	if isVault {
-		return ret, 0, vmerr != nil, err
+		return ret, st.gasUsed(), vmerr != nil, err
+	} else {
+
+		// avoid 'BAD BLOCK' crash
+		if !isVault {
+			st.gas = gasNotUsed
+		}
+
+		//give back gas if no err on EVM && IsSmilo=true,IsGas=true,IsGasRefund=true
+		if vmerr == nil && isSmilo && isGas && isGasRefunded {
+			log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+			st.refundGasSmiloVersion()
+			// miners do not get reward in gas for transactions on smilo
+			//st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
+			//running normal node should do the default
+		} else {
+			log.Debug("############### state_transition, refund gas left if err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+			st.refundGas()
+			st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
+		}
+
+		if isVault {
+			return ret, 0, vmerr != nil, err
+		}
+		return ret, st.gasUsed(), vmerr != nil, err
 	}
-	return ret, st.gasUsed(), vmerr != nil, err
 }
 
 func (st *StateTransition) refundGas() {

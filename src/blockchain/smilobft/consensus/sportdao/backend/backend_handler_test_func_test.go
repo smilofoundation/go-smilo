@@ -13,7 +13,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p"
 )
 
-func postAndWait(backend *backend, block *types.Block, t *testing.T) {
+func postAndWait(backend *Backend, block *types.Block, t *testing.T) {
 	eventSub := backend.EventMux().Subscribe(sportdao.RequestEvent{})
 	defer eventSub.Unsubscribe()
 	stop := make(chan struct{}, 1)

@@ -37,13 +37,13 @@ import (
 )
 
 // SetProposedBlockHash will set the proposed hash into the backend
-func (sb *backend) SetProposedBlockHash(hash common.Hash) {
+func (sb *Backend) SetProposedBlockHash(hash common.Hash) {
 	sb.proposedBlockHash = hash
 }
 
 
 // verifySigner checks whether the signer is in parent's fullnode set
-func (sb *backend) verifySigner(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (sb *Backend) verifySigner(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	// Verifying the genesis block is not supported
 	number := header.Number.Uint64()
 	if number == 0 {
@@ -71,7 +71,7 @@ func (sb *backend) verifySigner(chain consensus.ChainReader, header *types.Heade
 }
 
 // verifyCommittedSeals checks whether every committed seal is signed by one of the parent's fullnodes
-func (sb *backend) verifyCommittedSeals(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	number := header.Number.Uint64()
 	// We don't need to verify committed seals in the genesis block
 	if number == 0 {
@@ -162,7 +162,7 @@ func getSmiloBlockReward(blockNum *big.Int) (blockReward *big.Int) {
 }
 
 // update timestamp and signature of the block based on its number of transactions
-func (sb *backend) updateBlock(block *types.Block) (*types.Block, error) {
+func (sb *Backend) updateBlock(block *types.Block) (*types.Block, error) {
 	header := block.Header()
 	// sign the hash
 	seal, err := sb.Sign(types.SigHash(header).Bytes())
@@ -179,7 +179,7 @@ func (sb *backend) updateBlock(block *types.Block) (*types.Block, error) {
 }
 
 // Start implements consensus.Sport.Start
-func (sb *backend) Start(_ context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
+func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if sb.coreStarted {
@@ -208,7 +208,7 @@ func (sb *backend) Start(_ context.Context, chain consensus.ChainReader, current
 }
 
 // Stop implements consensus.Sport.Stop
-func (sb *backend) Stop() error {
+func (sb *Backend) Stop() error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if !sb.coreStarted {
@@ -246,7 +246,7 @@ func prepareExtra(header *types.Header, vals []common.Address) ([]byte, error) {
 }
 
 // retrieve list of validators for the block at height passed as parameter
-func (sb *backend) retrieveSavedValidators(number uint64, chain consensus.ChainReader) ([]common.Address, error) {
+func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainReader) ([]common.Address, error) {
 	if number == 0 {
 		number = 1
 	}
@@ -268,7 +268,7 @@ func (sb *backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 }
 
 // retrieve list of validators for the block header passed as parameter
-func (sb *backend) retrieveValidators(header *types.Header, parents []*types.Header, chain consensus.ChainReader) ([]common.Address, error) {
+func (sb *Backend) retrieveValidators(header *types.Header, parents []*types.Header, chain consensus.ChainReader) ([]common.Address, error) {
 	var validators []common.Address
 	var err error
 	/*
@@ -346,7 +346,7 @@ func writeCommittedSeals(h *types.Header, committedSeals [][]byte) error {
 }
 
 
-func (sb *backend) getValidators(header *types.Header, chain consensus.ChainReader, state *state.StateDB) ([]common.Address, error) {
+func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainReader, state *state.StateDB) ([]common.Address, error) {
 	var validators []common.Address
 
 	if header.Number.Int64() == 1 {

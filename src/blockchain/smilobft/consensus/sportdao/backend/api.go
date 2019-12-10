@@ -26,7 +26,7 @@ import (
 // API is a user facing RPC API to dump smilobft state
 type API struct {
 	chain consensus.ChainReader
-	smilo *backend
+	smilo *Backend
 }
 
 // GetValidators retrieves the list of authorized validators at the specified block.

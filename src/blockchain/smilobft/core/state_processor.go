@@ -17,9 +17,11 @@
 package core
 
 import (
+	"errors"
 	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"go-smilo/src/blockchain/smilobft/core/types"
+	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
@@ -37,9 +39,9 @@ import (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain         // Canonical block chain
-	engine consensus.Engine    // Consensus engine used for block rewards
+	config           *params.ChainConfig // Chain configuration options
+	bc               *BlockChain         // Canonical block chain
+	engine           consensus.Engine    // Consensus engine used for block rewards
 	autonityContract *autonity.Contract
 }
 
@@ -55,7 +57,6 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 func (p *StateProcessor) SetAutonityContract(contract *autonity.Contract) {
 	p.autonityContract = contract
 }
-
 
 // Process processes the state changes according to the Ethereum rules by running
 // the transaction messages using the statedb and applying any rewards to both
@@ -78,9 +79,30 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb, block.Number())
 	}
+
+	var contractMinGasPrice = new(big.Int)
+	if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil || p.bc.Config().Tendermint != nil) && p.autonityContract != nil {
+		minGasPrice, err := p.autonityContract.GetMinimumGasPrice(block, statedb, vaultState)
+		if err == nil {
+			contractMinGasPrice.SetUint64(minGasPrice)
+		}
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO GetMinimumGasPrice, is this correct ? ")
+	}
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
+
+		if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil || p.bc.Config().Tendermint != nil) && p.autonityContract != nil {
+			if contractMinGasPrice.Uint64() != 0 {
+				if tx.GasPrice().Cmp(contractMinGasPrice) == -1 {
+					return nil, nil, nil, 0, errors.New("autonityContract, gas price must be greater minGasPrice")
+				}
+			}
+		} else {
+			panic("Wont set Istanbul Tendermint SportDAO Process, is this correct ? ")
+		}
+
 		vaultState.Prepare(tx.Hash(), block.Hash(), i)
 
 		receipt, vaultReceipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, vaultState, header, tx, usedGas, cfg)
@@ -100,9 +122,11 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 	if (p.bc.chainConfig.Istanbul != nil || p.bc.chainConfig.SportDAO != nil || p.bc.chainConfig.Tendermint != nil) && p.autonityContract != nil {
 		err := p.autonityContract.ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), statedb)
 		if err != nil {
-			log.Error("Could not ApplyPerformRedistribution on smart contract, ","err", err)
+			log.Error("Could not ApplyPerformRedistribution on smart contract, ", "err", err)
 			return nil, nil, nil, 0, err
 		}
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO ApplyPerformRedistribution, is this correct ? ")
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts)

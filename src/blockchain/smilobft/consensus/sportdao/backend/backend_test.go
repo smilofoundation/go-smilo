@@ -254,7 +254,7 @@ func (slice Keys) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func newBackend() (b *backend, err error) {
+func newBackend() (b *Backend, err error) {
 	_, b, err = newBlockChain(4)
 	if err != nil {
 		return nil, err

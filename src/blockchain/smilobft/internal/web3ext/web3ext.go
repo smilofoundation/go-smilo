@@ -35,6 +35,7 @@ var Modules = map[string]string{
 	"les":        LESJs,
 	"smilobft":   SmiloBFTJS,
 	"istanbul":   Istanbul_JS,
+	"sportdao":   SportDAO_JS,
 	"tendermint": TendermintJs,
 }
 
@@ -913,6 +914,51 @@ web3._extend({
 	]
 });
 `
+
+const SportDAO_JS = `
+web3._extend({
+	property: 'istanbul',
+	methods:
+	[
+		new web3._extend.Method({
+			name: 'getValidators',
+			call: 'istanbul_getValidators',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'getValidatorsAtHash',
+			call: 'istanbul_getValidatorsAtHash',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'getSomaContractAddress',
+			call: 'istanbul_getSomaContractAddress',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'getSomaContractABI',
+			call: 'istanbul_getSomaContractABI',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'getGlienickeContractAddress',
+			call: 'istanbul_getGlienickeContractAddress',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'getGlienickeContractABI',
+			call: 'istanbul_getGlienickeContractABI',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'getWhitelist',
+			call: 'istanbul_getWhitelist',
+			params: 0
+		})
+	]
+});
+`
+
 
 const TendermintJs = `
 web3._extend({

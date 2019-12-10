@@ -36,7 +36,7 @@ import (
 )
 
 // backend is the override for Clique backend, with extra functions for Smilo BFT
-type backend struct {
+type Backend struct {
 	config           *sportdao.Config
 	smilobftEventMux *cmn.TypeMux
 	privateKey       *ecdsa.PrivateKey

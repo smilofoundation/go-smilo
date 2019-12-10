@@ -278,10 +278,11 @@ func (c *core) newRoundChangeTimer() {
 	round := c.current.Round().Uint64()
 	if round > 0 {
 		timeout += time.Duration(math.Pow(2, float64(round))) * time.Second
-		thisTimeout := time.Duration(c.config.MaxTimeout) * time.Second
+		maxTimeout := c.config.MaxTimeout
+		thisTimeout := time.Duration(maxTimeout) * time.Second
 		if timeout > thisTimeout {
 			timeout = thisTimeout
-			c.logger.Debug("************* Round Timeout increased to maxTimeout", "maxTimeout", c.config.MaxTimeout, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
+			c.logger.Debug("************* Round Timeout increased to maxTimeout", "maxTimeout", maxTimeout, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		} else {
 			c.logger.Debug("************* Round Timeout increased", "increase", time.Duration(math.Pow(2, float64(round)))*time.Second, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		}

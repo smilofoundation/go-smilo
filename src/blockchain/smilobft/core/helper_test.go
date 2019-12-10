@@ -18,7 +18,7 @@ package core
 
 import (
 	"container/list"
-	"github.com/ethereum/go-ethereum/event"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"go-smilo/src/blockchain/smilobft/core/types"

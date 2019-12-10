@@ -371,7 +371,7 @@ type ChainConfig struct {
 	Tendermint             *TendermintConfig        `json:"tendermint,omitempty"`
 	AutonityContractConfig *AutonityContractGenesis `json:"autonityContract,omitempty"`
 	Istanbul               *IstanbulConfig          `json:"istanbul,omitempty"`
-	SportDAO               *SportDAOConfig          `json:"istanbul,omitempty"`
+	SportDAO               *SportDAOConfig          `json:"sportdao,omitempty"`
 
 }
 
@@ -411,13 +411,11 @@ type SportDAOConfig struct {
 	Epoch         uint64 `json:"epoch"`    // Epoch length to reset votes and checkpoint
 	SpeakerPolicy uint64 `json:"policy"`   // The policy for speaker selection
 	MinFunds      int64  `json:"minfunds"` // The policy for speaker selection
-	BlockPeriod    uint64 `json:"block-period"`
-	RequestTimeout uint64 `json:"request-timeout"`
 }
 
 //String implements the stringer interface, returning the consensus engine details.
 func (c *SportDAOConfig) String() string {
-	return "sportdao"
+	return "smilobftdao"
 }
 
 // IstanbulConfig is the consensus engine configs for Istanbul based sealing.

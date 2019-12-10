@@ -33,14 +33,14 @@ var (
 )
 
 // Protocol implements consensus.Handler.Protocol
-func (sb *backend) Protocol() (protocolName string, extraMsgCodes uint64) {
-	return "smilobft", 1
+func (sb *Backend) Protocol() (protocolName string, extraMsgCodes uint64) {
+	return "smilobftdao", 1
 }
 
 // Protocol (clique override) implements consensus.Engine.Protocol
-func (sb *backend) ProtocolOld() consensus.Protocol {
+func (sb *Backend) ProtocolOld() consensus.Protocol {
 	return consensus.Protocol{
-		Name:     "smilobft",
+		Name:     "smilobftdao",
 		Versions: []uint{64},
 		Lengths:  []uint64{18},
 	}

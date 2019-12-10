@@ -42,7 +42,7 @@ const EnodeStub = "enode://d73b857969c86415c0c000371bcebd9ed3cca6c376032b3f65e58
 // in this test, we can set n to 1, and it means we can process Sport and commit a
 // block by one node. Otherwise, if n is larger than 1, we have to generate
 // other fake events to process Sport.
-func newBlockChain(n int) (*core.BlockChain, *backend, error) {
+func newBlockChain(n int) (*core.BlockChain, *Backend, error) {
 	genesis, nodeKeys, err := getGenesisAndKeys(n)
 	if err != nil {
 		return nil, nil, err
@@ -92,8 +92,11 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	// generate genesis block
 	genesis := core.DefaultGenesisBlock()
 	genesis.Config = params.TestChainConfig
-	// force enable Sport engine
-	genesis.Config.Sport = &params.SportConfig{}
+	// force enable SportDAO engine
+	genesis.Config.SportDAO = &params.SportDAOConfig{
+		Epoch:sportdao.DefaultConfig.Epoch,
+		MinFunds: sportdao.DefaultConfig.MinFunds,
+	}
 	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
 
 	genesis.Config.Ethash = nil
@@ -123,11 +126,11 @@ func appendFullnodes(genesis *core.Genesis, addrs []common.Address) {
 		CommittedSeal: [][]byte{},
 	}
 
-	istPayload, err := rlp.EncodeToBytes(&ist)
+	sportDAOPayload, err := rlp.EncodeToBytes(&ist)
 	if err != nil {
-		panic("failed to encode sport extra")
+		panic("failed to encode sportDAO extra")
 	}
-	genesis.ExtraData = append(genesis.ExtraData, istPayload...)
+	genesis.ExtraData = append(genesis.ExtraData, sportDAOPayload...)
 
 	for i := range addrs {
 		genesis.Config.AutonityContractConfig.Users = append(
@@ -154,13 +157,13 @@ func makeHeader(parent *types.Block, config *sportdao.Config) *types.Header {
 	return header
 }
 
-func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) (*types.Block, error) {
+func makeBlock(chain *core.BlockChain, engine *Backend, parent *types.Block) (*types.Block, error) {
 	block := makeBlockWithoutSeal(chain, engine, parent)
 	block, err := engine.Seal(chain, block, nil)
 	return block, err
 }
 
-func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
+func makeBlockWithoutSeal(chain *core.BlockChain, engine *Backend, parent *types.Block) *types.Block {
 	header := makeHeader(parent, engine.config)
 	engine.Prepare(chain, header)
 	state, _, _ := chain.StateAt(parent.Root())

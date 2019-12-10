@@ -41,12 +41,18 @@ const (
 )
 
 // New creates an Ethereum backend for smilobft core engine.
-func New(config *sportdao.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *backend {
+func New(config *sportdao.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *Backend {
 	// Allocate the snapshot caches and create the engine
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	recentMessages, _ := lru.NewARC(inmemoryPeers)
 	knownMessages, _ := lru.NewARC(inmemoryMessages)
-	backend := &backend{
+
+	if config.MaxTimeout == 0 {
+		log.Debug("karaidiasa, sportdao, MaxTimeout is nil o/ ")
+		config.MaxTimeout = sportdao.DefaultConfig.MaxTimeout
+	}
+
+	backend := &Backend{
 		config:           config,
 		smilobftEventMux: new(cmn.TypeMux),
 		privateKey:       privateKey,
@@ -69,15 +75,15 @@ func New(config *sportdao.Config, privateKey *ecdsa.PrivateKey, db ethdb.Databas
 // ----------------------------------------------------------------------------
 
 // CalcDifficulty (clique override) always return zero
-func (sb *backend) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+func (sb *Backend) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
 	return new(big.Int)
 }
 
 // Address (clique override) implements smilo.Backend.Address
-func (sb *backend) Address() common.Address {
+func (sb *Backend) Address() common.Address {
 	return sb.address
 }
 
-func (sb *backend) Close() error {
+func (sb *Backend) Close() error {
 	return nil
 }

@@ -167,6 +167,7 @@ var (
 		utils.IstanbulBlockPeriodFlag,
 		utils.SportDAORequestTimeoutFlag,
 		utils.SportDAOBlockPeriodFlag,
+		utils.SportDAOEnableNodePermissionFlag,
 	}
 
 	rpcFlags = []cli.Flag{

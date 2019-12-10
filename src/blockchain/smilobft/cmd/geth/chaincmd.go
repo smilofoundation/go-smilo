@@ -228,6 +228,7 @@ func initGenesis(ctx *cli.Context) error {
 	if len(genesisPath) == 0 {
 		utils.Fatalf("Must supply path to genesis JSON file")
 	}
+	log.Info("Will open Genesis file, ","genesisPath", genesisPath)
 	file, err := os.Open(genesisPath)
 	if err != nil {
 		utils.Fatalf("Failed to read genesis file: %v", err)
@@ -238,6 +239,8 @@ func initGenesis(ctx *cli.Context) error {
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
 		utils.Fatalf("initGenesis, invalid genesis file: %v", err)
 	}
+	log.Info("Decoded Genesis file, ","genesis", genesis, "genesis.Config", genesis.Config, "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig, "genesis.Config.SportDAO", genesis.Config.SportDAO)
+
 
 	file.Seek(0, 0)
 
@@ -245,15 +248,17 @@ func initGenesis(ctx *cli.Context) error {
 	//define config for smilo option
 	genesis.Config.IsSmilo, genesis.Config.IsGas, genesis.Config.IsGasRefunded = getIsSmilo(file)
 
-	log.Info("$$$$$$$$$$ Init SMILO Genesis, ", "IsSmilo", genesis.Config.IsSmilo, "IsGas", genesis.Config.IsGas, "IsGasRefunded", genesis.Config.IsGasRefunded)
+	log.Info("$$$$$$$$$$ Init, SMILO Genesis, ", "IsSmilo", genesis.Config.IsSmilo, "IsGas", genesis.Config.IsGas, "IsGasRefunded", genesis.Config.IsGasRefunded)
 
 	if genesis.Config.AutonityContractConfig != nil {
+		log.Info("$$$$$$$$$$ Init, AutonityContractConfig, ", "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig)
 		if err := genesis.Config.AutonityContractConfig.AddDefault().Validate(); err != nil {
 			spew.Dump(genesis.Config.AutonityContractConfig)
 			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
 		}
 	} else {
-		log.Warn("Smart contract governance not defined ?")
+		log.Warn("$$$$$$$$$$ Init, Smart contract governance not defined !")
+		//panic("$$$$$$$$$$ Init, Smart contract governance not defined !")
 	}
 
 	setupBFTDefaults(genesis)
@@ -317,12 +322,12 @@ func setupBFTDefaults(genesis *core.Genesis) {
 		if genesis.Config.SportDAO.Epoch == 0 {
 			genesis.Config.SportDAO.Epoch = sportdao.DefaultConfig.Epoch
 		}
-		if genesis.Config.SportDAO.RequestTimeout == 0 {
-			genesis.Config.SportDAO.RequestTimeout = sportdao.DefaultConfig.RequestTimeout
-		}
-		if genesis.Config.SportDAO.BlockPeriod == 0 {
-			genesis.Config.SportDAO.BlockPeriod = sportdao.DefaultConfig.BlockPeriod
-		}
+		//if genesis.Config.SportDAO.RequestTimeout == 0 {
+		//	genesis.Config.SportDAO.RequestTimeout = sportdao.DefaultConfig.RequestTimeout
+		//}
+		//if genesis.Config.SportDAO.BlockPeriod == 0 {
+		//	genesis.Config.SportDAO.BlockPeriod = sportdao.DefaultConfig.BlockPeriod
+		//}
 	}
 }
 

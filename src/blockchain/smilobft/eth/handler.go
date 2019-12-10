@@ -264,6 +264,9 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	if manager.chainconfig.Istanbul != nil || manager.chainconfig.SportDAO != nil || manager.chainconfig.Tendermint != nil {
 		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
 		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO ReadEnodeWhitelist, is this correct ? ")
+
 	}
 
 	return manager, nil
@@ -341,6 +344,8 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 		} else {
 			log.Warn("eth/handler.go, Start(), SportEnableNodePermissionFlag false, wont SubscribeAutonityEvents whitelistCh")
 		}
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO SubscribeAutonityEvents, is this correct ? ")
 	}
 
 	// start sync handlers
@@ -454,6 +459,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		} else {
 			log.Warn("eth/handler.go, handle(), SportEnableNodePermissionFlag, ELSE")
 		}
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO enodesWhitelist, is this correct ? ")
 	}
 
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -474,15 +481,13 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	if pm.chainconfig.Istanbul != nil || pm.chainconfig.SportDAO != nil || pm.chainconfig.Tendermint != nil {
-		if pm.blockchain.Config().Tendermint != nil {
-			syncer := pm.blockchain.Engine().(consensus.Syncer)
-			address := crypto.PubkeyToAddress(*p.Node().Pubkey())
-			syncer.ResetPeerCache(address)
-			syncer.SyncPeer(address)
-		} else {
-			log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
-		}
+	if pm.blockchain.Config().Tendermint != nil {
+		syncer := pm.blockchain.Engine().(consensus.Syncer)
+		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
+		syncer.ResetPeerCache(address)
+		syncer.SyncPeer(address)
+	} else {
+		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
 	}
 
 	// If we have a trusted CHT, reject all peers below that (avoid fast sync eclipse)

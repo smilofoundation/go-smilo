@@ -129,14 +129,14 @@ func getSmiloValue(value string) *big.Int {
 // Author (clique override) retrieves the Ethereum address of the account that minted the given
 // block, which may be different from the header's coinbase if a consensus
 // engine is based on signatures.
-func (sb *backend) Author(header *types.Header) (common.Address, error) {
+func (sb *Backend) Author(header *types.Header) (common.Address, error) {
 	return types.Ecrecover(header)
 }
 
 // VerifyHeader (clique override) checks whether a header conforms to the consensus rules of a
 // given engine. Verifying the seal may be done optionally here, or explicitly
 // via the VerifySeal method.
-func (sb *backend) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
+func (sb *Backend) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
 	return sb.verifyHeader(chain, header, nil)
 }
 
@@ -144,7 +144,7 @@ func (sb *backend) VerifyHeader(chain consensus.ChainReader, header *types.Heade
 // caller may optionally pass in a batch of parents (ascending order) to avoid
 // looking those up from the database. This is useful for concurrently verifying
 // a batch of new headers.
-func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
@@ -183,7 +183,7 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 // rather depend on a batch of previous headers. The caller may optionally pass
 // in a batch of parents (ascending order) to avoid looking those up from the
 // database. This is useful for concurrently verifying a batch of new headers.
-func (sb *backend) verifyCascadingFields(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
+func (sb *Backend) verifyCascadingFields(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
 	// The genesis block is the always valid dead-end
 	number := header.Number.Uint64()
 	if number == 0 {
@@ -214,7 +214,7 @@ func (sb *backend) verifyCascadingFields(chain consensus.ChainReader, header *ty
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications (the order is that of
 // the input slice).
-func (sb *backend) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (sb *Backend) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 	go func() {
@@ -233,7 +233,7 @@ func (sb *backend) VerifyHeaders(chain consensus.ChainReader, headers []*types.H
 
 // VerifyUncles (clique override) verifies that the given block's uncles conform to the consensus
 // rules of a given engine.
-func (sb *backend) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+func (sb *Backend) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
 	if len(block.Uncles()) > 0 {
 		return errInvalidUncleHash
 	}
@@ -243,7 +243,7 @@ func (sb *backend) VerifyUncles(chain consensus.ChainReader, block *types.Block)
 
 // VerifySeal (clique override) checks whether the crypto seal on a header is valid according to
 // the consensus rules of the given engine.
-func (sb *backend) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
+func (sb *Backend) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
 	// get parent header and ensure the signer is in parent's fullnode set
 	number := header.Number.Uint64()
 	if number == 0 {
@@ -259,7 +259,7 @@ func (sb *backend) VerifySeal(chain consensus.ChainReader, header *types.Header)
 
 // Prepare (clique override) initializes the consensus fields of a block header according to the
 // rules of a particular engine. The changes are executed inline.
-func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) error {
+func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) error {
 	// unused fields, force to set to empty
 	header.Coinbase = sb.address
 	header.Nonce = emptyNonce
@@ -316,7 +316,7 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 //
 // Note, the block header and state database might be updated to reflect any
 // consensus rules that happen at finalization (e.g. block rewards).
-func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
+func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 
 	if sb.blockchain == nil {
@@ -342,7 +342,7 @@ func (sb *backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 }
 
 // Seal (clique override) generates a new block for the given input block with the local miner's seal place on top.
-func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
+func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
 	// update the block header timestamp and signature and propose the block to core engine
 	header := block.Header()
 	number := header.Number.Uint64()
@@ -373,6 +373,8 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		return nil, nil
 	}
 
+	log.Debug("will crash ?? ", "sb.config.MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining)
+	log.Debug("will crash ?? ", "block.Number()", block.Number())
 	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
 	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
 		log.Debug("Seal, Bail out errWaitTransactions")
@@ -420,9 +422,9 @@ func (sb *backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 }
 
 // APIs (clique override) returns the RPC APIs this consensus engine provides.
-func (sb *backend) APIs(chain consensus.ChainReader) []rpc.API {
+func (sb *Backend) APIs(chain consensus.ChainReader) []rpc.API {
 	return []rpc.API{{
-		Namespace: "smilobft",
+		Namespace: "smilobftdao",
 		Version:   "1.0",
 		Service:   &API{chain: chain, smilo: sb},
 		Public:    true,
@@ -431,6 +433,6 @@ func (sb *backend) APIs(chain consensus.ChainReader) []rpc.API {
 
 
 // SealHash returns the hash of a block prior to it being sealed.
-func (sb *backend) SealHash(header *types.Header) common.Hash {
+func (sb *Backend) SealHash(header *types.Header) common.Hash {
 	return types.SigHash(header)
 }

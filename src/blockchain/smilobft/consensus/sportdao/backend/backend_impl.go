@@ -35,7 +35,7 @@ import (
 )
 
 // Fullnodes implements sportdao.Backend.Fullnodes
-func (sb *backend) Fullnodes(number uint64) sportdao.FullnodeSet {
+func (sb *Backend) Fullnodes(number uint64) sportdao.FullnodeSet {
 	validators, err := sb.retrieveSavedValidators(number, sb.chain)
 	proposerPolicy := sb.config.GetProposerPolicy()
 	if err != nil {
@@ -45,7 +45,7 @@ func (sb *backend) Fullnodes(number uint64) sportdao.FullnodeSet {
 }
 
 // Broadcast implements sportdao.Backend.Broadcast
-func (sb *backend) Broadcast(fullnodeSet sportdao.FullnodeSet, payload []byte) error {
+func (sb *Backend) Broadcast(fullnodeSet sportdao.FullnodeSet, payload []byte) error {
 	// send to others
 	err := sb.Gossip(fullnodeSet, payload)
 	if err != nil {
@@ -67,7 +67,7 @@ func (sb *backend) Broadcast(fullnodeSet sportdao.FullnodeSet, payload []byte) e
 }
 
 // Gossip implements sportdao.Backend.Gossip
-func (sb *backend) Gossip(fullnodeSet sportdao.FullnodeSet, payload []byte) error {
+func (sb *Backend) Gossip(fullnodeSet sportdao.FullnodeSet, payload []byte) error {
 	hash := types.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 
@@ -115,7 +115,7 @@ func (sb *backend) Gossip(fullnodeSet sportdao.FullnodeSet, payload []byte) erro
 }
 
 // Commit implements sportdao.Backend.Commit
-func (sb *backend) Commit(proposal sportdao.BlockProposal, seals [][]byte) error {
+func (sb *Backend) Commit(proposal sportdao.BlockProposal, seals [][]byte) error {
 	// Check if the proposal is a valid block
 	block := &types.Block{}
 	block, ok := proposal.(*types.Block)
@@ -158,12 +158,12 @@ func (sb *backend) Commit(proposal sportdao.BlockProposal, seals [][]byte) error
 }
 
 // EventMux implements sportdao.Backend.EventMux
-func (sb *backend) EventMux() *cmn.TypeMux {
+func (sb *Backend) EventMux() *cmn.TypeMux {
 	return sb.smilobftEventMux
 }
 
 // Verify implements sportdao.Backend.Verify
-func (sb *backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error) {
+func (sb *Backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error) {
 	// Check if the proposal is a valid block
 	block := &types.Block{}
 	block, ok := proposal.(*types.Block)
@@ -252,13 +252,13 @@ func (sb *backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error
 }
 
 // Sign implements sportdao.Backend.Sign
-func (sb *backend) Sign(data []byte) ([]byte, error) {
+func (sb *Backend) Sign(data []byte) ([]byte, error) {
 	hashData := crypto.Keccak256(data)
 	return crypto.Sign(hashData, sb.privateKey)
 }
 
 // CheckSignature implements sportdao.Backend.CheckSignature
-func (sb *backend) CheckSignature(data []byte, address common.Address, sig []byte) error {
+func (sb *Backend) CheckSignature(data []byte, address common.Address, sig []byte) error {
 	signer, err := types.GetSignatureAddress(data, sig)
 	if err != nil {
 		log.Error("CheckSignature, Failed to GetSignatureAddress, ", "err", err)
@@ -272,12 +272,12 @@ func (sb *backend) CheckSignature(data []byte, address common.Address, sig []byt
 }
 
 // HasBlockProposal implements sportdao.Backend.HashBlock
-func (sb *backend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
+func (sb *Backend) HasBlockProposal(hash common.Hash, number *big.Int) bool {
 	return sb.blockchain.GetHeader(hash, number.Uint64()) != nil
 }
 
 // GetSpeaker implements sportdao.Backend.GetSpeaker
-func (sb *backend) GetSpeaker(number uint64) common.Address {
+func (sb *Backend) GetSpeaker(number uint64) common.Address {
 	if h := sb.blockchain.GetHeaderByNumber(number); h != nil {
 		a, _ := sb.Author(h)
 		return a
@@ -286,14 +286,14 @@ func (sb *backend) GetSpeaker(number uint64) common.Address {
 }
 
 // ParentFullnodes implements sportdao.Backend.GetParentFullnodes
-func (sb *backend) ParentFullnodes(proposal sportdao.BlockProposal) sportdao.FullnodeSet {
+func (sb *Backend) ParentFullnodes(proposal sportdao.BlockProposal) sportdao.FullnodeSet {
 	if block, ok := proposal.(*types.Block); ok {
 		return sb.getFullnodes(block.Number().Uint64()-1, block.ParentHash())
 	}
 	return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
 }
 
-func (sb *backend) getFullnodes(number uint64, hash common.Hash) sportdao.FullnodeSet {
+func (sb *Backend) getFullnodes(number uint64, hash common.Hash) sportdao.FullnodeSet {
 	//snap, err := sb.snapshot(sb.chain, number, hash, nil)
 	//if err != nil {
 	//	sb.logger.Error("Failed to getFullnodes from snapshot", "err", err)
@@ -304,7 +304,7 @@ func (sb *backend) getFullnodes(number uint64, hash common.Hash) sportdao.Fullno
 }
 
 // LastBlockProposal returns the last block header and speaker
-func (sb *backend) LastBlockProposal() (sportdao.BlockProposal, common.Address) {
+func (sb *Backend) LastBlockProposal() (sportdao.BlockProposal, common.Address) {
 	block := sb.currentBlock()
 
 	var speaker common.Address
@@ -322,7 +322,7 @@ func (sb *backend) LastBlockProposal() (sportdao.BlockProposal, common.Address) 
 }
 
 // HasBadBlockProposal check if the hash has a bad block associated to it
-func (sb *backend) HasBadBlockProposal(hash common.Hash) bool {
+func (sb *Backend) HasBadBlockProposal(hash common.Hash) bool {
 	if sb.hasBadBlock == nil {
 		return false
 	}
@@ -330,7 +330,7 @@ func (sb *backend) HasBadBlockProposal(hash common.Hash) bool {
 }
 
 // Whitelist for the current block
-func (sb *backend) WhiteList() []string {
+func (sb *Backend) WhiteList() []string {
 	state, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)

@@ -301,6 +301,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.SportDAORequestTimeoutFlag,
 			utils.SportDAOBlockPeriodFlag,
+			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 }

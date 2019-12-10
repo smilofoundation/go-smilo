@@ -24,6 +24,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
@@ -268,7 +269,14 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.SportEnableNodePermissionFlag); err != nil {
 		return nil, err
 	}
-	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, config.Sport.MinBlocksEmptyMining)
+	var MinBlocksEmptyMining = big.NewInt(20000000)
+	if chainConfig.Sport != nil && config.Sport.MinBlocksEmptyMining != nil {
+		MinBlocksEmptyMining = config.Sport.MinBlocksEmptyMining
+	} else if chainConfig.SportDAO != nil && config.SportDAO.MinBlocksEmptyMining != nil {
+		MinBlocksEmptyMining = config.SportDAO.MinBlocksEmptyMining
+	}
+
+	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, MinBlocksEmptyMining)
 	log.Info("$$$$$$ Prepare extradata", "Miner", config.Miner, "chainConfig", eth.chainConfig)
 	extradata := makeExtraData(config.Miner.ExtraData, eth.chainConfig.IsSmilo)
 	log.Info("$$$$$$ makeExtraData", "extradata", cmn.HexToHash(string(extradata)))
@@ -307,13 +315,16 @@ func makeExtraData(extra []byte, isSmilo bool) []byte {
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Smilo service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *Config, notify []string, noverify bool, db ethdb.Database, vmConfig *vm.Config) consensus.Engine {
+	log.Info("****************** KARAI DI ASA!!!!!!!!!!!!!!!!!!!")
+
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
+		log.Warn("$$$ Clique is requested, set it up", "chainConfig", chainConfig)
 		return clique.New(chainConfig.Clique, db)
 	}
 	// If Sport is requested, set it up
 	if chainConfig.Sport != nil {
-		log.Info("Sport Consensus activated, will set it up", "chainConfig.Sport", chainConfig.Sport)
+		log.Warn("$$$ Sport Consensus activated, will set it up", "chainConfig.Sport", chainConfig.Sport, "chainConfig", chainConfig)
 		if chainConfig.Sport.Epoch != 0 {
 			config.Sport.Epoch = chainConfig.Sport.Epoch
 		}
@@ -326,18 +337,39 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		return smiloBackend.New(&config.Sport, ctx.NodeKey(), db)
 	}
 	if chainConfig.SportDAO != nil {
+		if chainConfig.SportDAO.Epoch != 0 {
+			config.SportDAO.Epoch = chainConfig.SportDAO.Epoch
+		}
+		config.SportDAO.SpeakerPolicy = sportdao.SpeakerPolicy(chainConfig.SportDAO.SpeakerPolicy)
+		if chainConfig.SportDAO.MinFunds != 0 {
+			config.SportDAO.MinFunds = chainConfig.SportDAO.MinFunds
+		}
+		if config.SportDAO.MaxTimeout == 0 {
+			config.SportDAO.MaxTimeout = sportdao.DefaultConfig.MaxTimeout
+		}
+		if chainConfig.SportDAO.MinFunds == 0 {
+			config.SportDAO.MinFunds = sportdao.DefaultConfig.MinFunds
+		}
+		if chainConfig.SportDAO.MinFunds == 0 {
+			config.SportDAO.MinFunds = sportdao.DefaultConfig.MinFunds
+		}
+
+		log.Warn("$$$ SportDAO Consensus activated, will set it up", "&config.SportDAO", &config.SportDAO, "chainConfig", chainConfig)
 		return smiloDAOBackend.New(&config.SportDAO, ctx.NodeKey(), db, chainConfig, vmConfig)
 	}
 
 	if chainConfig.Istanbul != nil {
+		log.Warn("$$$ Istanbul Consensus activated, will set it up", "chainConfig.Istanbul", chainConfig.Istanbul, "chainConfig", chainConfig)
 		return istanbulBackend.New(&config.Istanbul, ctx.NodeKey(), db, chainConfig, vmConfig)
 	}
 	if chainConfig.Tendermint != nil {
+		log.Warn("$$$ Tendermint Consensus activated, will set it up", "chainConfig.Tendermint", chainConfig.Tendermint, "chainConfig", chainConfig)
 		back := tendermintBackend.New(&config.Tendermint, ctx.NodeKey(), db, chainConfig, vmConfig)
 		return tendermintCore.New(back, &config.Tendermint)
 	}
 
 	// Otherwise assume proof-of-work
+	log.Warn("$$$ Assume proof-of-work consensus to be selected, ", "config.PowMode", config.PowMode, "chainConfig", chainConfig)
 	switch config.PowMode {
 	case ModeFake:
 		log.Warn("Ethash used in fake mode")

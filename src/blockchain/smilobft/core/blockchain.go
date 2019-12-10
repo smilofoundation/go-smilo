@@ -252,7 +252,9 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		})
 		bc.processor.SetAutonityContract(bc.autonityContract)
 	} else {
-		log.Warn("Wont set Autonity contract, is this correct ? ", "chainConfig", chainConfig)
+		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "
+		log.Warn(logmsg, "chainConfig", chainConfig)
+		panic(logmsg)
 	}
 
 	// The first thing the node will do is reconstruct the verification data for
@@ -361,7 +363,7 @@ func (bc *BlockChain) loadLastState() error {
 		rawdb.WriteHeadBlockHash(bc.db, currentBlock.Hash())
 	}
 
-	// Smilo
+	// Smilo VAULT
 	if _, err := state.New(GetVaultStateRoot(bc.db, currentBlock.Root()), bc.vaultStateCache); err != nil {
 		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
 		if err := bc.repair(&currentBlock); err != nil {
@@ -369,7 +371,7 @@ func (bc *BlockChain) loadLastState() error {
 			return bc.Reset()
 		}
 	}
-	// Smilo
+	// Smilo VAULT
 
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
@@ -1391,6 +1393,8 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
 			return NonStatTy, err
 		}
+	} else {
+		panic("Wont set Istanbul Tendermint SportDAO UpdateEnodesWhitelist, is this correct ? ")
 	}
 
 	rawdb.WriteBlock(bc.db, block)
@@ -1808,7 +1812,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		// Write the block to the chain and get the status.
 		substart = time.Now()
-		// Smilo
+		// Smilo VAULT
 		// Write vault state changes to database
 		if vaultStateRoot, err = vaultState.Commit(bc.Config().IsEIP158(block.Number())); err != nil {
 			return it.index, events, coalescedLogs, err
@@ -1817,7 +1821,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 			return it.index, events, coalescedLogs, err
 		}
 		allReceipts := mergeReceipts(receipts, vaultReceipts)
-		// Smilo
+		// Smilo VAULT
 
 		// Write the block to the chain and get the status.
 
@@ -2348,8 +2352,8 @@ func (bc *BlockChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []com
 //
 // Note: ancestor == 0 returns the same block, 1 returns its parent and so on.
 func (bc *BlockChain) GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64) {
-	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	bc.chainmu.RLock()
+	defer bc.chainmu.RUnlock()
 
 	return bc.hc.GetAncestor(hash, number, ancestor, maxNonCanonical)
 }

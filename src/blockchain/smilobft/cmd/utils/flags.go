@@ -766,14 +766,19 @@ var (
 
 	// SportDAO settings
 	SportDAORequestTimeoutFlag = cli.Uint64Flag{
-		Name:  "sportdao.requesttimeout",
-		Usage: "Timeout for each SportDAO round in milliseconds",
+		Name:  "smilobftdao.requesttimeout",
+		Usage: "smilobftdao for each SportDAO round in milliseconds",
 		Value: eth.DefaultConfig.Istanbul.RequestTimeout,
 	}
 	SportDAOBlockPeriodFlag = cli.Uint64Flag{
-		Name:  "sportdao.blockperiod",
+		Name:  "smilobftdao.blockperiod",
 		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
 		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
+	}
+	// Smilo settings
+	SportDAOEnableNodePermissionFlag = cli.BoolFlag{
+		Name:  "smilobftdao.permissioned",
+		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
 	}
 
 	// Smilo settings
@@ -1363,12 +1368,21 @@ func setIstanbul(ctx *cli.Context, cfg *eth.Config) {
 }
 
 func setSportDAO(ctx *cli.Context, cfg *eth.Config) {
-		if ctx.GlobalIsSet(SportDAORequestTimeoutFlag.Name) {
+	if ctx.GlobalIsSet(SportDAORequestTimeoutFlag.Name) {
 		cfg.SportDAO.RequestTimeout = ctx.GlobalUint64(SportDAORequestTimeoutFlag.Name)
 	}
 	if ctx.GlobalIsSet(SportDAOBlockPeriodFlag.Name) {
-		cfg.SportDAO.BlockPeriod = ctx.GlobalUint64(SportDAOBlockPeriodFlag.Name)
+		cfg.SportDAO.BlockPeriod = ctx.GlobalUint64(SportBlockPeriodFlag.Name)
 	}
+	if ctx.GlobalIsSet(SportDAOEnableNodePermissionFlag.Name) {
+		cfg.SportEnableNodePermissionFlag = ctx.GlobalBool(SportDAOEnableNodePermissionFlag.Name)
+	}
+	if ctx.GlobalIsSet(DataDirFlag.Name) {
+		cfg.SportDAO.DataDir = ctx.GlobalString(DataDirFlag.Name)
+	}
+	//if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
+		cfg.SportDAO.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
+	//}
 }
 
 func setEthash(ctx *cli.Context, cfg *eth.Config) {
@@ -1462,9 +1476,7 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(DataDirFlag.Name) {
 		cfg.Sport.DataDir = ctx.GlobalString(DataDirFlag.Name)
 	}
-	if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
-		cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
-	}
+	cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
 }
 
 func setCodeQuality(ctx *cli.Context, cfg *eth.Config) {
@@ -1549,10 +1561,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 	setIstanbul(ctx, cfg)
 	setSportDAO(ctx, cfg)
+	setSport(ctx, cfg)
 
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
-	setSport(ctx, cfg)
 	setCodeQuality(ctx, cfg)
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {

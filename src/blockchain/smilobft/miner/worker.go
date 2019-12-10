@@ -182,8 +182,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		go worker.wait()
 		worker.commitNewWork(time.Now().Unix())
 	} else {
-		//panic("$$$ Could not set consensus.BFT params for the miner.worker")
-		log.Warn("Could not start non BFT Consensus Engine")
+		//panic("$$$ Could not commitNewWork non BFT Consensus Engine")
+		log.Warn("$$$ Could not commitNewWork non BFT Consensus Engine")
 	}
 
 	return worker
@@ -237,15 +237,15 @@ func (self *worker) start() {
 	defer self.mu.Unlock()
 
 	atomic.StoreInt32(&self.mining, 1)
-	if sport, ok := self.engine.(consensus.BFT); ok {
-		log.Info("BFT consensus will start ...")
-		err := sport.Start(context.Background(), self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+	if bftConsensus, ok := self.engine.(consensus.BFT); ok {
+		log.Info("BFT consensus will start ...", " self.engine.ProtocolOld().Name", self.engine.ProtocolOld().Name)
+		err := bftConsensus.Start(context.Background(), self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
 		if err != nil {
 			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}
 	} else {
-		//panic("$$$ Could not start non BFT Consensus Engine")
-		log.Warn("Could not start non BFT Consensus Engine")
+		//panic("$$$ Could not start() non BFT Consensus Engine")
+		log.Warn("$$$ Could not start() non BFT Consensus Engine")
 	}
 
 	// spin up agents

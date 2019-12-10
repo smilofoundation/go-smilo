@@ -346,6 +346,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		}
 	} else {
 		log.Warn("core/genesis.go, Commit(), NOT Will SetBFT ", "g.Config", g.Config)
+		panic("Wont set Istanbul Tendermint SportDAO Commit, is this correct ? ")
 	}
 
 	block := g.ToBlock(db)
@@ -364,10 +365,6 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	rawdb.WriteHeadHeaderHash(db, block.Hash())
 
 	config := g.Config
-	if config == nil {
-		config = params.AllEthashProtocolChanges
-	}
-
 	if config.AutonityContractConfig != nil {
 		log.Warn("AutonityContractConfig is defined, will get AutonityContractConfig.Users and WriteEnodeWhitelist")
 		enodes := []string{}
