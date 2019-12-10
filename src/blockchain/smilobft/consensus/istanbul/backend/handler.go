@@ -19,11 +19,13 @@ package backend
 import (
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/hashicorp/golang-lru"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
+	"reflect"
 )
 
 const (
@@ -37,12 +39,12 @@ var (
 )
 
 // Protocol implements consensus.Handler.Protocol
-func (sb *backend) Protocol() (protocolName string, extraMsgCodes uint64) {
+func (sb *Backend) Protocol() (protocolName string, extraMsgCodes uint64) {
 	return "istanbul", 1
 }
 
 // HandleMsg implements consensus.Handler.HandleMsg
-func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
+func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 
@@ -81,16 +83,41 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 
 		return true, nil
 	}
-
+	if msg.Code == NewBlockMsg { // eth.NewBlockMsg: import cycle
+		// this case is to safeguard the race of similar block which gets propagated from other node while this node is proposing
+		// as p2p.Msg can only be decoded once (get EOF for any subsequence read), we need to make sure the payload is restored after we decode it
+		log.Debug("Proposer received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr)
+		//if reader, ok := msg.Payload.(*bytes.Reader); ok {
+		//	payload, err := ioutil.ReadAll(reader)
+		//	if err != nil {
+		//		return true, err
+		//	}
+		//	reader.Reset(payload)       // ready to be decoded
+		//	defer reader.Reset(payload) // restore so main eth/handler can decode
+		//	var request struct {        // this has to be same as eth/protocol.go#newBlockData as we are reading NewBlockMsg
+		//		Block *types.Block
+		//		TD    *big.Int
+		//	}
+		//	if err := msg.Decode(&request); err != nil {
+		//		log.Debug("Proposer was unable to decode the NewBlockMsg", "error", err)
+		//		return false, nil
+		//	}
+		//	newRequestedBlock := request.Block
+		//	if newRequestedBlock.Header().MixDigest == types.IstanbulDigest && sb.core.IsCurrentProposal(newRequestedBlock.Hash()) {
+		//		log.Debug("Proposer already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr)
+		//		return true, nil
+		//	}
+		//}
+	}
 	return false, nil
 }
 
 // SetBroadcaster implements consensus.Handler.SetBroadcaster
-func (sb *backend) SetBroadcaster(broadcaster consensus.Broadcaster) {
+func (sb *Backend) SetBroadcaster(broadcaster consensus.Broadcaster) {
 	sb.broadcaster = broadcaster
 }
 
-func (sb *backend) NewChainHead() error {
+func (sb *Backend) NewChainHead() error {
 	sb.coreMu.RLock()
 	defer sb.coreMu.RUnlock()
 	if !sb.coreStarted {

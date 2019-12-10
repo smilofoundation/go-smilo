@@ -17,6 +17,7 @@
 package core
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"time"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -28,6 +29,7 @@ func (c *core) sendPreprepare(request *istanbul.Request) {
 
 	// If I'm the proposer and I have the same sequence with the proposal
 	if c.current.Sequence().Cmp(request.Proposal.Number()) == 0 && c.isProposer() && !c.sentPreprepare {
+		log.Debug("$$$ I'm the proposer and I have the same sequence with the proposal TRUE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.isProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
 		curView := c.currentView()
 		preprepare, err := Encode(&istanbul.Preprepare{
 			View:     curView,
@@ -43,6 +45,8 @@ func (c *core) sendPreprepare(request *istanbul.Request) {
 			Code: msgPreprepare,
 			Msg:  preprepare,
 		})
+	} else {
+		log.Debug("$$$ I'm NOT the proposer and I have the same sequence with the proposal FALSE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.isProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
 	}
 }
 
@@ -87,6 +91,7 @@ func (c *core) handlePreprepare(msg *message, src istanbul.Validator) error {
 		// if it's a future block, we will handle it again after the duration
 		// TIME FIELD OF HEADER CHECKED HERE - NOT HEIGHT
 		if err == consensus.ErrFutureBlock {
+			logger.Info("Proposed block will be handled in the future", "err", err, "duration", duration)
 			c.stopFuturePreprepareTimer()
 			c.futurePreprepareTimer = time.AfterFunc(duration, func() {
 				c.sendEvent(backlogEvent{
@@ -95,6 +100,7 @@ func (c *core) handlePreprepare(msg *message, src istanbul.Validator) error {
 				})
 			})
 		} else {
+			logger.Warn("Failed to verify proposal", "err", err, "duration", duration)
 			c.sendNextRoundChange()
 		}
 		return err

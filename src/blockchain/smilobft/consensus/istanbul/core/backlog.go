@@ -17,6 +17,7 @@
 package core
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
@@ -42,6 +43,7 @@ func (c *core) checkMessage(msgCode uint64, view *istanbul.View) error {
 
 	if msgCode == msgRoundChange {
 		if view.Sequence.Cmp(c.currentView().Sequence) > 0 {
+			log.Debug("istanbul, core/backlog.go, checkMessage, msgRoundChange, errFutureMessage", "view.Sequence", view.Sequence, "c.currentView().Sequence", c.currentView().Sequence)
 			return errFutureMessage
 		} else if view.Cmp(c.currentView()) < 0 {
 			return errOldMessage
@@ -50,6 +52,7 @@ func (c *core) checkMessage(msgCode uint64, view *istanbul.View) error {
 	}
 
 	if view.Cmp(c.currentView()) > 0 {
+		log.Debug("istanbul, core/backlog.go, checkMessage, errFutureMessage", "view", view, "c.currentView()", c.currentView())
 		return errFutureMessage
 	}
 
@@ -58,6 +61,7 @@ func (c *core) checkMessage(msgCode uint64, view *istanbul.View) error {
 	}
 
 	if c.waitingForRoundChange {
+		log.Debug("istanbul, core/backlog.go, checkMessage, waitingForRoundChange, errFutureMessage", "view", view, "c.currentView().Sequence", c.currentView().Sequence)
 		return errFutureMessage
 	}
 
@@ -65,6 +69,7 @@ func (c *core) checkMessage(msgCode uint64, view *istanbul.View) error {
 	// other messages are future messages
 	if c.state == StateAcceptRequest {
 		if msgCode > msgPreprepare {
+			log.Debug("istanbul, core/backlog.go, checkMessage, StateAcceptRequest, msgPreprepare, errFutureMessage", "view", view, "c.currentView().Sequence", c.currentView().Sequence)
 			return errFutureMessage
 		}
 		return nil
@@ -153,6 +158,7 @@ func (c *core) processBacklog() {
 			err := c.checkMessage(msg.Code, view)
 			if err != nil {
 				if err == errFutureMessage {
+					log.Debug("istanbul, core/backlog.go, checkMessage, errFutureMessage", "view", view, "c.currentView().Sequence", c.currentView().Sequence)
 					logger.Trace("Stop processing backlog", "msg", msg)
 					backlog.Push(msg, prio)
 					isFuture = true

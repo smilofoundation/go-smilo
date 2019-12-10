@@ -102,7 +102,7 @@ func (c *core) handleEvents() {
 						c.logger.Error("$$$ istanbul, handleEvents, handleMsg, failed to backend.Gossip", "err", err)
 					}
 				}else {
-					c.logger.Error("$$$ istanbul, handleEvents, handleMsg", "err", err)
+					c.logger.Error("$$$ istanbul, handleEvents, istanbul.MessageEvent", "err", err)
 				}
 			case backlogEvent:
 				// No need to check signature for internal messages

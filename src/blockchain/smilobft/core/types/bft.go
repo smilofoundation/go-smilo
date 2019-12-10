@@ -33,7 +33,7 @@ var (
 	// BFTDigest represents a hash of "Istanbul practical byzantine fault tolerance"
 	// to identify whether the block is from BFT consensus engine
 	//TODO differentiate the digest between IBFT and Tendermint
-	BFTDigest = common.HexToHash("0x636861696e20706c6174666f726d2077697468206120636f6e736369656e6365")
+	BFTDigest = common.HexToHash("0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365")
 
 	BFTExtraVanity = 32 // Fixed number of extra-data bytes reserved for validator vanity
 	BFTExtraSeal   = 65 // Fixed number of extra-data bytes reserved for validator seal

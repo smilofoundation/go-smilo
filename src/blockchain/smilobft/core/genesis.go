@@ -345,8 +345,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 			return nil, err
 		}
 	} else {
-		log.Warn("core/genesis.go, Commit(), NOT Will SetBFT ", "g.Config", g.Config)
-		panic("Wont set Istanbul Tendermint SportDAO Commit, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO Commit, is this correct ? "
+		log.Warn(msg, "g.Config", g.Config)
+		//panic(msg)
 	}
 
 	block := g.ToBlock(db)

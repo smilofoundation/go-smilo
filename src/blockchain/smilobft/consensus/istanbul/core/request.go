@@ -16,7 +16,10 @@
 
 package core
 
-import "go-smilo/src/blockchain/smilobft/consensus/istanbul"
+import (
+	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+)
 
 func (c *core) handleRequest(request *istanbul.Request) error {
 	logger := c.logger.New("state", c.state, "seq", c.current.sequence)
@@ -48,9 +51,10 @@ func (c *core) checkRequestMsg(request *istanbul.Request) error {
 		return errInvalidMessage
 	}
 
-	if c := c.current.sequence.Cmp(request.Proposal.Number()); c > 0 {
+	if current := c.current.sequence.Cmp(request.Proposal.Number()); current > 0 {
 		return errOldMessage
-	} else if c < 0 {
+	} else if current < 0 {
+		log.Debug("istanbul, core/request.go, checkRequestMsg, errFutureMessage", "request", request, "c.current.sequence", c.current.sequence)
 		return errFutureMessage
 	} else {
 		return nil

@@ -32,7 +32,10 @@ import (
 )
 
 func TestSign(t *testing.T) {
-	b := newBackend()
+	b, err := newBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 	data := []byte("Here is a string....")
 	sig, err := b.Sign(data)
 	if err != nil {
@@ -53,9 +56,12 @@ func TestCheckSignature(t *testing.T) {
 	data := []byte("Here is a string....")
 	hashData := crypto.Keccak256([]byte(data))
 	sig, _ := crypto.Sign(hashData, key)
-	b := newBackend()
+	b, err := newBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 	a := getAddress()
-	err := b.CheckSignature(data, a, sig)
+	err = b.CheckSignature(data, a, sig)
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want nil", err)
 	}
@@ -112,7 +118,10 @@ func TestCheckValidatorSignature(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
-	backend := newBackend()
+	backend, err := newBackend()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	commitCh := make(chan *types.Block)
 	// Case: it's a proposer, so the backend.commit will receive channel result from backend.Commit function
@@ -126,8 +135,14 @@ func TestCommit(t *testing.T) {
 			nil,
 			[][]byte{append([]byte{1}, bytes.Repeat([]byte{0x00}, types.BFTExtraSeal-1)...)},
 			func() *types.Block {
-				chain, engine,_ := newBlockChain(1)
-				block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+				chain, engine, err := newBlockChain(1)
+				if err != nil {
+					t.Fatal(err)
+				}
+				block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+				if err != nil {
+					t.Fatal(err)
+				}
 				expectedBlock, _ := engine.updateBlock(block)
 				return expectedBlock
 			},
@@ -137,8 +152,14 @@ func TestCommit(t *testing.T) {
 			types.ErrInvalidCommittedSeals,
 			nil,
 			func() *types.Block {
-				chain, engine,_ := newBlockChain(1)
-				block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+				chain, engine, err := newBlockChain(1)
+				if err != nil {
+					t.Fatal(err)
+				}
+				block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+				if err != nil {
+					t.Fatal(err)
+				}
 				expectedBlock, _ := engine.updateBlock(block)
 				return expectedBlock
 			},
@@ -177,7 +198,11 @@ func TestCommit(t *testing.T) {
 }
 
 func TestGetProposer(t *testing.T) {
-	chain, engine,_ := newBlockChain(1)
+	chain, engine, err := newBlockChain(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	block, err := makeBlock(chain, engine, chain.Genesis())
 	if err != nil {
 		t.Fatal(err)
@@ -240,9 +265,16 @@ func (slice Keys) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func newBackend() (b *backend) {
-	_, b,_ = newBlockChain(4)
-	key, _ := generatePrivateKey()
+func newBackend() (b *Backend, err error) {
+	_, b, err = newBlockChain(4)
+	if err != nil {
+		return nil, err
+	}
+	key, err := generatePrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
 	b.privateKey = key
 	return
 }

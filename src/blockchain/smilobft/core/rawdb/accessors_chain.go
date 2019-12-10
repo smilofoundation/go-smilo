@@ -82,7 +82,7 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader, SportEnableNodePermissionFlag b
 		log.Error("Invalid Enode whitelist", "err", err)
 		return nodes
 	}
-	log.Warn("ReadEnodeWhitelist, strList, ", strList)
+	log.Warn("ReadEnodeWhitelist, strList, ", "strList",strList)
 
 	nodes = types.NewNodes(strList, SportEnableNodePermissionFlag)
 	return nodes

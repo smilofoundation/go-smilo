@@ -263,9 +263,11 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 	if manager.chainconfig.Istanbul != nil || manager.chainconfig.SportDAO != nil || manager.chainconfig.Tendermint != nil {
 		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, SportEnableNodePermissionFlag).List
-		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", manager.enodesWhitelist)
+		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", "manager.enodesWhitelist",manager.enodesWhitelist)
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO ReadEnodeWhitelist, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO ReadEnodeWhitelist, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 
 	}
 
@@ -345,7 +347,9 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 			log.Warn("eth/handler.go, Start(), SportEnableNodePermissionFlag false, wont SubscribeAutonityEvents whitelistCh")
 		}
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO SubscribeAutonityEvents, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO SubscribeAutonityEvents, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 	}
 
 	// start sync handlers
@@ -460,7 +464,9 @@ func (pm *ProtocolManager) handle(p *peer) error {
 			log.Warn("eth/handler.go, handle(), SportEnableNodePermissionFlag, ELSE")
 		}
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO enodesWhitelist, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO enodesWhitelist, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 	}
 
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -543,7 +549,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			log.Warn("eth/handler.go, handleMsg, pubKey == nil")
 			return errResp(ErrNoPubKeyFound, "%s", p.Node().ID().GoString())
 		} else {
-			log.Warn("eth/handler.go, handleMsg, pubKey valid, ", "msg", msg)
+			//log.Warn("eth/handler.go, handleMsg, pubKey valid, ", "msg", msg)
 		}
 		addr := crypto.PubkeyToAddress(*pubKey)
 		handled, err := handler.HandleMsg(addr, msg)

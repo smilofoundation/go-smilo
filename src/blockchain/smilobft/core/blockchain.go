@@ -254,7 +254,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	} else {
 		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "
 		log.Warn(logmsg, "chainConfig", chainConfig)
-		panic(logmsg)
+		//panic(logmsg)
 	}
 
 	// The first thing the node will do is reconstruct the verification data for
@@ -1394,7 +1394,9 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			return NonStatTy, err
 		}
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO UpdateEnodesWhitelist, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO UpdateEnodesWhitelist, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 	}
 
 	rawdb.WriteBlock(bc.db, block)

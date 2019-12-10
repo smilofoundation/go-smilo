@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"io"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -116,6 +117,7 @@ func (m *message) FromPayload(b []byte, validateFn func([]byte, []byte) (common.
 	// Decode message
 	err := rlp.DecodeBytes(b, &m)
 	if err != nil {
+		log.Error("Istanbul, core/types.go, FromPayload, DecodeBytes, ", "err", err, "message", m)
 		return err
 	}
 
@@ -124,10 +126,14 @@ func (m *message) FromPayload(b []byte, validateFn func([]byte, []byte) (common.
 		var payload []byte
 		payload, err = m.PayloadNoSig()
 		if err != nil {
+			log.Error("Istanbul, core/types.go, FromPayload, PayloadNoSig, ", "err", err, "message", m)
 			return err
 		}
 
 		_, err = validateFn(payload, m.Signature)
+		if err != nil {
+			log.Error("Istanbul, core/types.go, FromPayload, validateFn", "err", err, "message", m)
+		}
 	}
 	// Still return the message even the err is not nil
 	return err

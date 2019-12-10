@@ -141,6 +141,7 @@ func (c *core) broadcast(msg *message) {
 	}
 
 	// Broadcast payload
+	log.Debug("$$$ Istanbul, core/core.go, Broadcast payload, ", "msg", msg)
 	if err = c.backend.Broadcast(c.valSet, payload); err != nil {
 		logger.Error("Failed to broadcast message", "msg", msg, "err", err)
 		return

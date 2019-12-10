@@ -44,7 +44,7 @@ import (
 // in this test, we can set n to 1, and it means we can process Istanbul and commit a
 // block by one node. Otherwise, if n is larger than 1, we have to generate
 // other fake events to process Istanbul.
-func newBlockChain(n int) (*core.BlockChain, *backend, error) {
+func newBlockChain(n int) (*core.BlockChain, *Backend, error) {
 	genesis, nodeKeys, err := getGenesisAndKeys(n)
 	if err != nil {
 		return nil, nil, err
@@ -159,14 +159,17 @@ func makeHeader(parent *types.Block, config *istanbul.Config) *types.Header {
 	return header
 }
 
-func makeBlock(chain *core.BlockChain, engine *backend, parent *types.Block) (*types.Block, error) {
-	block := makeBlockWithoutSeal(chain, engine, parent)
+func makeBlock(chain *core.BlockChain, engine *Backend, parent *types.Block) (*types.Block, error) {
+	block, err := makeBlockWithoutSeal(chain, engine, parent)
+	if err != nil {
+		return nil, err
+	}
 	blk, err := engine.Seal(chain, block,  nil)
 
 	return blk, err
 }
 
-func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types.Block) *types.Block {
+func makeBlockWithoutSeal(chain *core.BlockChain, engine *Backend, parent *types.Block) (*types.Block, error) {
 	header := makeHeader(parent, engine.config)
 	engine.Prepare(chain, header)
 	state, _, _ := chain.StateAt(parent.Root())
@@ -175,13 +178,13 @@ func makeBlockWithoutSeal(chain *core.BlockChain, engine *backend, parent *types
 	// Write state changes to db
 	root, err := state.Commit(chain.Config().IsEIP158(block.Header().Number))
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("state write error: %v", err)
 	}
 	if err := state.Database().TrieDB().Commit(root, false); err != nil {
-		return nil
+		return nil, fmt.Errorf("trie write error: %v", err)
 	}
 
-	return block
+	return block, nil
 }
 
 func TestPrepare(t *testing.T) {
@@ -206,7 +209,10 @@ func TestSealStopChannel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
 	stop := make(chan struct{}, 1)
 	eventSub := engine.EventMux().Subscribe(istanbul.RequestEvent{})
 	eventLoop := func() {
@@ -235,8 +241,14 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-	otherBlock := makeBlockWithoutSeal(chain, engine, block)
+	block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherBlock, err := makeBlockWithoutSeal(chain, engine, block)
+	if err != nil {
+		t.Fatal(err)
+	}
 	eventSub := engine.EventMux().Subscribe(istanbul.RequestEvent{})
 	eventLoop := func() {
 		select {
@@ -271,7 +283,11 @@ func TestSealCommitted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	expectedBlock, _ := engine.updateBlock(block)
 	resultCh := make(chan *types.Block, 10)
 	go func() {
@@ -295,7 +311,11 @@ func TestVerifyHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 	// errEmptyCommittedSeals case
-	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	block, _ = engine.updateBlock(block)
 	err = engine.VerifyHeader(chain, block.Header(), false)
 	if err != types.ErrEmptyCommittedSeals {
@@ -317,7 +337,11 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// non zero MixDigest
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	header = block.Header()
 	header.MixDigest = cmn.StringToHash("123456789")
 	err = engine.VerifyHeader(chain, header, false)
@@ -326,7 +350,11 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// invalid uncles hash
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	header = block.Header()
 	header.UncleHash = cmn.StringToHash("123456789")
 	err = engine.VerifyHeader(chain, header, false)
@@ -335,7 +363,10 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// invalid difficulty
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
 	header = block.Header()
 	header.Difficulty = big.NewInt(2)
 	err = engine.VerifyHeader(chain, header, false)
@@ -344,7 +375,11 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// invalid timestamp
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	header = block.Header()
 	header.Time = new(big.Int).Add(big.NewInt(int64(chain.Genesis().Time())), new(big.Int).SetUint64(engine.config.BlockPeriod-1)).Uint64()
 	err = engine.VerifyHeader(chain, header, false)
@@ -353,7 +388,10 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// future block
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
 	header = block.Header()
 	header.Time = new(big.Int).Add(big.NewInt(now().Unix()), new(big.Int).SetUint64(10)).Uint64()
 	err = engine.VerifyHeader(chain, header, false)
@@ -362,7 +400,11 @@ func TestVerifyHeader(t *testing.T) {
 	}
 
 	// invalid nonce
-	block = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	block, err = makeBlockWithoutSeal(chain, engine, chain.Genesis())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	header = block.Header()
 	copy(header.Nonce[:], hexutil.MustDecode("0x111111111111"))
 	header.Number = big.NewInt(int64(engine.config.Epoch))
@@ -424,12 +466,16 @@ func TestVerifyHeaders(t *testing.T) {
 	for i := 0; i < size; i++ {
 		var b *types.Block
 		if i == 0 {
-			b = makeBlockWithoutSeal(chain, engine, genesis)
-			b, _ = engine.updateBlock(b)
+			b, err = makeBlockWithoutSeal(chain, engine, genesis)
 		} else {
-			b = makeBlockWithoutSeal(chain, engine, blocks[i-1])
-			b, _ = engine.updateBlock(b)
+			b, err = makeBlockWithoutSeal(chain, engine, blocks[i-1])
 		}
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		b, _ = engine.updateBlock(b)
+
 		blocks = append(blocks, b)
 		headers = append(headers, blocks[i].Header())
 	}
@@ -646,6 +692,7 @@ func TestValidatorsSaved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	engine.config.BlockPeriod = 10
 	h := makeHeader(chain.Genesis(), engine.config)
 	sdb, _, err := chain.State()
 	if err != nil {

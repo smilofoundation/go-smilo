@@ -650,7 +650,7 @@ func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 	loc := stack.peek()
 	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
 	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& instructions.opSload, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+		//log.Debug("&*&*&*&*&*& instructions.opSload, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
 	}
 
 	val := thisstate.GetState(contract.Address(), common.BigToHash(loc))
@@ -663,7 +663,7 @@ func opSstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	val := stack.pop()
 	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
 	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& instructions.opSstore, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+		//log.Debug("&*&*&*&*&*& instructions.opSstore, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
 	}
 	thisstate.SetState(contract.Address(), loc, common.BigToHash(val))
 

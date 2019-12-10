@@ -87,7 +87,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 			contractMinGasPrice.SetUint64(minGasPrice)
 		}
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO GetMinimumGasPrice, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO GetMinimumGasPrice, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 	}
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
@@ -126,7 +128,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 			return nil, nil, nil, 0, err
 		}
 	} else {
-		panic("Wont set Istanbul Tendermint SportDAO ApplyPerformRedistribution, is this correct ? ")
+		msg := "Wont set Istanbul Tendermint SportDAO ApplyPerformRedistribution, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts)
