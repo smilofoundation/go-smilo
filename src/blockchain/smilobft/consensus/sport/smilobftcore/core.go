@@ -178,6 +178,7 @@ func (c *core) startNewRound(round *big.Int) {
 			Round:    new(big.Int),
 		}
 		c.fullnodeSet = c.backend.Fullnodes(lastBlockProposal)
+		log.Warn("startNewRound, c.backend.Fullnodes ", "fullnodeSet", c.fullnodeSet, "lastBlockProposal", lastBlockProposal)
 	}
 
 	// Update logger

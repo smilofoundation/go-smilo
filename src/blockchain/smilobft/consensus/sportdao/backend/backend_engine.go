@@ -19,6 +19,7 @@ package backend
 
 import (
 	"errors"
+	"fmt"
 	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
 	"go-smilo/src/blockchain/smilobft/core"
 	"math/big"
@@ -321,6 +322,16 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 
 	if sb.blockchain == nil {
 		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
+	}
+
+	validators, err := sb.getValidators(header, chain, state)
+	if err != nil {
+		fmt.Println("consensus/istanbul/backend/engine.go:337 getValidators err", err)
+	}
+
+	// add validators to extraData's validators section
+	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
+		return nil, err
 	}
 
 	// warn for empty blocks

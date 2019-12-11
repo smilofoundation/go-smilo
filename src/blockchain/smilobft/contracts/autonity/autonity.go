@@ -162,6 +162,14 @@ func (ac *Contract) ContractGetValidators(chain consensus.ChainReader, header *t
 	}
 
 	value := new(big.Int).SetUint64(0x00)
+
+	log.Debug("Autonity Contract GetValidators",
+		"header Number", header.Number.Int64(),
+		"Address", chain.Config().AutonityContractConfig.Deployer,
+		"sender", sender,
+		"gas", gas,
+		"contractABI.Methods", contractABI.Methods)
+
 	//A standard call is issued - we leave the possibility to modify the state
 	ret, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)
 	if vmerr != nil {
@@ -170,8 +178,10 @@ func (ac *Contract) ContractGetValidators(chain consensus.ChainReader, header *t
 
 	var addresses []common.Address
 	if err := contractABI.Unpack(&addresses, "getValidators", ret); err != nil { // can't work with aliased types
-		log.Error("Could not unpack getValidators returned value", "err", err)
-		return nil, err
+		msg := "Could not unpack getValidators returned value"
+		log.Error(msg, "err", err)
+		panic(msg)
+		//return nil, err
 	}
 
 	sortableAddresses := cmn.Addresses(addresses)
@@ -248,15 +258,15 @@ func (ac *Contract) GetMinimumGasPrice(block *types.Block, db, vaultstate *state
 		return ac.bc.Config().AutonityContractConfig.MinGasPrice, nil
 	}
 
-	return ac.callGetMinimumGasPrice(db,vaultstate,  block.Header())
+	return ac.callGetMinimumGasPrice(db, vaultstate, block.Header())
 }
 
-func (ac *Contract) SetMinimumGasPrice(block *types.Block, db,vaultstate *state.StateDB, price *big.Int) error {
+func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB, price *big.Int) error {
 	if block.Number().Uint64() <= 1 {
 		return nil
 	}
 
-	return ac.callSetMinimumGasPrice(db,vaultstate, block.Header(), price)
+	return ac.callSetMinimumGasPrice(db, vaultstate, block.Header(), price)
 }
 
 func (ac *Contract) callGetMinimumGasPrice(state, vaultstate *state.StateDB, header *types.Header) (uint64, error) {

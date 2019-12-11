@@ -219,7 +219,7 @@ func (sb *Backend) Commit(proposal istanbul.Proposal, seals [][]byte) error {
 	// -- if success, the ChainHeadEvent event will be broadcasted, try to build
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
-	if sb.proposedBlockHash == block.Hash() {
+	if sb.proposedBlockHash == block.Hash() && sb.commitCh != nil {
 		// feed block hash to Seal() and wait the Seal() result
 		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitCh <- block

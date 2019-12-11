@@ -237,12 +237,36 @@ func (sb *Backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error
 			return 0, errInconsistentValidatorSet
 		}
 
+		log.Debug("log all autonity Validators and validators on ExtraData")
 		for i := range validators {
-			if sportDAOExtra.Fullnodes[i] != validators[i] {
+			validator := validators[i]
+			validatorExtra := sportDAOExtra.Fullnodes[i]
+			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
+		}
+
+		log.Debug("range all validators")
+		for i := range validators {
+			validator := validators[i]
+			found := false
+			for j := range sportDAOExtra.Fullnodes {
+				validatorExtra := sportDAOExtra.Fullnodes[j]
+				if validator == validatorExtra {
+					found = true
+					break
+				}
+			}
+			if !found {
 				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "istanbulExtra.Fullnodes[i] ", sportDAOExtra.Fullnodes[i], "validators[i]", validators[i])
 				return 0, errInconsistentValidatorSet
 			}
 		}
+
+		//for i := range validators {
+		//	if sportDAOExtra.Fullnodes[i] != validators[i] {
+		//		log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "istanbulExtra.Fullnodes[i] ", sportDAOExtra.Fullnodes[i], "validators[i]", validators[i])
+		//		return 0, errInconsistentValidatorSet
+		//	}
+		//}
 		// At this stage extradata field is consistent with the validator list returned by Soma-contract
 
 		return 0, nil
