@@ -109,6 +109,7 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 
 	// Don't waste time checking blocks from the future
 	if big.NewInt(int64(header.Time)).Cmp(big.NewInt(now().Unix())) > 0 {
+		log.Warn("$$$ Don't waste time checking blocks from the future, ", "header.Time", header.Time, "now().Unix()", now().Unix())
 		return consensus.ErrFutureBlock
 	}
 
@@ -340,7 +341,7 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
 		log.Error("finalize. after getValidators", "err", err.Error())
-		return nil, err
+		//return nil, err
 	}
 
 	// warn for empty blocks

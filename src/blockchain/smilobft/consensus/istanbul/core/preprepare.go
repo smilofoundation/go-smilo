@@ -28,8 +28,8 @@ func (c *core) sendPreprepare(request *istanbul.Request) {
 	logger := c.logger.New("state", c.state)
 
 	// If I'm the proposer and I have the same sequence with the proposal
-	if c.current.Sequence().Cmp(request.Proposal.Number()) == 0 && c.isProposer() && !c.sentPreprepare {
-		log.Debug("$$$ I'm the proposer and I have the same sequence with the proposal TRUE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.isProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
+	if c.current.Sequence().Cmp(request.Proposal.Number()) == 0 && c.IsProposer() && !c.sentPreprepare {
+		log.Debug("$$$ I'm the proposer and I have the same sequence with the proposal TRUE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.IsProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
 		curView := c.currentView()
 		preprepare, err := Encode(&istanbul.Preprepare{
 			View:     curView,
@@ -46,7 +46,7 @@ func (c *core) sendPreprepare(request *istanbul.Request) {
 			Msg:  preprepare,
 		})
 	} else {
-		log.Debug("$$$ I'm NOT the proposer and I have the same sequence with the proposal FALSE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.isProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
+		log.Debug("$$$ I'm NOT the proposer and I have the same sequence with the proposal FALSE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.IsProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
 	}
 }
 

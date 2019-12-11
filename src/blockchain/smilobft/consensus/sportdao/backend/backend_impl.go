@@ -99,15 +99,13 @@ func (sb *Backend) Gossip(fullnodeSet sportdao.FullnodeSet, payload []byte) erro
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			go func() {
-				err := p.Send(smilobftMsg, payload)
+			err := p.Send(smilobftMsg, payload)
 
-				if err != nil {
-					log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
-				} else {
-					log.Debug("eth/backend_impl.go, Gossip(), smilobftMsg, Send message OK!!!", "payload hash", hash.Hex(), "peer", p.String())
-				}
-			}()
+			if err != nil {
+				log.Error("Gossip, smilobftMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				log.Debug("eth/backend_impl.go, Gossip(), smilobftMsg, Send message OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
 
 		}
 	}
@@ -227,15 +225,21 @@ func (sb *Backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
 		}
-		istanbulExtra, _ := types.ExtractSportExtra(header)
+		sportDAOExtra, _ := types.ExtractSportExtra(header)
+
+		log.Debug("ExtractSportExtra, ", "len(sportDAOExtra)", len(sportDAOExtra.Fullnodes), "len(validators)", len(validators), "sportDAOExtra.Fullnodes", sportDAOExtra.Fullnodes, "validators", validators)
 
 		//Perform the actual comparison
-		if len(istanbulExtra.Fullnodes) != len(validators) {
+		totalvalidatorsExtra := len(sportDAOExtra.Fullnodes)
+		totalValidators := len(validators)
+		if totalvalidatorsExtra != totalValidators {
+			log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "totalvalidatorsExtra", totalvalidatorsExtra, "totalValidators", totalValidators)
 			return 0, errInconsistentValidatorSet
 		}
 
 		for i := range validators {
-			if istanbulExtra.Fullnodes[i] != validators[i] {
+			if sportDAOExtra.Fullnodes[i] != validators[i] {
+				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "istanbulExtra.Fullnodes[i] ", sportDAOExtra.Fullnodes[i], "validators[i]", validators[i])
 				return 0, errInconsistentValidatorSet
 			}
 		}
@@ -285,23 +289,23 @@ func (sb *Backend) GetSpeaker(number uint64) common.Address {
 	return common.Address{}
 }
 
-// ParentFullnodes implements sportdao.Backend.GetParentFullnodes
-func (sb *Backend) ParentFullnodes(proposal sportdao.BlockProposal) sportdao.FullnodeSet {
-	if block, ok := proposal.(*types.Block); ok {
-		return sb.getFullnodes(block.Number().Uint64()-1, block.ParentHash())
-	}
-	return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
-}
-
-func (sb *Backend) getFullnodes(number uint64, hash common.Hash) sportdao.FullnodeSet {
-	//snap, err := sb.snapshot(sb.chain, number, hash, nil)
-	//if err != nil {
-	//	sb.logger.Error("Failed to getFullnodes from snapshot", "err", err)
-	//	return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
-	//}
-	//return snap.FullnodeSet
-	return nil
-}
+//// ParentFullnodes implements sportdao.Backend.GetParentFullnodes
+//func (sb *Backend) ParentFullnodes(proposal sportdao.BlockProposal) sportdao.FullnodeSet {
+//	if block, ok := proposal.(*types.Block); ok {
+//		return sb.getFullnodes(block.Number().Uint64()-1, block.ParentHash())
+//	}
+//	return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
+//}
+//
+//func (sb *Backend) getFullnodes(number uint64, hash common.Hash) sportdao.FullnodeSet {
+//
+//	snap, err := sb.snapshot(sb.chain, number, hash, nil)
+//	if err != nil {
+//		sb.logger.Error("Failed to getFullnodes from snapshot", "err", err)
+//		return fullnode.NewFullnodeSet(nil, sb.config.SpeakerPolicy)
+//	}
+//	return snap.FullnodeSet
+//}
 
 // LastBlockProposal returns the last block header and speaker
 func (sb *Backend) LastBlockProposal() (sportdao.BlockProposal, common.Address) {
