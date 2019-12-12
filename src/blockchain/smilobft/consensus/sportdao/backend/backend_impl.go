@@ -244,7 +244,6 @@ func (sb *Backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error
 			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
 		}
 
-		log.Debug("range all validators")
 		for i := range validators {
 			validator := validators[i]
 			found := false

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/orinocopay/go-etherutils"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/rpc"
 	"math/big"
@@ -73,6 +74,7 @@ var (
 	errInvalidVote = errors.New("vote nonce not 0x00..0 or 0xff..f")
 	// errMismatchTxhashes is returned if the TxHash in header is mismatch.
 	errMismatchTxhashes = errors.New("mismatch transactions hashes")
+	errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -82,7 +84,28 @@ var (
 
 	nonceAuthVote = hexutil.MustDecode("0xffffffffffffffff") // Magic nonce number to vote on adding a new validator
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a validator.
+
+	// smiloTokenMetricsTable is the Block reward in wei to a fullnode when successfully mining a block
+	smiloTokenMetricsTable = map[*big.Int]*big.Int{
+		big.NewInt(20000000):   getSmiloValue("4000000000 gwei"), // 4 smilo
+		big.NewInt(40000000):   getSmiloValue("2000000000 gwei"), // 2 smilo
+		big.NewInt(60000000):   getSmiloValue("1750000000 gwei"), // 1.75 smilo
+		big.NewInt(80000000):   getSmiloValue("1500000000 gwei"), // 1.5 smilo
+		big.NewInt(100000000):  getSmiloValue("1250000000 gwei"), // 1.25 smilo
+		big.NewInt(120000000):  getSmiloValue("1000000000 gwei"), // 1 smilo
+		big.NewInt(140000000):  getSmiloValue("800000000 gwei"),  // 0.8 smilo
+		big.NewInt(160000000):  getSmiloValue("600000000 gwei"),  // 0.6 smilo
+		big.NewInt(180000000):  getSmiloValue("400000000 gwei"),  // 0.4 smilo
+		big.NewInt(200000000):  getSmiloValue("200000000 gwei"),  // 0.2 smilo
+		big.NewInt(400000000):  getSmiloValue("100000000 gwei"),  // 0.1 smilo
+		big.NewInt(800000000):  getSmiloValue("50000000 gwei"),   // 0.05 smilo
+		big.NewInt(1600000000): getSmiloValue("25000000 gwei"),   // 0.025 smilo
+	}
 )
+func getSmiloValue(value string) *big.Int {
+	v, _ := etherutils.StringToWei(value)
+	return v
+}
 
 // Author retrieves the Ethereum address of the account that minted the given
 // block, which may be different from the header's coinbase if a consensus
@@ -326,6 +349,42 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	return nil
 }
 
+func getSmiloBlockReward(blockNum *big.Int) (blockReward *big.Int) {
+	blockReward = new(big.Int)
+	for maxBlockRange, reward := range smiloTokenMetricsTable {
+		if blockNum.Cmp(maxBlockRange) == -1 {
+			if reward.Cmp(blockReward) > 0 {
+				blockReward = reward
+			}
+		}
+	}
+	return blockReward
+}
+
+
+// AccumulateRewards (override from ethash) credits the coinbase of the given block with the mining reward.
+// The total reward consists of the static block reward and rewards for  the community.
+func AccumulateRewards(communityAddress string, state *state.StateDB, header *types.Header) {
+	// add reward based on chain progression
+	blockReward := getSmiloBlockReward(header.Number)
+
+	// Accumulate the rewards
+	reward := new(big.Int).Set(blockReward)
+	emptryAddress := common.Address{}
+	if header.Coinbase != emptryAddress {
+
+		log.Info("$$$$$$$$$$$$$$$$$$$$$ AccumulateRewards, block: ", "blockNum", header.Number.Int64(), "BlockReward", blockReward.Int64(), "Coinbase", header.Coinbase.Hex())
+
+		// Accumulate the rewards to community
+		if communityAddress != "" {
+			rewardForCommunity := new(big.Int).Div(blockReward, big.NewInt(4))
+			state.AddBalance(common.HexToAddress(communityAddress), rewardForCommunity, header.Number)
+			log.Info("$$$$$$$$$$$$$$$$$$$$$ AccumulateRewards, adding reward to community ", "rewardForCommunity", rewardForCommunity, "communityAddress", communityAddress)
+		}
+		state.AddBalance(header.Coinbase, reward, header.Number)
+	}
+}
+
 // Finalize runs any post-transaction state modifications (e.g. block rewards)
 // and assembles the final block.
 //
@@ -344,38 +403,23 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 		//return nil, err
 	}
 
+	// add validators to extraData's validators section
+	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
+		return nil, err
+	}
 	// warn for empty blocks
 	number := header.Number.Int64()
 
 	//Will generate rewards for every block until block 40000000
 	//From this point on, ddd block rewards in Sport only if there is transactions in it
 	if header.Number.Cmp(big.NewInt(1)) > 0 && len(txs) > 0 || number < 40000000 {
-		//AccumulateRewards(sb.config.CommunityAddress, state, header)
+		AccumulateRewards(sb.config.CommunityAddress, state, header)
 	}
 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
 	// drop uncles
 	header.UncleHash = nilUncleHash
-
-	// add validators to extraData's validators section
-	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
-		log.Error("finalize. after PrepareExtra", "err", err.Error())
-		return nil, err
-	}
-
-	//ac := sb.blockchain.GetAutonityContract()
-	//if ac != nil && header.Number.Uint64() > 1 {
-	//	err = ac.ApplyPerformRedistribution(txs, receipts, header, state)
-	//	if err != nil {
-	//		log.Error("ApplyPerformRedistribution", "err", err.Error())
-	//		return nil, err
-	//	}
-	//}
-
-	//// No block rewards in Istanbul, so the state remains as is and uncles are dropped
-	//header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	//header.UncleHash = nilUncleHash
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, txs, nil, receipts), nil
@@ -447,6 +491,14 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	case <-stop:
 		log.Error("Seal, Bail out <-stop")
 		return nil, nil
+	}
+
+	log.Debug("will crash ?? ", "sb.config.MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining)
+	log.Debug("will crash ?? ", "block.Number()", block.Number())
+	log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
+	if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
+		log.Debug("Seal, Bail out errWaitTransactions")
+		return nil, errWaitTransactions
 	}
 
 	// get the proposed block hash and clear it if the seal() is completed.

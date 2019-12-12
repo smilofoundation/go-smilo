@@ -45,8 +45,6 @@ func (c *core) sendPreprepare(request *istanbul.Request) {
 			Code: msgPreprepare,
 			Msg:  preprepare,
 		})
-	} else {
-		log.Debug("$$$ I'm NOT the proposer and I have the same sequence with the proposal FALSE", "c.current.Sequence()", c.current.Sequence(), "c.isProposer()", c.IsProposer(), "request.Proposal.Number()", request.Proposal.Number(), "c.sentPreprepare", c.sentPreprepare)
 	}
 }
 

@@ -308,15 +308,46 @@ func (sb *Backend) Verify(proposal istanbul.Proposal) (time.Duration, error) {
 		istanbulExtra, _ := types.ExtractBFTHeaderExtra(header)
 
 		//Perform the actual comparison
-		if len(istanbulExtra.Validators) != len(validators) {
+		totalvalidatorsExtra := len(istanbulExtra.Validators)
+		totalValidators := len(validators)
+		if totalvalidatorsExtra != totalValidators {
+			log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "totalvalidatorsExtra", totalvalidatorsExtra, "totalValidators", totalValidators)
 			return 0, errInconsistentValidatorSet
 		}
 
+		log.Debug("log all autonity Validators and validators on ExtraData")
 		for i := range validators {
-			if istanbulExtra.Validators[i] != validators[i] {
+			validator := validators[i]
+			validatorExtra := istanbulExtra.Validators[i]
+			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
+		}
+
+		for i := range validators {
+			validator := validators[i]
+			found := false
+			for j := range istanbulExtra.Validators {
+				validatorExtra := istanbulExtra.Validators[j]
+				if validator == validatorExtra {
+					found = true
+					break
+				}
+			}
+			if !found {
+				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "istanbulExtra.Validators[i] ", istanbulExtra.Validators[i], "validators[i]", validators[i])
 				return 0, errInconsistentValidatorSet
 			}
 		}
+
+		////Perform the actual comparison
+		//if len(istanbulExtra.Validators) != len(validators) {
+		//	return 0, errInconsistentValidatorSet
+		//}
+		//
+		//for i := range validators {
+		//	if istanbulExtra.Validators[i] != validators[i] {
+		//		return 0, errInconsistentValidatorSet
+		//	}
+		//}
 		// At this stage extradata field is consistent with the validator list returned by Soma-contract
 
 		return 0, nil
