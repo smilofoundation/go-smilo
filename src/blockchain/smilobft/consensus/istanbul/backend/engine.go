@@ -341,8 +341,37 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// use the same difficulty for all blocks
 	header.Difficulty = defaultDifficulty
 
+	var parents []*types.Header
+	parents = append(parents, parent)
+	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
+	if err != nil {
+		log.Error("Could not assemble the voting snapshot from retrieveValidators", "err", err)
+		return err
+	}
+	fullnodeSet := validator.NewSet(fullnodeAddresses, sb.config.GetProposerPolicy())
+
+	fullnodes := make([]common.Address, 0, fullnodeSet.Size())
+	for _, fullnode := range fullnodeSet.List() {
+		fullnodes = append(fullnodes, fullnode.Address())
+	}
+	for i := 0; i < len(fullnodes); i++ {
+		for j := i + 1; j < len(fullnodes); j++ {
+			if bytes.Compare(fullnodes[i][:], fullnodes[j][:]) > 0 {
+				fullnodes[i], fullnodes[j] = fullnodes[j], fullnodes[i]
+			}
+		}
+	}
+
+	// add fullnodes in snapshot to extraData's fullnodes section
+	extra, err := types.PrepareExtra(header.Extra, fullnodes)
+	if err != nil {
+		log.Error("Could not add fullnodes in snapshot to extraData's fullnodes section.", "err", err)
+		return err
+	}
+	header.Extra = extra
+
 	// set header's timestamp
-	header.Time = new(big.Int).Add(big.NewInt(int64(parent.Time)), new(big.Int).SetUint64(sb.config.BlockPeriod)).Uint64()
+	header.Time = parent.Time + sb.config.BlockPeriod
 	if int64(header.Time) < time.Now().Unix() {
 		header.Time = uint64(time.Now().Unix())
 	}
@@ -400,7 +429,7 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
 		log.Error("finalize. after getValidators", "err", err.Error())
-		//return nil, err
+		return nil, err
 	}
 
 	// add validators to extraData's validators section

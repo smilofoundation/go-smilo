@@ -333,11 +333,20 @@ func (c *core) newRoundChangeTimer() {
 	round := c.current.Round().Uint64()
 	if round > 0 {
 		timeout += time.Duration(math.Pow(2, float64(round))) * time.Second
+		maxTimeout := c.config.MaxTimeout
+		thisTimeout := time.Duration(maxTimeout) * time.Second
+		if timeout > thisTimeout {
+			timeout = thisTimeout
+			c.logger.Debug("************* Round Timeout increased to maxTimeout", "maxTimeout", maxTimeout, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
+		} else {
+			c.logger.Debug("************* Round Timeout increased", "increase", time.Duration(math.Pow(2, float64(round)))*time.Second, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
+		}
 	}
 
 	c.roundChangeTimerMu.Lock()
 	defer c.roundChangeTimerMu.Unlock()
 	c.roundChangeTimer = time.AfterFunc(timeout, func() {
+		c.logger.Debug("newRoundChangeTimer, Timeout for round !", "round", round, "timeout", timeout, "timeoutOriginal", time.Duration(c.config.RequestTimeout)*time.Millisecond)
 		c.sendEvent(timeoutEvent{})
 	})
 }

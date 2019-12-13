@@ -48,12 +48,14 @@ func New(config *istanbul.Config, privateKey *ecdsa.PrivateKey, db ethdb.Databas
 	if chainConfig.Istanbul.Epoch != 0 {
 		config.Epoch = chainConfig.Istanbul.Epoch
 	}
-
 	if chainConfig.Istanbul.RequestTimeout != 0 {
 		config.RequestTimeout = chainConfig.Istanbul.RequestTimeout
 	}
 	if chainConfig.Istanbul.BlockPeriod != 0 {
 		config.BlockPeriod = chainConfig.Istanbul.BlockPeriod
+	}
+	if config.MinBlocksEmptyMining == nil {
+		config.MinBlocksEmptyMining = istanbul.DefaultConfig.MinBlocksEmptyMining
 	}
 	config.SetProposerPolicy(istanbul.ProposerPolicy(chainConfig.Istanbul.ProposerPolicy))
 
@@ -180,14 +182,14 @@ func (sb *Backend) Gossip(valSet istanbul.ValidatorSet, payload []byte) error {
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			go func() {
+			//go func() {
 				err := p.Send(istanbulMsg, payload)
 				if err != nil {
 					log.Error("Gossip, istanbulMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
 				} else {
 					//log.Debug("Gossip, istanbulMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
 				}
-			}()
+			//}()
 		}
 	}
 	return nil

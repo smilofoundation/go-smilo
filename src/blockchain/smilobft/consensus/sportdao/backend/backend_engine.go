@@ -327,6 +327,7 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
 		fmt.Println("consensus/istanbul/backend/engine.go:337 getValidators err", err)
+		return nil, err
 	}
 
 	// add validators to extraData's validators section
