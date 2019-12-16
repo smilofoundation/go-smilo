@@ -22,11 +22,12 @@ package les
 import (
 	"context"
 	"crypto/rand"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 
@@ -37,6 +38,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"

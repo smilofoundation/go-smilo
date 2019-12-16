@@ -18,6 +18,7 @@ package core
 
 import (
 	"container/list"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

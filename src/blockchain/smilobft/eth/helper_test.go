@@ -22,12 +22,14 @@ package eth
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sort"
 	"sync"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

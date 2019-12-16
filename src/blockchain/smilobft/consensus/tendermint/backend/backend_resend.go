@@ -3,11 +3,13 @@ package backend
 import (
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
-	lru "github.com/hashicorp/golang-lru"
-	"go-smilo/src/blockchain/smilobft/consensus"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	lru "github.com/hashicorp/golang-lru"
+
+	"go-smilo/src/blockchain/smilobft/consensus"
 )
 
 func (sb *Backend) sendToPeer(ctx context.Context, addr common.Address, hash common.Hash, payload []byte, p consensus.Peer) chan error {

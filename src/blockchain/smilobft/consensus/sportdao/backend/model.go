@@ -19,10 +19,11 @@ package backend
 
 import (
 	"crypto/ecdsa"
+	"sync"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -68,7 +69,6 @@ type Backend struct {
 
 	recentMessages *lru.ARCCache // the cache of peer's messages
 	knownMessages  *lru.ARCCache // the cache of self messages
-
 
 	autonityContractAddress common.Address // Ethereum address of the autonity contract
 	vmConfig                *vm.Config

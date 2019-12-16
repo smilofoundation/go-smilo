@@ -17,16 +17,18 @@
 package eth
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math"
 	"math/big"
 	"math/rand"
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -60,7 +62,7 @@ func TestProtocolCompatibility(t *testing.T) {
 	for i, tt := range tests {
 		consensus.EthProtocol.Versions = []uint{tt.version}
 
-		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil,nil)
+		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil, nil)
 		if pm != nil {
 			defer pm.Stop()
 		}
@@ -625,11 +627,11 @@ func TestBroadcastBlock(t *testing.T) {
 
 func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	var (
-		evmux   = new(cmn.TypeMux)
-		pow     = ethash.NewFaker()
-		db      = rawdb.NewMemoryDatabase()
-		config  = &params.ChainConfig{}
-		gspec   = &core.Genesis{Config: config}
+		evmux  = new(cmn.TypeMux)
+		pow    = ethash.NewFaker()
+		db     = rawdb.NewMemoryDatabase()
+		config = &params.ChainConfig{}
+		gspec  = &core.Genesis{Config: config}
 	)
 	config.AutonityContractConfig = &params.AutonityContractGenesis{}
 	config.Istanbul = &params.IstanbulConfig{}

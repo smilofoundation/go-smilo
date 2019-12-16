@@ -17,10 +17,11 @@
 package miner
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

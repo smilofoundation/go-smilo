@@ -22,10 +22,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math/big"
 	"strings"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 
 	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
 

@@ -21,13 +21,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"net"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -83,7 +84,6 @@ func ParseV4(rawurl string) (*Node, error) {
 	return parseComplete(rawurl, false)
 }
 
-
 func parseV4(rawurl string, resolve bool) (*Node, error) {
 	if m := incompleteNodeURL.FindStringSubmatch(rawurl); m != nil {
 		id, err := parsePubkey(m[1])
@@ -120,7 +120,6 @@ func ParseV4WithResolveMaxTry(rawurl string, maxTry int, wait time.Duration) (*N
 func ParseV4WithResolve(rawurl string) (*Node, error) {
 	return parseV4(rawurl, true)
 }
-
 
 // NewV4 creates a node from discovery v4 node information. The record
 // contained in the node has a zero-length signature.

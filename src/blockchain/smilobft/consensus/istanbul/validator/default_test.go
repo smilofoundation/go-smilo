@@ -22,9 +22,10 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 var (

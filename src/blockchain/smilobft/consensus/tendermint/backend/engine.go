@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
@@ -69,7 +70,7 @@ var (
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
 
-	errWaitTransactions = errors.New("waiting for transactions")
+	//errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -319,7 +320,6 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// use the same difficulty for all blocks
 	header.Difficulty = defaultDifficulty
 
-
 	var parents []*types.Header
 	parents = append(parents, parent)
 	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
@@ -329,9 +329,8 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	}
 
 	fullnodes := make([]common.Address, 0, len(fullnodeAddresses))
-	for _, fullnode := range fullnodeAddresses {
-		fullnodes = append(fullnodes, fullnode)
-	}
+	fullnodes = append(fullnodes, fullnodeAddresses...)
+
 	for i := 0; i < len(fullnodes); i++ {
 		for j := i + 1; j < len(fullnodes); j++ {
 			if bytes.Compare(fullnodes[i][:], fullnodes[j][:]) > 0 {
@@ -489,7 +488,6 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	}
 	defer clear()
 
-
 	// post block into BFT engine
 	sb.postEvent(events.NewUnminedBlockEvent{
 		NewUnminedBlock: *block,
@@ -514,8 +512,6 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	}
 
 }
-
-
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have based on the previous blocks in the blockchain and the

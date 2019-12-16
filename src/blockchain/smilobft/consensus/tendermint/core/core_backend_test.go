@@ -3,16 +3,18 @@ package core
 import (
 	"context"
 	"errors"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"reflect"
 	"sync/atomic"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/golang/mock/gomock"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -119,7 +121,7 @@ func TestCore_Seal(t *testing.T) {
 		block := types.NewBlockWithHeader(header)
 
 		backendMock := NewMockBackend(ctrl)
-		backendMock.EXPECT().Seal(nil, block, nil).Return(nil,nil)
+		backendMock.EXPECT().Seal(nil, block, nil).Return(nil, nil)
 
 		c := &core{
 			backend: backendMock,

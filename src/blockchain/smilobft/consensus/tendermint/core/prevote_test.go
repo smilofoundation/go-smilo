@@ -9,8 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 func TestSendPrevote(t *testing.T) {

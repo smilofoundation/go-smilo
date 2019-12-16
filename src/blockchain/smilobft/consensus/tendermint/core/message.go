@@ -23,9 +23,10 @@ import (
 	"io"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 )
 
 const (

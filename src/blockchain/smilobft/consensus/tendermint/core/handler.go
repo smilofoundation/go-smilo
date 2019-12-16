@@ -18,12 +18,14 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"math/big"
 	"sync/atomic"
 
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/core/types"

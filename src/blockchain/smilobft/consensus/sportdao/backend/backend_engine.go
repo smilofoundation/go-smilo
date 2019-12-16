@@ -20,17 +20,19 @@ package backend
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
-	"go-smilo/src/blockchain/smilobft/core"
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	lru "github.com/hashicorp/golang-lru"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
+	"go-smilo/src/blockchain/smilobft/core"
 
 	"bytes"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/orinocopay/go-etherutils"
@@ -42,10 +44,10 @@ import (
 )
 
 const (
-	checkpointInterval = 1024 // Number of blocks after which to save the vote snapshot to the database
-	inmemorySnapshots  = 128  // Number of recent vote snapshots to keep in memory
-	inmemoryPeers      = 40
-	inmemoryMessages   = 1024
+	//checkpointInterval = 1024 // Number of blocks after which to save the vote snapshot to the database
+	inmemorySnapshots = 128 // Number of recent vote snapshots to keep in memory
+	inmemoryPeers     = 40
+	inmemoryMessages  = 1024
 )
 
 var (
@@ -75,14 +77,14 @@ var (
 	errInvalidTimestamp = errors.New("invalid timestamp")
 	// errInvalidVotingChain is returned if an authorization list is attempted to
 	// be modified via out-of-range or non-contiguous headers.
-	errInvalidVotingChain = errors.New("invalid voting chain")
+	//errInvalidVotingChain = errors.New("invalid voting chain")
 	// errInvalidVote is returned if a nonce value is something else that the two
 	// allowed constants of 0x00..0 or 0xff..f.
-	errInvalidVote = errors.New("vote nonce not 0x00..0 or 0xff..f")
+	//errInvalidVote = errors.New("vote nonce not 0x00..0 or 0xff..f")
 	// errInvalidCommittedSeals is returned if the committed seal is not signed by any of parent fullnodes.
 	errInvalidCommittedSeals = errors.New("invalid committed seals")
 	// errEmptyCommittedSeals is returned if the field of committed seals is zero.
-	errEmptyCommittedSeals = errors.New("zero committed seals")
+	//errEmptyCommittedSeals = errors.New("zero committed seals")
 	// errMismatchTxhashes is returned if the TxHash in header is mismatch.
 
 	errMismatchTxhashes = errors.New("mismatch transaction hashes")
@@ -101,8 +103,8 @@ var (
 	nonceAuthVote = hexutil.MustDecode("0xffffffffffffffff") // Magic nonce number to vote on adding a new fullnode
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a fullnode.
 
-	inmemoryAddresses  = 20 // Number of recent addresses from ecrecover
-	recentAddresses, _ = lru.NewARC(inmemoryAddresses)
+	//inmemoryAddresses  = 20 // Number of recent addresses from ecrecover
+	//recentAddresses, _ = lru.NewARC(inmemoryAddresses)
 
 	// smiloTokenMetricsTable is the Block reward in wei to a fullnode when successfully mining a block
 	smiloTokenMetricsTable = map[*big.Int]*big.Int{
@@ -240,7 +242,6 @@ func (sb *Backend) VerifyUncles(chain consensus.ChainReader, block *types.Block)
 	}
 	return nil
 }
-
 
 // VerifySeal (clique override) checks whether the crypto seal on a header is valid according to
 // the consensus rules of the given engine.
@@ -442,7 +443,6 @@ func (sb *Backend) APIs(chain consensus.ChainReader) []rpc.API {
 		Public:    true,
 	}}
 }
-
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (sb *Backend) SealHash(header *types.Header) common.Hash {

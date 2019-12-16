@@ -17,13 +17,15 @@
 package backend
 
 import (
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
+
+	"go-smilo/src/blockchain/smilobft/p2p"
 )
 
 func TestTendermintMessage(t *testing.T) {

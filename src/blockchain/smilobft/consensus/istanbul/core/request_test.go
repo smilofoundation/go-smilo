@@ -17,17 +17,19 @@
 package core
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 func TestCheckRequestMsg(t *testing.T) {

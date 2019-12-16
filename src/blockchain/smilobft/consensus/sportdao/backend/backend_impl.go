@@ -18,9 +18,10 @@
 package backend
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -36,8 +37,8 @@ import (
 
 // Fullnodes implements sportdao.Backend.Fullnodes
 func (sb *Backend) Fullnodes(number uint64) sportdao.FullnodeSet {
-	validators, err := sb.retrieveSavedValidators(number, sb.chain)
 	proposerPolicy := sb.config.GetProposerPolicy()
+	validators, err := sb.retrieveSavedValidators(number, sb.chain)
 	if err != nil {
 		return fullnode.NewSet(nil, proposerPolicy)
 	}
@@ -224,6 +225,9 @@ func (sb *Backend) Verify(proposal sportdao.BlockProposal) (time.Duration, error
 			}
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
+			if err != nil {
+				return 0, err
+			}
 		}
 		sportDAOExtra, _ := types.ExtractSportExtra(header)
 

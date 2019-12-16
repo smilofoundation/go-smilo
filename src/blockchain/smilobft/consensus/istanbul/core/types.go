@@ -18,8 +18,9 @@ package core
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"io"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -82,7 +83,7 @@ const (
 	msgPrepare
 	msgCommit
 	msgRoundChange
-	msgAll
+	//msgAll
 )
 
 type message struct {

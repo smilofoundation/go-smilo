@@ -191,7 +191,7 @@ func TestCommit(t *testing.T) {
 }
 
 func TestGetProposer(t *testing.T) {
-	chain, engine,_ := newBlockChain(1)
+	chain, engine, _ := newBlockChain(1)
 	block, err := makeBlock(chain, engine, chain.Genesis())
 	if err != nil {
 		t.Fatal(err)

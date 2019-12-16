@@ -29,10 +29,10 @@ const (
 )
 
 type Config struct {
-	RequestTimeout uint64         `toml:",omitempty"` // The timeout for each Istanbul round in milliseconds.
-	BlockPeriod    uint64         `toml:",omitempty"` // Default minimum difference between two consecutive block's timestamps in second
-	ProposerPolicy ProposerPolicy `toml:",omitempty"` // The policy for proposer selection
-	Epoch          uint64         `toml:",omitempty"` // The number of blocks after which to checkpoint and reset the pending votes
+	RequestTimeout       uint64         `toml:",omitempty"` // The timeout for each Istanbul round in milliseconds.
+	BlockPeriod          uint64         `toml:",omitempty"` // Default minimum difference between two consecutive block's timestamps in second
+	ProposerPolicy       ProposerPolicy `toml:",omitempty"` // The policy for proposer selection
+	Epoch                uint64         `toml:",omitempty"` // The number of blocks after which to checkpoint and reset the pending votes
 	MinBlocksEmptyMining *big.Int       `toml:",omitempty"` // Min Blocks to mine before Stop Mining Empty Blocks
 
 	sync.RWMutex
@@ -40,10 +40,10 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		RequestTimeout: 10000,
-		BlockPeriod:    1,
-		ProposerPolicy: RoundRobin,
-		Epoch:          30000,
+		RequestTimeout:       10000,
+		BlockPeriod:          1,
+		ProposerPolicy:       RoundRobin,
+		Epoch:                30000,
 		MinBlocksEmptyMining: big.NewInt(20000000),
 	}
 }

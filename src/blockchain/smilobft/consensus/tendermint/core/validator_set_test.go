@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/golang/mock/gomock"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-	"github.com/golang/mock/gomock"
 )
 
 func TestValidatorSetSetEmpty(t *testing.T) {

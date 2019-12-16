@@ -299,16 +299,14 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		log.Debug("############### state_transition, VM returned with NO error after executing evm, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 	}
 
-	if  st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil ){
+	if st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil) {
 
 		st.refundGas()
-		address := st.evm.Coinbase
 		addr, innerErr := st.evm.ChainConfig().AutonityContractConfig.GetContractAddress()
 		if innerErr != nil {
 			return nil, 0, true, innerErr
 		}
-		address = addr
-		st.state.AddBalance(address, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
+		st.state.AddBalance(addr, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
 
 		return ret, st.gasUsed(), vmerr != nil, err
 	} else {

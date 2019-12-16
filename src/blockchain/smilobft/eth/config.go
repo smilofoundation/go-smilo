@@ -17,15 +17,16 @@
 package eth
 
 import (
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
-	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 
 	"go-smilo/src/blockchain/smilobft/miner"
 

@@ -483,8 +483,8 @@ func (typedData *TypedData) EncodeData(primaryType string, data map[string]inter
 }
 
 func parseInteger(encType string, encValue interface{}) (*big.Int, error) {
+	var length int
 	var (
-		length = 0
 		signed = strings.HasPrefix(encType, "int")
 		b      *big.Int
 	)

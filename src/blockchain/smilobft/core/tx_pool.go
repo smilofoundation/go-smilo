@@ -19,12 +19,13 @@ package core
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math"
 	"math/big"
 	"sort"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 

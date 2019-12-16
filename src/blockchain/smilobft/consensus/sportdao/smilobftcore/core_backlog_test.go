@@ -18,12 +18,13 @@
 package smilobftcore
 
 import (
-	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
 	"math/big"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 

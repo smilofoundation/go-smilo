@@ -19,8 +19,9 @@ package core
 import (
 	"math/big"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 )
 
 var (

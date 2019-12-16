@@ -83,7 +83,7 @@ func TestSealStopChannel(t *testing.T) {
 }
 
 func TestSealCommittedOtherHash(t *testing.T) {
-	chain, engine,err := newBlockChain(4)
+	chain, engine, err := newBlockChain(4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	go eventLoop()
 	seal := func() {
 		resultCh := make(chan *types.Block)
-		engine.Seal(chain, block,  nil)
+		engine.Seal(chain, block, nil)
 		<-resultCh
 		t.Error("seal should not be completed")
 	}
@@ -119,7 +119,7 @@ func TestSealCommittedOtherHash(t *testing.T) {
 }
 
 func TestSealCommitted(t *testing.T) {
-	chain, engine,err := newBlockChain(1)
+	chain, engine, err := newBlockChain(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestSealCommitted(t *testing.T) {
 	expectedBlock, _ := engine.updateBlock(block)
 	resultCh := make(chan *types.Block, 10)
 	go func() {
-		block, err := engine.Seal(chain, block,  nil)
+		block, err := engine.Seal(chain, block, nil)
 		resultCh <- block
 
 		if err != nil {
@@ -240,7 +240,7 @@ func TestVerifySeal(t *testing.T) {
 	block, err := makeBlock(chain, engine, genesis)
 	if err != nil {
 		t.Fatal(err)
-	}	// change block content
+	} // change block content
 	header := block.Header()
 	header.Number = big.NewInt(4)
 	number := header.Number.Uint64()

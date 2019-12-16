@@ -19,9 +19,10 @@ package filters
 import (
 	"context"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/bitutil"

@@ -19,8 +19,9 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
@@ -82,7 +83,7 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) 
 		log.Error("Invalid Enode whitelist", "err", err)
 		return nodes
 	}
-	log.Warn("ReadEnodeWhitelist, strList, ", "strList",strList)
+	log.Warn("ReadEnodeWhitelist, strList, ", "strList", strList)
 
 	nodes = types.NewNodes(strList, EnableNodePermissionFlag)
 	return nodes

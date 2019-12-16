@@ -18,8 +18,9 @@ package core
 
 import (
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 var (

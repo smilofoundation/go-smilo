@@ -6,8 +6,13 @@ package core
 
 import (
 	"context"
+	"math/big"
+	"reflect"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
@@ -15,9 +20,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/rpc"
-	"math/big"
-	"reflect"
-	"time"
 )
 
 // MockBackend is a mock of Backend interface
@@ -228,7 +230,6 @@ func (mr *MockBackendMockRecorder) ProtocolOld() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProtocolOld", reflect.TypeOf((*MockBackend)(nil).Protocol))
 }
-
 
 // Protocol mocks base method
 func (m *MockBackend) Protocol() (string, uint64) {

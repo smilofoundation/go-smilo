@@ -19,12 +19,13 @@ package downloader
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

@@ -1,12 +1,14 @@
 package params
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"net"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 )
 
 func TestValidateAutonityContract(t *testing.T) {

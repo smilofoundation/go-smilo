@@ -19,9 +19,9 @@ package fullnode
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 )
-
 
 func New(addr common.Address) sportdao.Fullnode {
 	return &fullnode{

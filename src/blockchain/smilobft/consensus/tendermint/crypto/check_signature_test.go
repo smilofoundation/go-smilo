@@ -2,14 +2,15 @@ package crypto
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 )
 
 func TestCheckValidatorSignature(t *testing.T) {

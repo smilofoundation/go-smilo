@@ -18,18 +18,20 @@ package core
 
 import (
 	"bytes"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math"
 	"math/big"
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 // New creates an Istanbul consensus core

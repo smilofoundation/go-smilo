@@ -18,8 +18,9 @@
 package backend
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"io/ioutil"
 	"math/big"
@@ -29,7 +30,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
-
 
 func TestBackendHandler(t *testing.T) {
 	_, backend, err := newBlockChain(1)

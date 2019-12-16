@@ -18,11 +18,12 @@ package backend
 
 import (
 	"crypto/ecdsa"
+	"math/big"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -66,7 +67,6 @@ func New(config *sportdao.Config, privateKey *ecdsa.PrivateKey, db ethdb.Databas
 		recentMessages:   recentMessages,
 		knownMessages:    knownMessages,
 		vmConfig:         vmConfig,
-
 	}
 	backend.core = smilobftcore.New(backend, backend.config)
 	return backend

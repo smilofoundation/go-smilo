@@ -19,10 +19,11 @@ package miner
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 

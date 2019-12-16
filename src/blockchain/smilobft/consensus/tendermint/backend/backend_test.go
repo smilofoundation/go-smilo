@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	tendermintCrypto "go-smilo/src/blockchain/smilobft/consensus/tendermint/crypto"

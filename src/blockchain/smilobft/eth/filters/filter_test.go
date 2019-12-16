@@ -18,11 +18,12 @@ package filters
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"testing"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

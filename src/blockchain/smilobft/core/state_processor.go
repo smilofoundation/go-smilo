@@ -18,10 +18,12 @@ package core
 
 import (
 	"errors"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"

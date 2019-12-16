@@ -1,10 +1,12 @@
 package validator
 
 import (
+	reflect "reflect"
+
 	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
+
 	config "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	reflect "reflect"
 )
 
 // MockValidator is a mock of Validator interface

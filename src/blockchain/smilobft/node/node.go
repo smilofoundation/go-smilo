@@ -19,13 +19,14 @@ package node
 import (
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/prometheus/tsdb/fileutil"
 

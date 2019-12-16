@@ -22,11 +22,11 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-)
 
+	"go-smilo/src/blockchain/smilobft/core/types"
+)
 
 type Proposal struct {
 	Round      *big.Int

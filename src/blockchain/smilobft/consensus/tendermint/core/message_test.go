@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 func TestMessageEncodeDecode(t *testing.T) {

@@ -959,7 +959,6 @@ web3._extend({
 });
 `
 
-
 const TendermintJs = `
 web3._extend({
 	property: 'tendermint',

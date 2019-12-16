@@ -2,8 +2,9 @@ package p2p
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/crypto"
 	"net"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"golang.org/x/crypto/sha3"
 )

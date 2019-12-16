@@ -19,8 +19,9 @@ package clique
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/log"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	lru "github.com/hashicorp/golang-lru"

@@ -35,7 +35,6 @@ func EmptyHash(h common.Hash) bool {
 	return h == common.Hash{}
 }
 
-
 // Implementation of Sort for a slice of addresses
 type Addresses []common.Address
 

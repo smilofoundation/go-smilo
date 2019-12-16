@@ -20,10 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -468,8 +469,8 @@ type filterBackend struct {
 	bc *core.BlockChain
 }
 
-func (fb *filterBackend) ChainDb() ethdb.Database  { return fb.db }
-func (fb *filterBackend) EventMux() *cmn.TypeMux { panic("not supported") }
+func (fb *filterBackend) ChainDb() ethdb.Database { return fb.db }
+func (fb *filterBackend) EventMux() *cmn.TypeMux  { panic("not supported") }
 
 func (fb *filterBackend) HeaderByNumber(ctx context.Context, block rpc.BlockNumber) (*types.Header, error) {
 	if block == rpc.LatestBlockNumber {

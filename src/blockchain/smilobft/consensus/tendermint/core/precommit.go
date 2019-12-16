@@ -22,8 +22,9 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 func (c *core) sendPrecommit(ctx context.Context, isNil bool) {

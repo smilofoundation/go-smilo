@@ -17,8 +17,9 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func newMessageSet() messageSet {

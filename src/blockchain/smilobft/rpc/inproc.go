@@ -18,8 +18,9 @@ package rpc
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/cmn/ratelimit"
 	"net"
+
+	"go-smilo/src/blockchain/smilobft/cmn/ratelimit"
 )
 
 // DialInProc attaches an in-process connection to the given RPC server.

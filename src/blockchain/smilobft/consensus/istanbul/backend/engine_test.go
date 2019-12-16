@@ -22,23 +22,25 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"reflect"
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/params"
-	"github.com/ethereum/go-ethereum/rlp"
-	"go-smilo/src/blockchain/smilobft/cmn"
 )
 
 // in this test, we can set n to 1, and it means we can process Istanbul and commit a
@@ -60,7 +62,7 @@ func newBlockChain(n int) (*core.BlockChain, *Backend, error) {
 		return nil, nil, err
 	}
 
-	err = b.Start(context.Background(),blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
+	err = b.Start(context.Background(), blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -164,7 +166,7 @@ func makeBlock(chain *core.BlockChain, engine *Backend, parent *types.Block) (*t
 	if err != nil {
 		return nil, err
 	}
-	blk, err := engine.Seal(chain, block,  nil)
+	blk, err := engine.Seal(chain, block, nil)
 
 	return blk, err
 }
@@ -264,7 +266,7 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	go eventLoop()
 	seal := func() {
 		resultCh := make(chan *types.Block)
-		engine.Seal(chain, block,  nil)
+		engine.Seal(chain, block, nil)
 		<-resultCh
 		t.Error("seal should not be completed")
 	}
@@ -291,7 +293,7 @@ func TestSealCommitted(t *testing.T) {
 	expectedBlock, _ := engine.updateBlock(block)
 	resultCh := make(chan *types.Block, 10)
 	go func() {
-		block, err := engine.Seal(chain, block,  nil)
+		block, err := engine.Seal(chain, block, nil)
 		resultCh <- block
 
 		if err != nil {

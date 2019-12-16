@@ -18,8 +18,9 @@ package filters
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

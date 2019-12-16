@@ -2,8 +2,15 @@ package autonity
 
 import (
 	"errors"
+	"math/big"
+	"reflect"
+	"sort"
+	"strings"
+	"sync"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -11,11 +18,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
-	"math/big"
-	"reflect"
-	"sort"
-	"strings"
-	"sync"
 )
 
 func NewAutonityContract(

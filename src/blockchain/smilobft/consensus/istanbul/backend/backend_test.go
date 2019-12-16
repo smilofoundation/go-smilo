@@ -25,10 +25,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func TestSign(t *testing.T) {

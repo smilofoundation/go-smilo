@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 )
 

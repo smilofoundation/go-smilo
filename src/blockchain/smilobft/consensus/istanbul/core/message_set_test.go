@@ -20,9 +20,10 @@ import (
 	"math/big"
 	"testing"
 
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 func TestMessageSetWithPreprepare(t *testing.T) {

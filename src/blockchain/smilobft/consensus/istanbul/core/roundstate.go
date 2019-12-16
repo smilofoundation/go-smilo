@@ -22,8 +22,9 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 // newRoundState creates a new roundState instance with the given view and validatorSet

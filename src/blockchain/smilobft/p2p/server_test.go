@@ -35,7 +35,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 )
 
-
 func startTestServer(t *testing.T, remoteKey *ecdsa.PublicKey, pf func(*Peer)) *Server {
 	config := Config{
 		Name:       "test",
@@ -325,12 +324,12 @@ func TestServerAtCap(t *testing.T) {
 	trustedID := enode.PubkeyToIDV4(&trustedNode.PublicKey)
 	srv := &Server{
 		Config: Config{
-			EnableNodePermissionFlag:  true,
-			PrivateKey:   newkey(),
-			MaxPeers:     10,
-			NoDial:       true,
-			NoDiscovery:  true,
-			TrustedNodes: []*enode.Node{newNode(trustedID, nil)},
+			EnableNodePermissionFlag: true,
+			PrivateKey:               newkey(),
+			MaxPeers:                 10,
+			NoDial:                   true,
+			NoDiscovery:              true,
+			TrustedNodes:             []*enode.Node{newNode(trustedID, nil)},
 		},
 	}
 	if err := srv.Start(); err != nil {

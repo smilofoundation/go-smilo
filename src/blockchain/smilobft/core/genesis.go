@@ -22,10 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"strings"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/params"
 
@@ -44,7 +45,8 @@ import (
 //go:generate gencodec -type GenesisAccount -field-override genesisAccountMarshaling -out gen_genesis_account.go
 
 var errGenesisNoConfig = errors.New("genesis has no chain configuration")
-var errGenesisBadWhitelist = errors.New("whitelist badly formatted")
+
+//var errGenesisBadWhitelist = errors.New("whitelist badly formatted")
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
@@ -382,7 +384,6 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	return block, nil
 }
 
-
 // SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values
 func (g *Genesis) SetBFT() error {
 	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
@@ -411,7 +412,6 @@ func (g *Genesis) SetBFT() error {
 
 	return nil
 }
-
 
 // MustCommit writes the genesis block and state to db, panicking on error.
 // The block is committed as the canonical head block.

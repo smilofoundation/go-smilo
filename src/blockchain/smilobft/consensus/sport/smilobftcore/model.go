@@ -18,10 +18,11 @@
 package smilobftcore
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

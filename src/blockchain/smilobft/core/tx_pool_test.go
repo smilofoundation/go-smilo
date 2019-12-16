@@ -19,13 +19,14 @@ package core
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 

@@ -20,10 +20,11 @@ package cmn
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // TypeMuxEvent is a time-tagged notification pushed to subscribers.

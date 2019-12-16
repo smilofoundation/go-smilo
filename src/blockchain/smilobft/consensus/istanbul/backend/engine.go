@@ -20,16 +20,19 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/orinocopay/go-etherutils"
-	"go-smilo/src/blockchain/smilobft/core"
-	"go-smilo/src/blockchain/smilobft/rpc"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/orinocopay/go-etherutils"
+
+	"go-smilo/src/blockchain/smilobft/core"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	istanbulCore "go-smilo/src/blockchain/smilobft/consensus/istanbul/core"
@@ -68,10 +71,10 @@ var (
 	errInvalidTimestamp = errors.New("invalid timestamp")
 	// errInvalidVotingChain is returned if an authorization list is attempted to
 	// be modified via out-of-range or non-contiguous headers.
-	errInvalidVotingChain = errors.New("invalid voting blockchain")
+	//errInvalidVotingChain = errors.New("invalid voting blockchain")
 	// errInvalidVote is returned if a nonce value is something else that the two
 	// allowed constants of 0x00..0 or 0xff..f.
-	errInvalidVote = errors.New("vote nonce not 0x00..0 or 0xff..f")
+	//errInvalidVote = errors.New("vote nonce not 0x00..0 or 0xff..f")
 	// errMismatchTxhashes is returned if the TxHash in header is mismatch.
 	errMismatchTxhashes = errors.New("mismatch transactions hashes")
 	errWaitTransactions = errors.New("waiting for transactions")
@@ -102,6 +105,7 @@ var (
 		big.NewInt(1600000000): getSmiloValue("25000000 gwei"),   // 0.025 smilo
 	}
 )
+
 func getSmiloValue(value string) *big.Int {
 	v, _ := etherutils.StringToWei(value)
 	return v
@@ -389,7 +393,6 @@ func getSmiloBlockReward(blockNum *big.Int) (blockReward *big.Int) {
 	}
 	return blockReward
 }
-
 
 // AccumulateRewards (override from ethash) credits the coinbase of the given block with the mining reward.
 // The total reward consists of the static block reward and rewards for  the community.

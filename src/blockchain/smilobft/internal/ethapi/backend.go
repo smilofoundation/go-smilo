@@ -19,9 +19,10 @@ package ethapi
 
 import (
 	"context"
+	"math/big"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/log"
 

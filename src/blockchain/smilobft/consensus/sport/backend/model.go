@@ -20,8 +20,9 @@ package backend
 import (
 	"crypto/ecdsa"
 	"encoding/json"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"

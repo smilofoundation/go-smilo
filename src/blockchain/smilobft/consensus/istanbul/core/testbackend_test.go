@@ -18,15 +18,17 @@ package core
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math/big"
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	elog "github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul/validator"
 	"go-smilo/src/blockchain/smilobft/ethdb"

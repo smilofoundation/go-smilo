@@ -42,5 +42,5 @@ var (
 	// errFailedDecodeCommit is returned when the COMMIT message is malformed.
 	errFailedDecodeCommit = errors.New("failed to decode COMMIT")
 	// errFailedDecodeMessageSet is returned when the message set is malformed.
-	errFailedDecodeMessageSet = errors.New("failed to decode message set")
+	//errFailedDecodeMessageSet = errors.New("failed to decode message set")
 )

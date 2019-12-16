@@ -20,10 +20,12 @@ package backend
 import (
 	"bytes"
 	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/consensus/sportdao/fullnode"
 	"go-smilo/src/blockchain/smilobft/core"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -40,7 +42,6 @@ import (
 func (sb *Backend) SetProposedBlockHash(hash common.Hash) {
 	sb.proposedBlockHash = hash
 }
-
 
 // verifySigner checks whether the signer is in parent's fullnode set
 func (sb *Backend) verifySigner(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
@@ -292,8 +293,6 @@ func (sb *Backend) retrieveValidators(header *types.Header, parents []*types.Hea
 
 }
 
-
-
 // writeSeal writes the extra-data field of the given header with the given seals.
 // suggest to rename to writeSeal.
 func writeSeal(h *types.Header, seal []byte) error {
@@ -345,7 +344,6 @@ func writeCommittedSeals(h *types.Header, committedSeals [][]byte) error {
 	return nil
 }
 
-
 func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainReader, state *state.StateDB) ([]common.Address, error) {
 	var validators []common.Address
 
@@ -370,7 +368,7 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 		if sb.autonityContractAddress == common.HexToAddress("0000000000000000000000000000000000000000") {
 			sb.autonityContractAddress = crypto.CreateAddress(chain.Config().AutonityContractConfig.Deployer, 0)
 		}
-		log.Warn("Autonity Contract Deployer, getValidators", "header Number",header.Number.Int64(),"Address", chain.Config().AutonityContractConfig.Deployer)
+		log.Warn("Autonity Contract Deployer, getValidators", "header Number", header.Number.Int64(), "Address", chain.Config().AutonityContractConfig.Deployer)
 
 		var err error
 		validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(chain, header, state)

@@ -52,7 +52,6 @@ var DefaultConfig = &Config{
 	MinBlocksEmptyMining: big.NewInt(20000000),
 }
 
-
 func (cfg *Config) SetProposerPolicy(p SpeakerPolicy) {
 	cfg.Lock()
 	cfg.SpeakerPolicy = p

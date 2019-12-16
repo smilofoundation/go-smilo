@@ -19,11 +19,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
-	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +26,13 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
@@ -228,7 +230,7 @@ func initGenesis(ctx *cli.Context) error {
 	if len(genesisPath) == 0 {
 		utils.Fatalf("Must supply path to genesis JSON file")
 	}
-	log.Info("Will open Genesis file, ","genesisPath", genesisPath)
+	log.Info("Will open Genesis file, ", "genesisPath", genesisPath)
 	file, err := os.Open(genesisPath)
 	if err != nil {
 		utils.Fatalf("Failed to read genesis file: %v", err)
@@ -239,8 +241,7 @@ func initGenesis(ctx *cli.Context) error {
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
 		utils.Fatalf("initGenesis, invalid genesis file: %v", err)
 	}
-	log.Info("Decoded Genesis file, ","genesis", genesis, "genesis.Config", genesis.Config, "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig, "genesis.Config.SportDAO", genesis.Config.SportDAO)
-
+	log.Info("Decoded Genesis file, ", "genesis", genesis, "genesis.Config", genesis.Config, "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig, "genesis.Config.SportDAO", genesis.Config.SportDAO)
 
 	file.Seek(0, 0)
 
@@ -262,7 +263,6 @@ func initGenesis(ctx *cli.Context) error {
 	}
 
 	setupBFTDefaults(genesis)
-
 
 	// Open an initialise both full and light databases
 	stack := makeFullNode(ctx)

@@ -18,8 +18,9 @@ package downloader
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"go-smilo/src/blockchain/smilobft/rpc"
 

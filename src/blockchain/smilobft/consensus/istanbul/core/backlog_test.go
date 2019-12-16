@@ -25,10 +25,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul/validator"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 func TestCheckMessage(t *testing.T) {

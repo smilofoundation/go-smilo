@@ -18,9 +18,10 @@ package node
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"path/filepath"
 	"reflect"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
@@ -37,7 +38,7 @@ import (
 type ServiceContext struct {
 	config         *Config
 	services       map[reflect.Type]Service // Index of the already constructed services
-	EventMux       *cmn.TypeMux           // Event multiplexer used for decoupled notifications
+	EventMux       *cmn.TypeMux             // Event multiplexer used for decoupled notifications
 	AccountManager *accounts.Manager        // Account manager created by the node.
 }
 

@@ -18,6 +18,7 @@ package core
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
@@ -101,7 +102,7 @@ func (c *core) handleEvents() {
 					if err != nil {
 						c.logger.Error("$$$ istanbul, handleEvents, handleMsg, failed to backend.Gossip", "err", err)
 					}
-				}else {
+				} else {
 					c.logger.Error("$$$ istanbul, handleEvents, istanbul.MessageEvent", "err", err)
 				}
 			case backlogEvent:

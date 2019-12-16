@@ -19,12 +19,13 @@ package filters
 import (
 	"context"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"math/rand"
 	"reflect"
 	"testing"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"

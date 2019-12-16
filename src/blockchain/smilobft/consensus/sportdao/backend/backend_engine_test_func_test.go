@@ -94,7 +94,7 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	genesis.Config = params.TestChainConfig
 	// force enable SportDAO engine
 	genesis.Config.SportDAO = &params.SportDAOConfig{
-		Epoch:sportdao.DefaultConfig.Epoch,
+		Epoch:    sportdao.DefaultConfig.Epoch,
 		MinFunds: sportdao.DefaultConfig.MinFunds,
 	}
 	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}

@@ -18,17 +18,19 @@ package backend
 
 import (
 	"crypto/ecdsa"
-	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/core/vm"
+	"go-smilo/src/blockchain/smilobft/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	istanbulCore "go-smilo/src/blockchain/smilobft/consensus/istanbul/core"
@@ -120,15 +122,14 @@ type Backend struct {
 	vmConfig                *vm.Config
 }
 
-
 // Address implements istanbul.Backend.Address
 func (sb *Backend) Address() common.Address {
 	return sb.address
 }
 
 func (sb *Backend) Validators(number uint64) istanbul.ValidatorSet {
-	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	proposerPolicy := sb.config.GetProposerPolicy()
+	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	if err != nil {
 		return validator.NewSet(nil, proposerPolicy)
 	}
@@ -183,12 +184,12 @@ func (sb *Backend) Gossip(valSet istanbul.ValidatorSet, payload []byte) error {
 			sb.recentMessages.Add(addr, m)
 
 			//go func() {
-				err := p.Send(istanbulMsg, payload)
-				if err != nil {
-					log.Error("Gossip, istanbulMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
-				} else {
-					//log.Debug("Gossip, istanbulMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
-				}
+			err := p.Send(istanbulMsg, payload)
+			if err != nil {
+				log.Error("Gossip, istanbulMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				//log.Debug("Gossip, istanbulMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
 			//}()
 		}
 	}
@@ -283,7 +284,7 @@ func (sb *Backend) Verify(proposal istanbul.Proposal) (time.Duration, error) {
 		var err error
 		if header.Number.Uint64() > 1 {
 
-			state,vaultstate, _ := sb.blockchain.State()
+			state, vaultstate, _ := sb.blockchain.State()
 			state = state.Copy() // copy the state, we don't want to save modifications
 			gp := new(core.GasPool).AddGas(block.GasLimit())
 			usedGas := new(uint64)
@@ -292,7 +293,7 @@ func (sb *Backend) Verify(proposal istanbul.Proposal) (time.Duration, error) {
 				state.Prepare(tx.Hash(), block.Hash(), i)
 				// Might be vulnerable to DoS Attack depending on gaslimit
 				// Todo : Double check
-				_, _,_, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil,
+				_, _, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil,
 					gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 
 				if err != nil {
@@ -306,6 +307,9 @@ func (sb *Backend) Verify(proposal istanbul.Proposal) (time.Duration, error) {
 			}
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
+			if err != nil {
+				return 0, err
+			}
 		}
 		istanbulExtra, _ := types.ExtractBFTHeaderExtra(header)
 
@@ -412,7 +416,7 @@ func (sb *Backend) Close() error {
 
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	state,vaultstate, err := sb.blockchain.State()
+	state, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
@@ -426,4 +430,3 @@ func (sb *Backend) WhiteList() []string {
 
 	return enodes.StrList
 }
-

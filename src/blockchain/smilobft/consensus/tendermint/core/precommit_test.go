@@ -9,11 +9,12 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/ethereum/go-ethereum/common"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/log"
+
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 func TestSendPrecommit(t *testing.T) {

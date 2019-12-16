@@ -20,18 +20,20 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math"
 	"math/big"
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 var (
@@ -312,9 +314,7 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 	// Get all rounds from c.futureRoundsChange and remove previous rounds
 	var i int64
 	for i = 0; i <= r.Int64(); i++ {
-		if _, ok := c.futureRoundsChange[i]; ok {
-			delete(c.futureRoundsChange, i)
-		}
+		delete(c.futureRoundsChange, i)
 	}
 	// Add a copy of c.currentRoundState to c.currentHeightOldRoundsStates and then update c.currentRoundState
 	// We only add old round prevote messages to c.currentHeightOldRoundsStates, while future messages are sent to the

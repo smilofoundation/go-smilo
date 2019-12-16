@@ -24,15 +24,16 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
-	"go-smilo/src/blockchain/smilobft/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/p2p"
 )
 
 func TestIstanbulMessage(t *testing.T) {
-	_, backend,_ := newBlockChain(1)
+	_, backend, _ := newBlockChain(1)
 
 	// generate one msg
 	data := []byte("data1")
@@ -97,7 +98,7 @@ func TestHandleNewBlockMessage_whenTypical(t *testing.T) {
 }
 
 func TestHandleNewBlockMessage_whenNotAProposedBlock(t *testing.T) {
-	_, backend, _:= newBlockChain(1)
+	_, backend, _ := newBlockChain(1)
 	arbitraryAddress := cmn.StringToAddress("arbitrary")
 	_, arbitraryP2PMessage := buildArbitraryP2PNewBlockMessage(t, false)
 	postAndWait(backend, types.NewBlock(&types.Header{
@@ -121,7 +122,7 @@ func TestHandleNewBlockMessage_whenNotAProposedBlock(t *testing.T) {
 }
 
 func TestHandleNewBlockMessage_whenFailToDecode(t *testing.T) {
-	_, backend,_ := newBlockChain(1)
+	_, backend, _ := newBlockChain(1)
 	arbitraryAddress := cmn.StringToAddress("arbitrary")
 	_, arbitraryP2PMessage := buildArbitraryP2PNewBlockMessage(t, true)
 	postAndWait(backend, types.NewBlock(&types.Header{

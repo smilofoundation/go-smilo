@@ -4,9 +4,10 @@ import (
 	"crypto/ecdsa"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func generateValidators(n int) []common.Address {

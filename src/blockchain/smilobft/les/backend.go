@@ -19,9 +19,10 @@ package les
 
 import (
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 
@@ -248,7 +249,7 @@ func (s *LightEthereum) TxPool() *light.TxPool              { return s.txPool }
 func (s *LightEthereum) Engine() consensus.Engine           { return s.engine }
 func (s *LightEthereum) LesVersion() int                    { return int(ClientProtocolVersions[0]) }
 func (s *LightEthereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
-func (s *LightEthereum) EventMux() *cmn.TypeMux           { return s.eventMux }
+func (s *LightEthereum) EventMux() *cmn.TypeMux             { return s.eventMux }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

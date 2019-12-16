@@ -21,15 +21,17 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
@@ -54,7 +56,6 @@ var (
 	// ErrStoppedEngine is returned if the engine is stopped
 	ErrStoppedEngine = errors.New("stopped engine")
 )
-
 
 // New creates an Ethereum Backend for BFT core engine.
 func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *Backend {
@@ -86,7 +87,7 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 		address:        crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:         log.New(),
 		db:             db,
-		commitCh:         make(chan *types.Block, 1),
+		commitCh:       make(chan *types.Block, 1),
 		recents:        recents,
 		coreStarted:    false,
 		recentMessages: recentMessages,
@@ -298,7 +299,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		)
 
 		// We need to process all of the transaction to get the latest state to get the latest validators
-		state, vaultstate,stateErr := sb.blockchain.StateAt(parent.Root())
+		state, vaultstate, stateErr := sb.blockchain.StateAt(parent.Root())
 		if stateErr != nil {
 			return 0, stateErr
 		}
@@ -308,14 +309,13 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 			return 0, err
 		}
 
-
 		// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
 		// Instead only the transactions are applied to the copied state
 		for i, tx := range block.Transactions() {
 			state.Prepare(tx.Hash(), block.Hash(), i)
 			// Might be vulnerable to DoS Attack depending on gaslimit
 			// Todo : Double check
-			receipt, _,_, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
+			receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 			if receiptErr != nil {
 				return 0, receiptErr
 			}
@@ -344,9 +344,8 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 			}
 		}
 
-
 		//Validate the state of the proposal
-		if err = sb.blockchain.Validator().ValidateState(block, parent,state, receipts, *usedGas); err != nil {
+		if err = sb.blockchain.Validator().ValidateState(block, parent, state, receipts, *usedGas); err != nil {
 			return 0, err
 		}
 
@@ -463,7 +462,7 @@ func (sb *Backend) HasBadProposal(hash common.Hash) bool {
 
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	db,vaultstate, err := sb.blockchain.State()
+	db, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil

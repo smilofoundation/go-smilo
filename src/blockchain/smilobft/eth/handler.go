@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -126,20 +127,20 @@ type ProtocolManager struct {
 func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, EnableNodePermissionFlag bool) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		networkID:                     networkID,
-		eventMux:                      mux,
-		txpool:                        txpool,
-		blockchain:                    blockchain,
-		chainconfig:                   config,
-		peers:                         newPeerSet(),
-		whitelist:                     whitelist,
-		newPeerCh:                     make(chan *peer),
-		noMorePeers:                   make(chan struct{}),
-		txsyncCh:                      make(chan *txsync),
-		quitSync:                      make(chan struct{}),
-		engine:                        engine,
+		networkID:                networkID,
+		eventMux:                 mux,
+		txpool:                   txpool,
+		blockchain:               blockchain,
+		chainconfig:              config,
+		peers:                    newPeerSet(),
+		whitelist:                whitelist,
+		newPeerCh:                make(chan *peer),
+		noMorePeers:              make(chan struct{}),
+		txsyncCh:                 make(chan *txsync),
+		quitSync:                 make(chan struct{}),
+		engine:                   engine,
 		EnableNodePermissionFlag: EnableNodePermissionFlag,
-		whitelistCh:                   make(chan core.WhitelistEvent, 64),
+		whitelistCh:              make(chan core.WhitelistEvent, 64),
 	}
 
 	if handler, ok := manager.engine.(consensus.Handler); ok {
@@ -263,7 +264,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 	if manager.chainconfig.Istanbul != nil || manager.chainconfig.SportDAO != nil || manager.chainconfig.Tendermint != nil {
 		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, EnableNodePermissionFlag).List
-		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", "manager.enodesWhitelist",manager.enodesWhitelist)
+		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", "manager.enodesWhitelist", manager.enodesWhitelist)
 	} else {
 		msg := "Wont set Istanbul Tendermint SportDAO ReadEnodeWhitelist, is this correct ? "
 		log.Warn(msg)

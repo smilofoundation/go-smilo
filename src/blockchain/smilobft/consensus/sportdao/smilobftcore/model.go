@@ -18,10 +18,11 @@
 package smilobftcore
 
 import (
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -52,11 +53,11 @@ type core struct {
 	backlogs   map[sportdao.Fullnode]*prque.Prque
 	backlogsMu *sync.Mutex
 
-	current   *roundState
+	current       *roundState
 	handlerStopCh chan struct{}
 
-	roundChangeSet   *roundChangeSet
-	roundChangeTimer *time.Timer
+	roundChangeSet     *roundChangeSet
+	roundChangeTimer   *time.Timer
 	roundChangeTimerMu sync.RWMutex
 
 	pendingRequests   *prque.Prque

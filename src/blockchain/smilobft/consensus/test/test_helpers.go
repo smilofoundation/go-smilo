@@ -3,16 +3,18 @@ package test
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"github.com/ethereum/go-ethereum/log"
 	"io/ioutil"
 	"math/big"
 	"net"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/core"

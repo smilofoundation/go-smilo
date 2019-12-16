@@ -22,9 +22,10 @@ import (
 	"testing"
 	"time"
 
+	elog "github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	elog "github.com/ethereum/go-ethereum/log"
 )
 
 func makeBlock(number int64) *types.Block {

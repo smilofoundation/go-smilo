@@ -19,8 +19,9 @@ package core
 import (
 	"math/big"
 	"testing"
-	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 )
 
 // notice: the normal case have been tested in integration tests.

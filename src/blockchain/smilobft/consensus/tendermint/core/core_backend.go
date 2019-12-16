@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/state"

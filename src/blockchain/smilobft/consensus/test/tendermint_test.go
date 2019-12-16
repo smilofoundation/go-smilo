@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/accounts/keystore"
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -55,6 +56,7 @@ func TestTendermintSuccess(t *testing.T) {
 		})
 	}
 }
+
 //
 //func TestTendermintOneMalicious(t *testing.T) {
 //	if testing.Short() {

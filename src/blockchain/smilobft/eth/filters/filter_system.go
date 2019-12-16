@@ -22,9 +22,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-smilo/src/blockchain/smilobft/cmn"
 	"sync"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -99,10 +100,10 @@ type EventSystem struct {
 	lastHead  *types.Header
 
 	// Subscriptions
-	txsSub        event.Subscription         // Subscription for new transaction event
-	logsSub       event.Subscription         // Subscription for new log event
-	rmLogsSub     event.Subscription         // Subscription for removed log event
-	chainSub      event.Subscription         // Subscription for new chain event
+	txsSub        event.Subscription       // Subscription for new transaction event
+	logsSub       event.Subscription       // Subscription for new log event
+	rmLogsSub     event.Subscription       // Subscription for removed log event
+	chainSub      event.Subscription       // Subscription for new chain event
 	pendingLogSub *cmn.TypeMuxSubscription // Subscription for pending log event
 
 	// Channels
