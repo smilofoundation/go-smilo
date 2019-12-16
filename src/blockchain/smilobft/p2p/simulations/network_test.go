@@ -505,8 +505,7 @@ func TestNode_UnmarshalJSON(t *testing.T) {
 
 func runNodeUnmarshalJSON(t *testing.T, tests []nodeUnmarshalTestCase) {
 	t.Helper()
-	var tt nodeUnmarshalTestCase
-	for _, tt = range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var got Node
 			if err := got.UnmarshalJSON([]byte(tt.marshaled)); err != nil {
