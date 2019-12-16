@@ -158,7 +158,8 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "SMILO",
 		Flags: []cli.Flag{
-			utils.SportEnableNodePermissionFlag,
+			utils.EnableNodePermissionFlag,
+			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 	{
@@ -279,7 +280,6 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.SportRequestTimeoutFlag,
 			utils.SportBlockPeriodFlag,
-			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 	{

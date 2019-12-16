@@ -189,7 +189,7 @@ type Config struct {
 	// Requests using ip address directly are not affected
 	GraphQLVirtualHosts []string `toml:",omitempty"`
 
-	SportEnableNodePermissionFlag bool `toml:",omitempty"`
+	EnableNodePermissionFlag bool `toml:",omitempty"`
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
 

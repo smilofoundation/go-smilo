@@ -17,6 +17,7 @@
 package config
 
 import (
+	"math/big"
 	"sync"
 )
 
@@ -32,6 +33,7 @@ type Config struct {
 	BlockPeriod    uint64         `toml:",omitempty"` // Default minimum difference between two consecutive block's timestamps in second
 	ProposerPolicy ProposerPolicy `toml:",omitempty"` // The policy for proposer selection
 	Epoch          uint64         `toml:",omitempty"` // The number of blocks after which to checkpoint and reset the pending votes
+	MinBlocksEmptyMining *big.Int       `toml:",omitempty"` // Min Blocks to mine before Stop Mining Empty Blocks
 
 	sync.RWMutex
 }
@@ -42,6 +44,7 @@ func DefaultConfig() *Config {
 		BlockPeriod:    1,
 		ProposerPolicy: RoundRobin,
 		Epoch:          30000,
+		MinBlocksEmptyMining: big.NewInt(20000000),
 	}
 }
 

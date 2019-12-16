@@ -150,7 +150,7 @@ type Config struct {
 	// whenever a message is sent to or received from a peer
 	EnableMsgEvents bool
 
-	SportEnableNodePermissionFlag bool `toml:",omitempty"`
+	EnableNodePermissionFlag bool `toml:",omitempty"`
 
 	DataDir string `toml:",omitempty"`
 	// Logger is a custom logger to use with the p2p.Server.
@@ -518,20 +518,16 @@ func (srv *Server) Start() (err error) {
 			return err
 		}
 	}
-	if err := srv.setupDiscovery(); err != nil {
-		return err
-	}
 
 	dynPeers := srv.maxDialedConns()
 
 	var dialer *dialstate
-	if !srv.SportEnableNodePermissionFlag {
-		//TODO: fix this
-		//if err := srv.setupDiscovery(); err != nil {
-		//	return err
-		//}
+	if !srv.EnableNodePermissionFlag {
+		if err := srv.setupDiscovery(); err != nil {
+			return err
+		}
 		dialer = newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
-		log.Info("Open-network mode enabled.")
+		log.Info("EnableNodePermissionFlag false, NetRestrict mode disabled.", "srv.localnode.ID()", srv.localnode.ID(), "srv.ntab", srv.ntab, "dynPeers", dynPeers, "&srv.Config", &srv.Config)
 	} else {
 		// Discovery protocol is disabled for consortium chains.
 		// Bootnodes are disabled.
@@ -540,7 +536,7 @@ func (srv *Server) Start() (err error) {
 		srv.NoDiscovery = true
 		srv.StaticNodes = nil
 		srv.TrustedNodes = nil
-		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict:srv.Config.NetRestrict})
+		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict: srv.Config.NetRestrict})
 	}
 
 	//dialer := newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
@@ -723,7 +719,21 @@ func (srv *Server) run(dialstate dialer) {
 		for ; len(runningTasks) < maxActiveDialTasks && i < len(ts); i++ {
 			t := ts[i]
 			srv.log.Trace("New dial task", "task", t)
-			go func() { t.Do(srv); taskdone <- t }()
+
+			go func() {
+				select {
+				case <-srv.quit:
+					return
+				default:
+					t.Do(srv)
+				}
+
+				select {
+				case <-srv.quit:
+					return
+				case taskdone <- t:
+				}
+			}()
 			runningTasks = append(runningTasks, t)
 		}
 		return ts[i:]
@@ -1025,11 +1035,11 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	clog := srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
 
 	//START - SMILO Permissioning
-	if srv.SportEnableNodePermissionFlag {
+	if srv.EnableNodePermissionFlag {
 		currentNode := srv.NodeInfo().ID
 		cnodeName := srv.NodeInfo().Name
 		clog.Trace("Smilo permissioning",
-			"SportEnableNodePermissionFlag", srv.SportEnableNodePermissionFlag,
+			"EnableNodePermissionFlag", srv.EnableNodePermissionFlag,
 			"DataDir", srv.DataDir,
 			"Current Node ID", currentNode,
 			"Node Name", cnodeName,

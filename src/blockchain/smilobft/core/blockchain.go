@@ -246,7 +246,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	}
 
 	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.SportDAO != nil) && chainConfig.AutonityContractConfig != nil {
-		log.Warn("willl set new Autonity contract", "chainConfig", chainConfig)
+		log.Warn("will set new Autonity contract", "chainConfig", chainConfig)
 		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
 			return GetHashFn(ref, chain)
 		})

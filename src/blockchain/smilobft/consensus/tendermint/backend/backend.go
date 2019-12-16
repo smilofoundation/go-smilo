@@ -282,6 +282,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	}
 
 	// verify the header of proposed block
+	log.Debug("verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 	err := sb.VerifyHeader(sb.blockchain, block.Header(), false)
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
@@ -362,28 +363,39 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		}
 
 		// Verify the validator set by comparing the validators in extra data and Soma-contract
+		log.Debug("VerifyProposal, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
+		if len(header.Extra) < types.BFTExtraVanity {
+			//panic("VerifyProposal, types.ExtractBFTHeaderExtra")
+		}
 		tendermintExtra, _ := types.ExtractBFTHeaderExtra(header)
 
 		//Perform the actual comparison
-		if len(tendermintExtra.Validators) != len(validators) {
-			sb.logger.Error("wrong validator set",
-				"extraLen", len(tendermintExtra.Validators),
-				"currentLen", len(validators),
-				"extra", tendermintExtra.Validators,
-				"current", validators,
-			)
+		totalvalidatorsExtra := len(tendermintExtra.Validators)
+		totalValidators := len(validators)
+		if totalvalidatorsExtra != totalValidators {
+			log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "totalvalidatorsExtra", totalvalidatorsExtra, "totalValidators", totalValidators)
 			return 0, errInconsistentValidatorSet
 		}
 
+		log.Debug("log all autonity Validators and validators on ExtraData")
 		for i := range validators {
-			if tendermintExtra.Validators[i] != validators[i] {
-				sb.logger.Error("wrong validator in the set",
-					"index", i,
-					"extraValidator", tendermintExtra.Validators[i],
-					"currentValidator", validators[i],
-					"extra", tendermintExtra.Validators,
-					"current", validators,
-				)
+			validator := validators[i]
+			validatorExtra := tendermintExtra.Validators[i]
+			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
+		}
+
+		for i := range validators {
+			validator := validators[i]
+			found := false
+			for j := range tendermintExtra.Validators {
+				validatorExtra := tendermintExtra.Validators[j]
+				if validator == validatorExtra {
+					found = true
+					break
+				}
+			}
+			if !found {
+				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i])
 				return 0, errInconsistentValidatorSet
 			}
 		}

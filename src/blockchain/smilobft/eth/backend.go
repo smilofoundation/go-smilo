@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
 	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
@@ -266,14 +267,14 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if checkpoint == nil {
 		checkpoint = params.TrustedCheckpoints[genesisHash]
 	}
-	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.SportEnableNodePermissionFlag); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.EnableNodePermissionFlag); err != nil {
 		return nil, err
 	}
 	var MinBlocksEmptyMining = big.NewInt(20000000)
-	if chainConfig.Sport != nil && config.Sport.MinBlocksEmptyMining != nil {
+	if (chainConfig.Sport != nil || chainConfig.Istanbul != nil ||
+		chainConfig.SportDAO != nil || chainConfig.Tendermint != nil) && config.Sport.MinBlocksEmptyMining != nil {
 		MinBlocksEmptyMining = config.Sport.MinBlocksEmptyMining
-	} else if chainConfig.SportDAO != nil && config.SportDAO.MinBlocksEmptyMining != nil {
-		MinBlocksEmptyMining = config.SportDAO.MinBlocksEmptyMining
+		log.Warn("Will set MinBlocksEmptyMining", "MinBlocksEmptyMining", MinBlocksEmptyMining)
 	}
 
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock, MinBlocksEmptyMining)
@@ -359,6 +360,9 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	}
 
 	if chainConfig.Istanbul != nil {
+		if config.Istanbul.MaxTimeout == 0 {
+			config.Istanbul.MaxTimeout = istanbul.DefaultConfig.MaxTimeout
+		}
 		log.Warn("$$$ Istanbul Consensus activated, will set it up", "chainConfig.Istanbul", chainConfig.Istanbul, "chainConfig", chainConfig)
 		return istanbulBackend.New(&config.Istanbul, ctx.NodeKey(), db, chainConfig, vmConfig)
 	}
@@ -651,16 +655,18 @@ func (s *Smilo) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Smilo protocol implementation.
 func (s *Smilo) Start(srvr *p2p.Server) error {
-	if (s.blockchain.Config().Tendermint != nil || s.blockchain.Config().Tendermint != nil) && srvr.SportEnableNodePermissionFlag {
+
+	if (s.blockchain.Config().Tendermint != nil || s.blockchain.Config().Istanbul != nil || s.blockchain.Config().SportDAO != nil) && s.blockchain.Config().AutonityContractConfig != nil {
+		//if srvr.EnableNodePermissionFlag {
 		// Subscribe to Autonity updates events
 		log.Warn("eth/backend.go, Start(), Will Subscribe to Autonity updates events")
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
-		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.SportEnableNodePermissionFlag)
+		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.EnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
 		go s.glienickeEventLoop(srvr)
 		srvr.UpdateWhitelist(savedList.List)
 	} else {
-		log.Warn("eth/backend.go, Start(), SportEnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
+		log.Warn("eth/backend.go, Start(), EnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
 	}
 	s.startEthEntryUpdate(srvr.LocalNode())
 

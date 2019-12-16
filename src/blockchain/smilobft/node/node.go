@@ -190,7 +190,7 @@ func (n *Node) Start() error {
 	if n.serverConfig.NodeDatabase == "" {
 		n.serverConfig.NodeDatabase = n.config.NodeDB()
 	}
-	n.serverConfig.SportEnableNodePermissionFlag = n.config.SportEnableNodePermissionFlag
+	n.serverConfig.EnableNodePermissionFlag = n.config.EnableNodePermissionFlag
 
 	n.serverConfig.DataDir = n.config.DataDir
 	running := &p2p.Server{Config: n.serverConfig}

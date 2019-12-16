@@ -68,6 +68,8 @@ var (
 	errInconsistentValidatorSet = errors.New("inconsistent validator set")
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
+
+	errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -108,6 +110,10 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Ensure that the extra data format is satisfied
+	log.Debug("verifyHeader, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
+	if len(header.Extra) < types.BFTExtraVanity {
+		//panic("verifyHeader, types.ExtractBFTHeaderExtra")
+	}
 	if _, err := types.ExtractBFTHeaderExtra(header); err != nil {
 		return errInvalidExtraDataFormat
 	}
@@ -237,6 +243,10 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 	}
 	validators := validator.NewSet(validatorAddresses, sb.config.GetProposerPolicy())
 
+	log.Debug("verifyCommittedSeals, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
+	if len(header.Extra) < types.BFTExtraVanity {
+		panic("verifyCommittedSeals, types.ExtractBFTHeaderExtra")
+	}
 	extra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		return err
@@ -309,8 +319,38 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// use the same difficulty for all blocks
 	header.Difficulty = defaultDifficulty
 
+
+	var parents []*types.Header
+	parents = append(parents, parent)
+	fullnodeAddresses, err := sb.retrieveValidators(header, parents, chain)
+	if err != nil {
+		log.Error("Could not assemble the voting snapshot from retrieveValidators", "err", err)
+		return err
+	}
+
+	fullnodes := make([]common.Address, 0, len(fullnodeAddresses))
+	for _, fullnode := range fullnodeAddresses {
+		fullnodes = append(fullnodes, fullnode)
+	}
+	for i := 0; i < len(fullnodes); i++ {
+		for j := i + 1; j < len(fullnodes); j++ {
+			if bytes.Compare(fullnodes[i][:], fullnodes[j][:]) > 0 {
+				fullnodes[i], fullnodes[j] = fullnodes[j], fullnodes[i]
+			}
+		}
+	}
+
+	// add fullnodes in snapshot to extraData's fullnodes section
+	log.Debug("Prepare, types.PrepareExtra", "len(header.Extra)", len(header.Extra), "block.Number", number-1, "extraData", common.Bytes2Hex(header.Extra), "fullnodes", len(fullnodes))
+	extra, err := types.PrepareExtra(header.Extra, fullnodes)
+	if err != nil {
+		log.Error("Could not add fullnodes in snapshot to extraData's fullnodes section.", "err", err)
+		return err
+	}
+	header.Extra = extra
+
 	// set header's timestamp
-	header.Time = new(big.Int).Add(big.NewInt(int64(parent.Time)), new(big.Int).SetUint64(sb.config.BlockPeriod)).Uint64()
+	header.Time = parent.Time + sb.config.BlockPeriod
 	if int64(header.Time) < time.Now().Unix() {
 		header.Time = uint64(time.Now().Unix())
 	}
@@ -329,10 +369,15 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
-		log.Error("finalize. after getValidators", "err", err.Error())
+		log.Error("Backend) Finalize( after getValidators", "err", err.Error())
 		return nil, err
 	}
 
+	// add validators to extraData's validators section
+	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
+		log.Error("Backend) Finalize( after PrepareExtra", "err", err.Error())
+		return nil, err
+	}
 	// warn for empty blocks
 	number := header.Number.Int64()
 
@@ -342,33 +387,10 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 		//AccumulateRewards(sb.config.CommunityAddress, state, header)
 	}
 
-	// No block rewards in BFT, so the state remains as is and uncles are dropped
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+
+	// drop uncles
 	header.UncleHash = nilUncleHash
-
-	// add validators to extraData's validators section
-	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
-		log.Error("finalize. after PrepareExtra", "err", err.Error())
-		return nil, err
-	}
-
-	ac := sb.blockchain.GetAutonityContract()
-	if ac != nil && header.Number.Uint64() > 1 {
-		err = ac.ApplyPerformRedistribution(txs, receipts, header, state)
-		if err != nil {
-			log.Error("ApplyPerformRedistribution", "err", err.Error())
-			return nil, err
-		}
-	}
-
-	// No block rewards in Istanbul, so the state remains as is and uncles are dropped
-	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = nilUncleHash
-
-	// add validators to extraData's validators section
-	if header.Extra, err = types.PrepareExtra(header.Extra, validators); err != nil {
-		return nil, err
-	}
 
 	// Assemble and return the final block for sealing
 	return types.NewBlock(header, txs, nil, receipts), nil
@@ -450,6 +472,12 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		log.Error("Seal, Bail out <-stop")
 		return nil, nil
 	}
+
+	//log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
+	//if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
+	//	log.Debug("Seal, Bail out errWaitTransactions")
+	//	return nil, errWaitTransactions
+	//}
 
 	// get the proposed block hash and clear it if the seal() is completed.
 	sb.coreMu.Lock()
@@ -590,6 +618,11 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 		return nil, errUnknownBlock
 	}
 
+	log.Debug("retrieveSavedValidators, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "block.Number", number-1, "header", header, "extraData", common.Bytes2Hex(header.Extra))
+	if len(header.Extra) < types.BFTExtraVanity {
+		log.Warn("panic(\"retrieveSavedValidators, types.ExtractBFTHeaderExtra\")")
+		//panic("retrieveSavedValidators, types.ExtractBFTHeaderExtra")
+	}
 	tendermintExtra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)
@@ -616,6 +649,10 @@ func (sb *Backend) retrieveValidators(header *types.Header, parents []*types.Hea
 	if len(parents) > 0 {
 		parent := parents[len(parents)-1]
 		var tendermintExtra *types.BFTExtra
+		log.Debug("retrieveValidators, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
+		//if len(header.Extra) < types.BFTExtraVanity {
+		//	panic("retrieveValidators, types.ExtractBFTHeaderExtra")
+		//}
 		tendermintExtra, err = types.ExtractBFTHeaderExtra(parent)
 		if err == nil {
 			validators = tendermintExtra.Validators

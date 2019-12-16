@@ -119,7 +119,7 @@ func makeGenesis(validators []*testNode) *core.Genesis {
 	genesis.Difficulty = big.NewInt(1)
 	genesis.Timestamp = 0
 	genesis.Nonce = 0
-	genesis.Mixhash = types.SportDigest
+	genesis.Mixhash = types.BFTDigest
 
 	genesis.Config = params.TestChainConfig
 	genesis.Config.Tendermint = &params.TendermintConfig{}

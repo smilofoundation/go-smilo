@@ -155,7 +155,7 @@ type Config struct {
 	// Enables tracking of SHA3 preimages in the VM
 	EnablePreimageRecording bool
 
-	SportEnableNodePermissionFlag bool
+	EnableNodePermissionFlag bool
 	// Sport options
 	Sport sport.Config
 

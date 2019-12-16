@@ -173,7 +173,7 @@ func testSendTransactions(t *testing.T, protocol int) {
 
 	const txCount = 100
 	txAdded := make(chan []*types.Transaction, txCount)
-	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, &testTxPool{added: txAdded}, pow, blockchain, db, 1, nil, DefaultConfig.SportEnableNodePermissionFlag)
+	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, &testTxPool{added: txAdded}, pow, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}

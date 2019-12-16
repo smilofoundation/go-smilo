@@ -376,7 +376,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		}
 
 		rawdb.WriteEnodeWhitelist(db, types.NewNodes(enodes, true))
-		log.Warn("AutonityContractConfig is defined, WriteEnodeWhitelist, ", "enodes", enodes)
+		log.Warn("AutonityContractConfig is defined, WriteEnodeWhitelist, ", "len(enodes)", len(enodes), "enodes", enodes)
 	}
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	return block, nil

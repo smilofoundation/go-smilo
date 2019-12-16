@@ -89,7 +89,8 @@ func ExtractBFTHeaderExtra(h *Header) (*BFTExtra, error) {
 
 func ExtractBFTExtra(extra []byte) (*BFTExtra, error) {
 	if len(extra) < BFTExtraVanity {
-		log.Error("ExtractBFTExtra, ", "len(extra)", len(extra), "BFTExtraVanity", BFTExtraVanity)
+		log.Error("ExtractBFTExtra, ", "len(extra)", len(extra), "BFTExtraVanity", BFTExtraVanity, "SportExtraVanity", SportExtraVanity)
+		//panic("ExtractBFTExtra")
 		return nil, ErrInvalidBFTHeaderExtra
 	}
 
@@ -191,7 +192,14 @@ func PrepareExtra(extraData []byte, vals []common.Address) ([]byte, error) {
 		extraDataCopy = extraDataCopy[:BFTExtraVanity]
 	}
 
-	return append(extraDataCopy, payload...), nil
+	extra := append(extraDataCopy, payload...)
+	//
+	//if len(extra) < BFTExtraVanity {
+	//	log.Error("PrepareExtra, ", "len(extra)", len(extra), "BFTExtraVanity", BFTExtraVanity, "SportExtraVanity", SportExtraVanity)
+	//	return nil, ErrInvalidBFTHeaderExtra
+	//}
+
+	return extra, nil
 }
 
 // WriteSeal writes the extra-data field of the given header with the given seals.

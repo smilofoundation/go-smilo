@@ -50,7 +50,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		TxPool                        core.TxPoolConfig
 		GPO                           gasprice.Config
 		EnablePreimageRecording       bool
-		SportEnableNodePermissionFlag bool
+		EnableNodePermissionFlag bool
 		Sport                         sport.Config
 		DocRoot                       string `toml:"-"`
 		EWASMInterpreter              string
@@ -91,7 +91,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
-	enc.SportEnableNodePermissionFlag = c.SportEnableNodePermissionFlag
+	enc.EnableNodePermissionFlag = c.EnableNodePermissionFlag
 	enc.Sport = c.Sport
 	enc.DocRoot = c.DocRoot
 	enc.EWASMInterpreter = c.EWASMInterpreter
@@ -136,7 +136,7 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		TxPool                        *core.TxPoolConfig
 		GPO                           *gasprice.Config
 		EnablePreimageRecording       *bool
-		SportEnableNodePermissionFlag *bool
+		EnableNodePermissionFlag *bool
 		Sport                         *sport.Config
 		DocRoot                       *string `toml:"-"`
 		EWASMInterpreter              *string
@@ -236,8 +236,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.EnablePreimageRecording != nil {
 		c.EnablePreimageRecording = *dec.EnablePreimageRecording
 	}
-	if dec.SportEnableNodePermissionFlag != nil {
-		c.SportEnableNodePermissionFlag = *dec.SportEnableNodePermissionFlag
+	if dec.EnableNodePermissionFlag != nil {
+		c.EnableNodePermissionFlag = *dec.EnableNodePermissionFlag
 	}
 	if dec.Sport != nil {
 		c.Sport = *dec.Sport
