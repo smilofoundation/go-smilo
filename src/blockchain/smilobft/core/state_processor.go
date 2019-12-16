@@ -102,7 +102,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 				}
 			}
 		} else {
-			panic("Wont set Istanbul Tendermint SportDAO Process, is this correct ? ")
+			msg := "Wont set Istanbul Tendermint SportDAO Process, is this correct ? "
+			log.Warn(msg)
+			//panic(msg)
 		}
 
 		vaultState.Prepare(tx.Hash(), block.Hash(), i)

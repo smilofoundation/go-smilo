@@ -535,7 +535,7 @@ func (srv *Server) Start() (err error) {
 		log.Info("Private-network mode enabled.")
 		srv.NoDiscovery = true
 		srv.StaticNodes = nil
-		srv.TrustedNodes = nil
+		//srv.TrustedNodes = nil //-> breaks TestServerAtCap
 		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict: srv.Config.NetRestrict})
 	}
 

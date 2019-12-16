@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math/big"
 	"testing"
 	"time"
