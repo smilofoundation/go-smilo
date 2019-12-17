@@ -60,8 +60,8 @@ matrix:
 
     # This builder does the Ubuntu PPA upload
       os: linux
-      dist: trusty
-      go: 1.11.x
+      dist: xenial
+      go: 1.13.x
       env:
         - ubuntu-ppa
       git:
