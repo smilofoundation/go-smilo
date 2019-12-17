@@ -25,10 +25,11 @@ import (
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 
 	"strings"
 
@@ -89,7 +90,7 @@ func newTester() *downloadTester {
 	tester.stateDb = rawdb.NewMemoryDatabase()
 	tester.stateDb.Put(testGenesis.Root().Bytes(), []byte{0x00})
 
-	tester.downloader = New(0, tester.stateDb, trie.NewSyncBloom(1, tester.stateDb), new(event.TypeMux), tester, nil, tester.dropPeer)
+	tester.downloader = New(0, tester.stateDb, trie.NewSyncBloom(1, tester.stateDb), new(cmn.TypeMux), tester, nil, tester.dropPeer)
 	return tester
 }
 

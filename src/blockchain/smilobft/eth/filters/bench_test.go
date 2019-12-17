@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/bitutil"
 	"github.com/ethereum/go-ethereum/event"
@@ -123,7 +125,7 @@ func benchmarkBloomBits(b *testing.B, sectionSize uint64) {
 
 	b.Log("Running filter benchmarks...")
 	start = time.Now()
-	mux := new(event.TypeMux)
+	mux := new(cmn.TypeMux)
 	var backend *testBackend
 
 	for i := 0; i < benchFilterCnt; i++ {
@@ -174,7 +176,7 @@ func BenchmarkNoBloomBits(b *testing.B) {
 
 	b.Log("Running filter benchmarks...")
 	start := time.Now()
-	mux := new(event.TypeMux)
+	mux := new(cmn.TypeMux)
 	backend := &testBackend{mux, db, 0, new(event.Feed), new(event.Feed), new(event.Feed), new(event.Feed)}
 	filter := NewRangeFilter(backend, 0, int64(*headNum), []common.Address{{}}, nil)
 	filter.Logs(context.Background())

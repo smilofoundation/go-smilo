@@ -22,16 +22,17 @@ import (
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common/mclock"
 
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
-	rpc "go-smilo/src/blockchain/smilobft/rpc"
+	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -73,7 +74,7 @@ type LightEthereum struct {
 
 	ApiBackend *LesApiBackend
 
-	eventMux       *event.TypeMux
+	eventMux       *cmn.TypeMux
 	engine         consensus.Engine
 	accountManager *accounts.Manager
 
@@ -108,7 +109,7 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 		peers:          peers,
 		reqDist:        newRequestDistributor(peers, quitSync, &mclock.System{}),
 		accountManager: ctx.AccountManager,
-		engine:         eth.CreateConsensusEngine(ctx, config, chainConfig, chainDb),
+		engine:         eth.CreateConsensusEngine(ctx, chainConfig, config, nil, false, chainDb, nil),
 		shutdownChan:   make(chan bool),
 		networkId:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
@@ -248,7 +249,7 @@ func (s *LightEthereum) TxPool() *light.TxPool              { return s.txPool }
 func (s *LightEthereum) Engine() consensus.Engine           { return s.engine }
 func (s *LightEthereum) LesVersion() int                    { return int(ClientProtocolVersions[0]) }
 func (s *LightEthereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
-func (s *LightEthereum) EventMux() *event.TypeMux           { return s.eventMux }
+func (s *LightEthereum) EventMux() *cmn.TypeMux             { return s.eventMux }
 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.

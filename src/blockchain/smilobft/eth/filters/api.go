@@ -25,9 +25,10 @@ import (
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/event"
 
 	"go-smilo/src/blockchain/smilobft/rpc"
 
@@ -55,7 +56,7 @@ type filter struct {
 // information related to the Ethereum protocol such als blocks, transactions and logs.
 type PublicFilterAPI struct {
 	backend   Backend
-	mux       *event.TypeMux
+	mux       *cmn.TypeMux
 	quit      chan struct{}
 	chainDb   ethdb.Database
 	events    *EventSystem

@@ -18,11 +18,14 @@ package miner
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/common"
@@ -105,7 +108,7 @@ type worker struct {
 	gasCeil  uint64
 
 	// update loop
-	mux          *event.TypeMux
+	mux          *cmn.TypeMux
 	txsCh        chan core.NewTxsEvent
 	txsSub       event.Subscription
 	chainHeadCh  chan core.ChainHeadEvent
@@ -144,10 +147,9 @@ type worker struct {
 	atWork int32
 
 	minBlocksEmptyMining *big.Int // Min Blocks to mine before Stop Mining Empty Blocks
-
 }
 
-func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *event.TypeMux, minBlocksEmptyMining *big.Int) *worker {
+func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, coinbase common.Address, eth Backend, mux *cmn.TypeMux, minBlocksEmptyMining *big.Int) *worker {
 	worker := &worker{
 		config:               config,
 		chainConfig:          chainConfig,
@@ -169,7 +171,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh:   make(chan time.Duration),
 	}
 
-	if _, ok := engine.(consensus.SmiloBFT); ok || !chainConfig.IsSmilo || chainConfig.Clique != nil {
+	if _, ok := engine.(consensus.BFT); ok || !chainConfig.IsSmilo || chainConfig.Clique != nil {
+		log.Debug("$$$ Will start BFT miner.worker")
 		// Subscribe TxPreEvent for tx pool
 		worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 		// Subscribe events for blockchain
@@ -179,6 +182,9 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 
 		go worker.wait()
 		worker.commitNewWork(time.Now().Unix())
+	} else {
+		//panic("$$$ Could not commitNewWork non BFT Consensus Engine")
+		log.Warn("$$$ Could not commitNewWork non BFT Consensus Engine")
 	}
 
 	return worker
@@ -232,12 +238,15 @@ func (self *worker) start() {
 	defer self.mu.Unlock()
 
 	atomic.StoreInt32(&self.mining, 1)
-	if sport, ok := self.engine.(consensus.SmiloBFT); ok {
-		log.Info("SmiloBFT consensus will start ...")
-		err := sport.Start(self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
+	if bftConsensus, ok := self.engine.(consensus.BFT); ok {
+		log.Info("BFT consensus will start ...", " self.engine.ProtocolOld().Name", self.engine.ProtocolOld().Name)
+		err := bftConsensus.Start(context.Background(), self.chain, self.chain.CurrentBlock, self.chain.HasBadBlock)
 		if err != nil {
 			panic(fmt.Errorf("could not start SmiloBFT consensus on miner.worker, err: %+v", err))
 		}
+	} else {
+		//panic("$$$ Could not start() non BFT Consensus Engine")
+		log.Warn("$$$ Could not start() non BFT Consensus Engine")
 	}
 
 	// spin up agents
@@ -257,8 +266,14 @@ func (self *worker) stop() {
 		}
 	}
 
-	if sport, ok := self.engine.(consensus.SmiloBFT); ok {
-		sport.Stop()
+	if sport, ok := self.engine.(consensus.BFT); ok {
+		err := sport.Stop()
+		if err != nil {
+			log.Error("$$$ Error stopping Consensus Engine", "error", err)
+		}
+	} else {
+		//panic("$$$ Could not stop non BFT Consensus Engine")
+		log.Warn("Could not stop non BFT Consensus Engine")
 	}
 	atomic.StoreInt32(&self.mining, 0)
 	atomic.StoreInt32(&self.atWork, 0)
@@ -603,7 +618,7 @@ func (self *worker) updateSnapshot() {
 	self.snapshotState = self.current.state.Copy()
 }
 
-func (env *Work) commitTransactions(mux *event.TypeMux, txs *types.TransactionsByPriceAndNonce, bc *core.BlockChain, coinbase common.Address) {
+func (env *Work) commitTransactions(mux *cmn.TypeMux, txs *types.TransactionsByPriceAndNonce, bc *core.BlockChain, coinbase common.Address) {
 	if env.gasPool == nil {
 		env.gasPool = new(core.GasPool).AddGas(env.header.GasLimit)
 	}

@@ -23,6 +23,8 @@ import (
 	"os"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
@@ -52,7 +54,7 @@ func BenchmarkFilters(b *testing.B) {
 
 	var (
 		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
 		logsFeed   = new(event.Feed)
@@ -111,7 +113,7 @@ func TestFilters(t *testing.T) {
 
 	var (
 		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
+		mux        = new(cmn.TypeMux)
 		txFeed     = new(event.Feed)
 		rmLogsFeed = new(event.Feed)
 		logsFeed   = new(event.Feed)

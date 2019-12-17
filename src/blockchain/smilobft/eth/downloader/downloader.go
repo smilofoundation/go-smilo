@@ -25,10 +25,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"go-smilo/src/blockchain/smilobft/trie"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 
@@ -103,8 +104,8 @@ type Downloader struct {
 	rttEstimate   uint64 // Round trip time to target for download requests
 	rttConfidence uint64 // Confidence in the estimated RTT (unit: millionths to allow atomic ops)
 
-	mode SyncMode       // Synchronisation mode defining the strategy used (per sync cycle)
-	mux  *event.TypeMux // Event multiplexer to announce sync operation events
+	mode SyncMode     // Synchronisation mode defining the strategy used (per sync cycle)
+	mux  *cmn.TypeMux // Event multiplexer to announce sync operation events
 
 	checkpoint uint64   // Checkpoint block number to enforce head against (e.g. fast sync)
 	genesis    uint64   // Genesis block number to limit sync to (e.g. light client CHT)
@@ -213,7 +214,7 @@ type BlockChain interface {
 }
 
 // New creates a new downloader to fetch hashes and blocks from remote peers.
-func New(checkpoint uint64, stateDb ethdb.Database, stateBloom *trie.SyncBloom, mux *event.TypeMux, chain BlockChain, lightchain LightChain, dropPeer peerDropFn) *Downloader {
+func New(checkpoint uint64, stateDb ethdb.Database, stateBloom *trie.SyncBloom, mux *cmn.TypeMux, chain BlockChain, lightchain LightChain, dropPeer peerDropFn) *Downloader {
 	if lightchain == nil {
 		lightchain = chain
 	}
@@ -486,18 +487,18 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 		// the blocks might be written into the ancient store. A following mini-reorg
 		// could cause issues.
 		if d.checkpoint != 0 && d.checkpoint > maxForkAncestry+1 {
-			d.ancientLimit = d.checkpoint
+			atomic.StoreUint64(&d.ancientLimit, d.checkpoint)
 		} else if height > maxForkAncestry+1 {
-			d.ancientLimit = height - maxForkAncestry - 1
+			atomic.StoreUint64(&d.ancientLimit, height-maxForkAncestry-1)
 		}
 		frozen, _ := d.stateDB.Ancients() // Ignore the error here since light client can also hit here.
 		// If a part of blockchain data has already been written into active store,
 		// disable the ancient style insertion explicitly.
 		if origin >= frozen && frozen != 0 {
-			d.ancientLimit = 0
+			atomic.StoreUint64(&d.ancientLimit, 0)
 			log.Info("Disabling direct-ancient mode", "origin", origin, "ancient", frozen-1)
-		} else if d.ancientLimit > 0 {
-			log.Debug("Enabling direct-ancient mode", "ancient", d.ancientLimit)
+		} else if atomic.LoadUint64(&d.ancientLimit) > 0 {
+			log.Debug("Enabling direct-ancient mode", "ancient", atomic.LoadUint64(&d.ancientLimit))
 		}
 		// Rewind the ancient store and blockchain if reorg happens.
 		if origin+1 < frozen {
@@ -1799,7 +1800,7 @@ func (d *Downloader) qosTuner() {
 		atomic.StoreUint64(&d.rttConfidence, conf)
 
 		// Log the new QoS values and sleep until the next RTT
-		log.Debug("Recalculated downloader QoS values", "rtt", rtt, "confidence", float64(conf)/1000000.0, "ttl", d.requestTTL())
+		//log.Debug("Recalculated downloader QoS values", "rtt", rtt, "confidence", float64(conf)/1000000.0, "ttl", d.requestTTL())
 		select {
 		case <-d.quitCh:
 			return

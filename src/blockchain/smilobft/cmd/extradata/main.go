@@ -184,7 +184,7 @@ func GenerateExtraFromFullnodes(vanity string, fullnodesStr string) (string, err
 
 	ist := &types.SportExtra{
 		Fullnodes:     fullnodes,
-		Seal:          make([]byte, types.SportExtraSeal),
+		Seal:          make([]byte, types.BFTExtraSeal),
 		CommittedSeal: [][]byte{},
 	}
 

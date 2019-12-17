@@ -22,8 +22,9 @@ import (
 	"encoding/json"
 	"sync"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -38,7 +39,7 @@ import (
 // backend is the override for Clique backend, with extra functions for Smilo BFT
 type backend struct {
 	config           *sport.Config
-	smilobftEventMux *event.TypeMux
+	smilobftEventMux *cmn.TypeMux
 	privateKey       *ecdsa.PrivateKey
 	address          common.Address
 	core             smilobftcore.Engine

@@ -376,7 +376,7 @@ func (s *Service) login(conn *websocket.Conn) error {
 
 	var network, protocol string
 	//must pass engine protocol name for Smilo
-	p := s.engine.Protocol()
+	p := s.engine.ProtocolOld()
 	if info := infos.Protocols[p.Name]; info != nil {
 		network = fmt.Sprintf("%d", info.(*eth.NodeInfo).Network)
 		protocol = fmt.Sprintf("eth/%d", eth.ProtocolVersions[0])

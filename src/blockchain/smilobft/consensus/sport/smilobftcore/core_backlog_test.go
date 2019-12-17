@@ -27,7 +27,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
@@ -238,7 +237,7 @@ func TestStoreBacklog(t *testing.T) {
 
 func TestProcessFutureBacklog(t *testing.T) {
 	backend := &testSystemBackend{
-		events: new(event.TypeMux),
+		events: new(cmn.TypeMux),
 	}
 	c := &core{
 		logger:      log.New("backend", "test", "id", 0),
@@ -329,7 +328,7 @@ func TestProcessBacklog(t *testing.T) {
 func testProcessBacklog(t *testing.T, msg *message) {
 	vset := newTestFullnodeSet(1)
 	backend := &testSystemBackend{
-		events: new(event.TypeMux),
+		events: new(cmn.TypeMux),
 		peers:  vset,
 	}
 	c := &core{

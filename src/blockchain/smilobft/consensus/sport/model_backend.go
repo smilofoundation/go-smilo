@@ -21,8 +21,9 @@ import (
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 )
 
 // Backend provides application specific functions for Sport core
@@ -35,7 +36,7 @@ type Backend interface {
 	Fullnodes(blockproposal BlockProposal) FullnodeSet
 
 	// EventMux returns the event mux in backend
-	EventMux() *event.TypeMux
+	EventMux() *cmn.TypeMux
 
 	// Broadcast sends a message to all fullnodes (include self)
 	Broadcast(fullnodeSet FullnodeSet, payload []byte) error

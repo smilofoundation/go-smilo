@@ -19,9 +19,8 @@ package core
 import (
 	"container/list"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
-
-	"github.com/ethereum/go-ethereum/event"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
@@ -30,7 +29,7 @@ import (
 // Implement our EthTest Manager
 type TestManager struct {
 	// stateManager *StateManager
-	eventMux *event.TypeMux
+	eventMux *cmn.TypeMux
 
 	db         ethdb.Database
 	txPool     *TxPool
@@ -66,7 +65,7 @@ func (tm *TestManager) TxPool() *TxPool {
 // 	return tm.stateManager
 // }
 
-func (tm *TestManager) EventMux() *event.TypeMux {
+func (tm *TestManager) EventMux() *cmn.TypeMux {
 	return tm.eventMux
 }
 
@@ -80,7 +79,7 @@ func (tm *TestManager) Db() ethdb.Database {
 
 func NewTestManager() *TestManager {
 	testManager := &TestManager{}
-	testManager.eventMux = new(event.TypeMux)
+	testManager.eventMux = new(cmn.TypeMux)
 	testManager.db = rawdb.NewMemoryDatabase()
 	// testManager.txPool = NewTxPool(testManager)
 	// testManager.blockChain = NewBlockChain(testManager)

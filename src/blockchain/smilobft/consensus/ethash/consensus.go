@@ -24,6 +24,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+	"golang.org/x/crypto/sha3"
+
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -527,6 +530,29 @@ func (ethash *Ethash) Finalize(chain consensus.ChainReader, header *types.Header
 
 	// Header seems complete, assemble into a block and return
 	return types.NewBlock(header, txs, uncles, receipts), nil
+}
+
+// SealHash returns the hash of a block prior to it being sealed.
+func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra,
+	})
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 // Some weird constants to avoid constant memory allocs for them.

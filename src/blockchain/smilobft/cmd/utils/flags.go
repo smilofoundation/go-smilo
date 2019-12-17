@@ -746,17 +746,41 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+
 	EmitCheckpointsFlag = cli.BoolFlag{
 		Name:  "emitcheckpoints",
 		Usage: "If enabled, emit specially formatted logging checkpoints",
 	}
 
+	// Istanbul settings
+	IstanbulRequestTimeoutFlag = cli.Uint64Flag{
+		Name:  "istanbul.requesttimeout",
+		Usage: "Timeout for each Istanbul round in milliseconds",
+		Value: eth.DefaultConfig.Istanbul.RequestTimeout,
+	}
+	IstanbulBlockPeriodFlag = cli.Uint64Flag{
+		Name:  "istanbul.blockperiod",
+		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
+		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
+	}
+
+	// SportDAO settings
+	SportDAORequestTimeoutFlag = cli.Uint64Flag{
+		Name:  "smilobftdao.requesttimeout",
+		Usage: "smilobftdao for each SportDAO round in milliseconds",
+		Value: eth.DefaultConfig.Istanbul.RequestTimeout,
+	}
+	SportDAOBlockPeriodFlag = cli.Uint64Flag{
+		Name:  "smilobftdao.blockperiod",
+		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
+		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
+	}
+
 	// Smilo settings
 	SportEnableNodePermissionFlag = cli.BoolFlag{
 		Name:  "smilobft.permissioned",
-		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
+		Usage: "(deprecated: use permissioned flag instead. will be removed soon!. If enabled, the node will allow only a defined list of nodes to connect",
 	}
-
 	SportRequestTimeoutFlag = cli.Uint64Flag{
 		Name:  "smilobft.requesttimeout",
 		Usage: "Timeout for each Sport round in milliseconds",
@@ -781,6 +805,10 @@ var (
 		Name:  "minblocksemptymining",
 		Usage: " Min Blocks to mine before Stop Mining Empty Blocks",
 		Value: big.NewInt(20000000),
+	}
+	EnableNodePermissionFlag = cli.BoolFlag{
+		Name:  "permissioned",
+		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
 	}
 )
 
@@ -1227,7 +1255,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		cfg.ExternalSigner = ctx.GlobalString(ExternalSignerFlag.Name)
 	}
 
-	cfg.SportEnableNodePermissionFlag = ctx.GlobalBool(SportEnableNodePermissionFlag.Name)
+	cfg.EnableNodePermissionFlag = ctx.GlobalBool(EnableNodePermissionFlag.Name)
 
 	if ctx.GlobalIsSet(KeyStoreDirFlag.Name) {
 		cfg.KeyStoreDir = ctx.GlobalString(KeyStoreDirFlag.Name)
@@ -1328,6 +1356,30 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	}
 }
 
+func setIstanbul(ctx *cli.Context, cfg *eth.Config) {
+	if ctx.GlobalIsSet(IstanbulRequestTimeoutFlag.Name) {
+		cfg.Istanbul.RequestTimeout = ctx.GlobalUint64(IstanbulRequestTimeoutFlag.Name)
+	}
+	if ctx.GlobalIsSet(IstanbulBlockPeriodFlag.Name) {
+		cfg.Istanbul.BlockPeriod = ctx.GlobalUint64(IstanbulBlockPeriodFlag.Name)
+	}
+}
+
+func setSportDAO(ctx *cli.Context, cfg *eth.Config) {
+	if ctx.GlobalIsSet(SportDAORequestTimeoutFlag.Name) {
+		cfg.SportDAO.RequestTimeout = ctx.GlobalUint64(SportDAORequestTimeoutFlag.Name)
+	}
+	if ctx.GlobalIsSet(SportDAOBlockPeriodFlag.Name) {
+		cfg.SportDAO.BlockPeriod = ctx.GlobalUint64(SportBlockPeriodFlag.Name)
+	}
+	if ctx.GlobalIsSet(DataDirFlag.Name) {
+		cfg.SportDAO.DataDir = ctx.GlobalString(DataDirFlag.Name)
+	}
+	//if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
+	cfg.SportDAO.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
+	//}
+}
+
 func setEthash(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(EthashCacheDirFlag.Name) {
 		cfg.Ethash.CacheDir = ctx.GlobalString(EthashCacheDirFlag.Name)
@@ -1406,6 +1458,12 @@ func setWhitelist(ctx *cli.Context, cfg *eth.Config) {
 	}
 }
 
+func setBFT(ctx *cli.Context, cfg *eth.Config) {
+	if ctx.GlobalIsSet(EnableNodePermissionFlag.Name) {
+		cfg.EnableNodePermissionFlag = ctx.GlobalBool(EnableNodePermissionFlag.Name)
+	}
+}
+
 func setSport(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(SportRequestTimeoutFlag.Name) {
 		cfg.Sport.RequestTimeout = ctx.GlobalUint64(SportRequestTimeoutFlag.Name)
@@ -1413,15 +1471,14 @@ func setSport(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(SportBlockPeriodFlag.Name) {
 		cfg.Sport.BlockPeriod = ctx.GlobalUint64(SportBlockPeriodFlag.Name)
 	}
+	//TODO: DEPRECATED
 	if ctx.GlobalIsSet(SportEnableNodePermissionFlag.Name) {
-		cfg.SportEnableNodePermissionFlag = ctx.GlobalBool(SportEnableNodePermissionFlag.Name)
+		cfg.EnableNodePermissionFlag = ctx.GlobalBool(SportEnableNodePermissionFlag.Name)
 	}
 	if ctx.GlobalIsSet(DataDirFlag.Name) {
 		cfg.Sport.DataDir = ctx.GlobalString(DataDirFlag.Name)
 	}
-	if ctx.GlobalIsSet(MinBlocksEmptyMiningFlag.Name) {
-		cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
-	}
+	cfg.Sport.MinBlocksEmptyMining = GlobalBig(ctx, MinBlocksEmptyMiningFlag.Name)
 }
 
 func setCodeQuality(ctx *cli.Context, cfg *eth.Config) {
@@ -1503,9 +1560,14 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
 	setMiner(ctx, &cfg.Miner)
+
+	setBFT(ctx, cfg)
+	setIstanbul(ctx, cfg)
+	setSportDAO(ctx, cfg)
+	setSport(ctx, cfg)
+
 	setWhitelist(ctx, cfg)
 	setLes(ctx, cfg)
-	setSport(ctx, cfg)
 	setCodeQuality(ctx, cfg)
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
@@ -1625,7 +1687,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	} else {
 		log.Info("Going to register a Smilo full Client to the stack")
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(ctx, cfg)
+			fullNode, err := eth.New(ctx, cfg, nil)
 			if fullNode != nil && cfg.LightServ > 0 {
 				ls, _ := les.NewLesServer(fullNode, cfg)
 				fullNode.AddLesServer(ls)

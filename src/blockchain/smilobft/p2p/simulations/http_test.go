@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -40,15 +41,13 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/simulations/adapters"
 )
 
-var (
-	loglevel = flag.Int("loglevel", 2, "verbosity of logs")
-)
+func TestMain(m *testing.M) {
+	loglevel := flag.Int("loglevel", 2, "verbosity of logs")
 
-func init() {
 	flag.Parse()
-
 	log.PrintOrigins(true)
 	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
+	os.Exit(m.Run())
 }
 
 // testService implements the node.Service interface and provides protocols

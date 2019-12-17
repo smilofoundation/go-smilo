@@ -77,6 +77,7 @@ const (
 	ErrNoStatusMsg
 	ErrExtraStatusMsg
 	ErrSuspendedPeer
+	ErrNoPubKeyFound
 )
 
 func (e errCode) String() string {

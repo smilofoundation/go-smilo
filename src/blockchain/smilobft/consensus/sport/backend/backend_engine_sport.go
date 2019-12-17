@@ -19,6 +19,7 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -169,7 +170,7 @@ func (sb *backend) updateBlock(parent *types.Header, block *types.Block) (*types
 }
 
 // Start implements consensus.Sport.Start
-func (sb *backend) Start(chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
+func (sb *backend) Start(_ context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if sb.coreStarted {

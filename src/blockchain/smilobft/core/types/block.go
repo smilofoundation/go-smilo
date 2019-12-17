@@ -107,6 +107,11 @@ func (h *Header) Hash() common.Hash {
 		if sportHeader := SportFilteredHeader(h, true); sportHeader != nil {
 			return rlpHash(sportHeader)
 		}
+	} else if h.MixDigest == BFTDigest {
+		// Seal is reserved in extra-data. To prove block is signed by the proposer.
+		if posHeader := BFTFilteredHeader(h, true); posHeader != nil {
+			return rlpHash(posHeader)
+		}
 	}
 	return rlpHash(h)
 }

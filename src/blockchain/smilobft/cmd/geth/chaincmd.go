@@ -27,10 +27,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
+
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"gopkg.in/urfave/cli.v1"
 
@@ -224,6 +230,7 @@ func initGenesis(ctx *cli.Context) error {
 	if len(genesisPath) == 0 {
 		utils.Fatalf("Must supply path to genesis JSON file")
 	}
+	log.Info("Will open Genesis file, ", "genesisPath", genesisPath)
 	file, err := os.Open(genesisPath)
 	if err != nil {
 		utils.Fatalf("Failed to read genesis file: %v", err)
@@ -234,6 +241,7 @@ func initGenesis(ctx *cli.Context) error {
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
 		utils.Fatalf("initGenesis, invalid genesis file: %v", err)
 	}
+	log.Info("Decoded Genesis file, ", "genesis", genesis, "genesis.Config", genesis.Config, "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig, "genesis.Config.SportDAO", genesis.Config.SportDAO)
 
 	file.Seek(0, 0)
 
@@ -241,7 +249,20 @@ func initGenesis(ctx *cli.Context) error {
 	//define config for smilo option
 	genesis.Config.IsSmilo, genesis.Config.IsGas, genesis.Config.IsGasRefunded = getIsSmilo(file)
 
-	log.Info("$$$$$$$$$$ Init SMILO Genesis, ", "IsSmilo", genesis.Config.IsSmilo, "IsGas", genesis.Config.IsGas, "IsGasRefunded", genesis.Config.IsGasRefunded)
+	log.Info("$$$$$$$$$$ Init, SMILO Genesis, ", "IsSmilo", genesis.Config.IsSmilo, "IsGas", genesis.Config.IsGas, "IsGasRefunded", genesis.Config.IsGasRefunded)
+
+	if genesis.Config.AutonityContractConfig != nil {
+		log.Info("$$$$$$$$$$ Init, AutonityContractConfig, ", "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig)
+		if err := genesis.Config.AutonityContractConfig.AddDefault().Validate(); err != nil {
+			spew.Dump(genesis.Config.AutonityContractConfig)
+			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
+		}
+	} else {
+		log.Warn("$$$$$$$$$$ Init, Smart contract governance not defined !")
+		//panic("$$$$$$$$$$ Init, Smart contract governance not defined !")
+	}
+
+	setupBFTDefaults(genesis)
 
 	// Open an initialise both full and light databases
 	stack := makeFullNode(ctx)
@@ -260,6 +281,54 @@ func initGenesis(ctx *cli.Context) error {
 		log.Info("Successfully wrote genesis state", "database", name, "hash", hash, "genesis", genesis)
 	}
 	return nil
+}
+
+func setupBFTDefaults(genesis *core.Genesis) {
+	if genesis == nil || genesis.Config == nil {
+		return
+	}
+
+	if genesis.Config.Istanbul != nil {
+		if genesis.Config.Istanbul.Epoch == 0 {
+			genesis.Config.Istanbul.Epoch = istanbul.DefaultConfig.Epoch
+		}
+		if genesis.Config.Istanbul.RequestTimeout == 0 {
+			genesis.Config.Istanbul.RequestTimeout = istanbul.DefaultConfig.RequestTimeout
+		}
+		if genesis.Config.Istanbul.BlockPeriod == 0 {
+			genesis.Config.Istanbul.BlockPeriod = istanbul.DefaultConfig.BlockPeriod
+		}
+	}
+
+	defaultConfig := config.DefaultConfig()
+
+	if genesis.Config.Tendermint != nil {
+		if genesis.Config.Tendermint.Epoch == 0 {
+			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
+		}
+		if genesis.Config.Tendermint.RequestTimeout == 0 {
+			genesis.Config.Tendermint.RequestTimeout = defaultConfig.RequestTimeout
+		}
+		if genesis.Config.Tendermint.BlockPeriod == 0 {
+			genesis.Config.Tendermint.BlockPeriod = defaultConfig.BlockPeriod
+		}
+
+		if genesis.Config.Tendermint.Epoch == 0 {
+			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
+		}
+	}
+
+	if genesis.Config.SportDAO != nil {
+		if genesis.Config.SportDAO.Epoch == 0 {
+			genesis.Config.SportDAO.Epoch = sportdao.DefaultConfig.Epoch
+		}
+		//if genesis.Config.SportDAO.RequestTimeout == 0 {
+		//	genesis.Config.SportDAO.RequestTimeout = sportdao.DefaultConfig.RequestTimeout
+		//}
+		//if genesis.Config.SportDAO.BlockPeriod == 0 {
+		//	genesis.Config.SportDAO.BlockPeriod = sportdao.DefaultConfig.BlockPeriod
+		//}
+	}
 }
 
 func importChain(ctx *cli.Context) error {
@@ -441,7 +510,7 @@ func copyDb(ctx *cli.Context) error {
 	if syncMode == downloader.FastSync {
 		syncBloom = trie.NewSyncBloom(uint64(ctx.GlobalInt(utils.CacheFlag.Name)/2), chainDb)
 	}
-	dl := downloader.New(0, chainDb, syncBloom, new(event.TypeMux), chain, nil, nil)
+	dl := downloader.New(0, chainDb, syncBloom, new(cmn.TypeMux), chain, nil, nil)
 
 	// Create a source peer to satisfy downloader requests from
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name)/2, 256, ctx.Args().Get(1), "")

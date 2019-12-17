@@ -4,56 +4,64 @@ package eth
 
 import (
 	"math/big"
-
-	"go-smilo/src/blockchain/smilobft/miner"
-	"go-smilo/src/blockchain/smilobft/params"
-
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/eth/downloader"
 	"go-smilo/src/blockchain/smilobft/eth/gasprice"
+	"go-smilo/src/blockchain/smilobft/miner"
+	"go-smilo/src/blockchain/smilobft/params"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // MarshalTOML marshals as TOML.
 func (c Config) MarshalTOML() (interface{}, error) {
 	type Config struct {
-		Genesis                 *core.Genesis `toml:",omitempty"`
-		NetworkId               uint64
-		SyncMode                downloader.SyncMode
-		NoPruning               bool
-		NoPrefetch              bool
-		Whitelist               map[uint64]common.Hash `toml:"-"`
-		LightServ               int                    `toml:",omitempty"`
-		LightIngress            int                    `toml:",omitempty"`
-		LightEgress             int                    `toml:",omitempty"`
-		LightPeers              int                    `toml:",omitempty"`
-		UltraLightServers       []string               `toml:",omitempty"`
-		UltraLightFraction      int                    `toml:",omitempty"`
-		UltraLightOnlyAnnounce  bool                   `toml:",omitempty"`
-		SkipBcVersionCheck      bool                   `toml:"-"`
-		DatabaseHandles         int                    `toml:"-"`
-		DatabaseCache           int
-		DatabaseFreezer         string
-		TrieCleanCache          int
-		TrieDirtyCache          int
-		TrieTimeout             time.Duration
-		Miner                   miner.Config
-		Ethash                  ethash.Config
-		TxPool                  core.TxPoolConfig
-		GPO                     gasprice.Config
-		EnablePreimageRecording bool
-		Sport                   sport.Config
-		DocRoot                 string `toml:"-"`
-		EWASMInterpreter        string
-		EVMInterpreter          string
-		RPCGasCap               *big.Int                       `toml:",omitempty"`
-		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
-		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
+		Genesis                  *core.Genesis `toml:",omitempty"`
+		NetworkId                uint64
+		SyncMode                 downloader.SyncMode
+		NoPruning                bool
+		NoPrefetch               bool
+		Whitelist                map[uint64]common.Hash `toml:"-"`
+		LightServ                int                    `toml:",omitempty"`
+		LightIngress             int                    `toml:",omitempty"`
+		LightEgress              int                    `toml:",omitempty"`
+		LightPeers               int                    `toml:",omitempty"`
+		UltraLightServers        []string               `toml:",omitempty"`
+		UltraLightFraction       int                    `toml:",omitempty"`
+		UltraLightOnlyAnnounce   bool                   `toml:",omitempty"`
+		SkipBcVersionCheck       bool                   `toml:"-"`
+		DatabaseHandles          int                    `toml:"-"`
+		DatabaseCache            int
+		DatabaseFreezer          string
+		TrieCleanCache           int
+		TrieDirtyCache           int
+		TrieTimeout              time.Duration
+		Miner                    miner.Config
+		Ethash                   ethash.Config
+		Istanbul                 istanbul.Config
+		SportDAO                 sportdao.Config
+		Tendermint               config.Config
+		TxPool                   core.TxPoolConfig
+		GPO                      gasprice.Config
+		EnablePreimageRecording  bool
+		EnableNodePermissionFlag bool
+		Sport                    sport.Config
+		DocRoot                  string `toml:"-"`
+		EWASMInterpreter         string
+		EVMInterpreter           string
+		RPCGasCap                *big.Int                       `toml:",omitempty"`
+		Checkpoint               *params.TrustedCheckpoint      `toml:",omitempty"`
+		CheckpointOracle         *params.CheckpointOracleConfig `toml:",omitempty"`
+		PowMode                  Mode
+		SolcPath                 string
+		SmiloCodeAnalysisPath    string
 	}
 	var enc Config
 	enc.Genesis = c.Genesis
@@ -78,9 +86,13 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.TrieTimeout = c.TrieTimeout
 	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
+	enc.Istanbul = c.Istanbul
+	enc.SportDAO = c.SportDAO
+	enc.Tendermint = c.Tendermint
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
+	enc.EnableNodePermissionFlag = c.EnableNodePermissionFlag
 	enc.Sport = c.Sport
 	enc.DocRoot = c.DocRoot
 	enc.EWASMInterpreter = c.EWASMInterpreter
@@ -88,44 +100,54 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.RPCGasCap = c.RPCGasCap
 	enc.Checkpoint = c.Checkpoint
 	enc.CheckpointOracle = c.CheckpointOracle
+	enc.PowMode = c.PowMode
+	enc.SolcPath = c.SolcPath
+	enc.SmiloCodeAnalysisPath = c.SmiloCodeAnalysisPath
 	return &enc, nil
 }
 
 // UnmarshalTOML unmarshals from TOML.
 func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	type Config struct {
-		Genesis                 *core.Genesis `toml:",omitempty"`
-		NetworkId               *uint64
-		SyncMode                *downloader.SyncMode
-		NoPruning               *bool
-		NoPrefetch              *bool
-		Whitelist               map[uint64]common.Hash `toml:"-"`
-		LightServ               *int                   `toml:",omitempty"`
-		LightIngress            *int                   `toml:",omitempty"`
-		LightEgress             *int                   `toml:",omitempty"`
-		LightPeers              *int                   `toml:",omitempty"`
-		UltraLightServers       []string               `toml:",omitempty"`
-		UltraLightFraction      *int                   `toml:",omitempty"`
-		UltraLightOnlyAnnounce  *bool                  `toml:",omitempty"`
-		SkipBcVersionCheck      *bool                  `toml:"-"`
-		DatabaseHandles         *int                   `toml:"-"`
-		DatabaseCache           *int
-		DatabaseFreezer         *string
-		TrieCleanCache          *int
-		TrieDirtyCache          *int
-		TrieTimeout             *time.Duration
-		Miner                   *miner.Config
-		Ethash                  *ethash.Config
-		TxPool                  *core.TxPoolConfig
-		GPO                     *gasprice.Config
-		EnablePreimageRecording *bool
-		Sport                   *sport.Config
-		DocRoot                 *string `toml:"-"`
-		EWASMInterpreter        *string
-		EVMInterpreter          *string
-		RPCGasCap               *big.Int                       `toml:",omitempty"`
-		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
-		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
+		Genesis                  *core.Genesis `toml:",omitempty"`
+		NetworkId                *uint64
+		SyncMode                 *downloader.SyncMode
+		NoPruning                *bool
+		NoPrefetch               *bool
+		Whitelist                map[uint64]common.Hash `toml:"-"`
+		LightServ                *int                   `toml:",omitempty"`
+		LightIngress             *int                   `toml:",omitempty"`
+		LightEgress              *int                   `toml:",omitempty"`
+		LightPeers               *int                   `toml:",omitempty"`
+		UltraLightServers        []string               `toml:",omitempty"`
+		UltraLightFraction       *int                   `toml:",omitempty"`
+		UltraLightOnlyAnnounce   *bool                  `toml:",omitempty"`
+		SkipBcVersionCheck       *bool                  `toml:"-"`
+		DatabaseHandles          *int                   `toml:"-"`
+		DatabaseCache            *int
+		DatabaseFreezer          *string
+		TrieCleanCache           *int
+		TrieDirtyCache           *int
+		TrieTimeout              *time.Duration
+		Miner                    *miner.Config
+		Ethash                   *ethash.Config
+		Istanbul                 *istanbul.Config
+		SportDAO                 *sportdao.Config
+		Tendermint               *config.Config
+		TxPool                   *core.TxPoolConfig
+		GPO                      *gasprice.Config
+		EnablePreimageRecording  *bool
+		EnableNodePermissionFlag *bool
+		Sport                    *sport.Config
+		DocRoot                  *string `toml:"-"`
+		EWASMInterpreter         *string
+		EVMInterpreter           *string
+		RPCGasCap                *big.Int                       `toml:",omitempty"`
+		Checkpoint               *params.TrustedCheckpoint      `toml:",omitempty"`
+		CheckpointOracle         *params.CheckpointOracleConfig `toml:",omitempty"`
+		PowMode                  *Mode
+		SolcPath                 *string
+		SmiloCodeAnalysisPath    *string
 	}
 	var dec Config
 	if err := unmarshal(&dec); err != nil {
@@ -197,6 +219,15 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.Ethash != nil {
 		c.Ethash = *dec.Ethash
 	}
+	if dec.Istanbul != nil {
+		c.Istanbul = *dec.Istanbul
+	}
+	if dec.SportDAO != nil {
+		c.SportDAO = *dec.SportDAO
+	}
+	if dec.Tendermint != nil {
+		c.Tendermint = *dec.Tendermint
+	}
 	if dec.TxPool != nil {
 		c.TxPool = *dec.TxPool
 	}
@@ -205,6 +236,9 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.EnablePreimageRecording != nil {
 		c.EnablePreimageRecording = *dec.EnablePreimageRecording
+	}
+	if dec.EnableNodePermissionFlag != nil {
+		c.EnableNodePermissionFlag = *dec.EnableNodePermissionFlag
 	}
 	if dec.Sport != nil {
 		c.Sport = *dec.Sport
@@ -226,6 +260,15 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.CheckpointOracle != nil {
 		c.CheckpointOracle = dec.CheckpointOracle
+	}
+	if dec.PowMode != nil {
+		c.PowMode = *dec.PowMode
+	}
+	if dec.SolcPath != nil {
+		c.SolcPath = *dec.SolcPath
+	}
+	if dec.SmiloCodeAnalysisPath != nil {
+		c.SmiloCodeAnalysisPath = *dec.SmiloCodeAnalysisPath
 	}
 	return nil
 }

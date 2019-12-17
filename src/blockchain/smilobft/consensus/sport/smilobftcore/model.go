@@ -22,8 +22,9 @@ import (
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
@@ -40,9 +41,9 @@ type core struct {
 	logger  log.Logger
 
 	backend               sport.Backend
-	events                *event.TypeMuxSubscription
-	finalCommittedSub     *event.TypeMuxSubscription
-	timeoutSub            *event.TypeMuxSubscription
+	events                *cmn.TypeMuxSubscription
+	finalCommittedSub     *cmn.TypeMuxSubscription
+	timeoutSub            *cmn.TypeMuxSubscription
 	futurePreprepareTimer *time.Timer
 
 	fullnodeSet           sport.FullnodeSet

@@ -20,6 +20,8 @@ import (
 	"context"
 	"math/big"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 
@@ -35,7 +37,7 @@ import (
 
 type Backend interface {
 	ChainDb() ethdb.Database
-	EventMux() *event.TypeMux
+	EventMux() *cmn.TypeMux
 	HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error)
 	HeaderByHash(ctx context.Context, blockHash common.Hash) (*types.Header, error)
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)

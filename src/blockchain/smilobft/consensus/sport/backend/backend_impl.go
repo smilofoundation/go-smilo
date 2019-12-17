@@ -21,9 +21,10 @@ import (
 	"math/big"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -56,10 +57,10 @@ func (sb *backend) Gossip(fullnodeSet sport.FullnodeSet, payload []byte) error {
 	hash := sport.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 
-	targets := make(map[common.Address]bool)
+	targets := make(map[common.Address]struct{})
 	for _, val := range fullnodeSet.List() {
 		if val.Address() != sb.Address() {
-			targets[val.Address()] = true
+			targets[val.Address()] = struct{}{}
 		}
 	}
 
@@ -140,7 +141,7 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 }
 
 // EventMux implements sport.Backend.EventMux
-func (sb *backend) EventMux() *event.TypeMux {
+func (sb *backend) EventMux() *cmn.TypeMux {
 	return sb.smilobftEventMux
 }
 

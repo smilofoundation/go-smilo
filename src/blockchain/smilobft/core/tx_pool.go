@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
+
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -140,6 +142,8 @@ type blockChain interface {
 	StateAt(root common.Hash) (*state.StateDB, *state.StateDB, error)
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
+	GetAutonityContract() *autonity.Contract
+	Config() *params.ChainConfig
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -582,39 +586,58 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		log.Error("ErrInsufficientFunds", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "tx.Value()", tx.Value())
 		return ErrInsufficientFunds
 	}
+	if (pool.chain.Config().Istanbul != nil || pool.chain.Config().SportDAO != nil || pool.chain.Config().Tendermint != nil) && pool.chain.GetAutonityContract() != nil {
+		// Ensure the transaction has more gas than the basic tx fee.
+		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
+		if err != nil {
+			return err
+		}
 
-	// BEGIN SMILO SPECIFICS
-	requireSmilos := new(big.Int).Mul(big.NewInt(pool.chainconfig.RequiredMinFunds), big.NewInt(1e16))
+		if pool.chain.GetAutonityContract() != nil {
+			if gp, err := pool.chain.GetAutonityContract().GetMinimumGasPrice(pool.chain.CurrentBlock(), pool.currentState, pool.currentState); err == nil {
+				if new(big.Int).SetUint64(gp).Cmp(tx.GasPrice()) > 0 {
+					return errors.New("too low gas price from autonity config")
+				}
+			} else {
+				fmt.Println("gp, err", err)
+			}
+		}
 
-	if pool.currentState.GetBalance(from).Cmp(requireSmilos) < 0 {
-		log.Error("ErrInsufficientMinFunds", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "requiredMinFunds", pool.chainconfig.RequiredMinFunds, "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
-		return ErrInsufficientMinFunds
-	}
-
-	actualSmiloPay := pool.currentState.GetSmiloPay(from, pool.chain.CurrentBlock().Number())
-	//actualCost := new(big.Int).Sub(tx.Cost(), tx.Value())
-	actualCost := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
-
-	if actualSmiloPay.Cmp(actualCost) < 0 {
-		log.Error("ErrInsufficientSmiloPay", "from", from.String(), "value", tx.Value(), "blockNum", pool.chain.CurrentBlock().Number(), "TX-Hash", tx.Hash().Hex(), "TotalCost", tx.Cost(), "actualCost", actualCost, "actualSmiloPay", actualSmiloPay, "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
-		return ErrInsufficientSmiloPay
+		if tx.Gas() < intrGas {
+			return ErrIntrinsicGas
+		}
 	} else {
-		log.Trace("validateTx smiloPay ok, ", "from", from.String(), "value", tx.Value(), "blockNum", pool.chain.CurrentBlock().Number(), "TX-Hash", tx.Hash().Hex(), "TotalCost", tx.Cost(), "actualCost", actualCost, "actualSmiloPay", actualSmiloPay, "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
-	}
-	// END SMILO SPECIFICS
+		// BEGIN SMILO SPECIFICS
+		requireSmilos := new(big.Int).Mul(big.NewInt(pool.chainconfig.RequiredMinFunds), big.NewInt(1e16))
 
-	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
-	if err != nil {
-		return err
-	}
-	if tx.Gas() < intrGas {
-		log.Error("ErrIntrinsicGas", "from", from.String(), "TX GAS", tx.Gas(), "intrGas", intrGas, "TX-Hash", tx.Hash().Hex(), "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
-		return ErrIntrinsicGas
-	}
+		if pool.currentState.GetBalance(from).Cmp(requireSmilos) < 0 {
+			log.Error("ErrInsufficientMinFunds", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "requiredMinFunds", pool.chainconfig.RequiredMinFunds, "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
+			return ErrInsufficientMinFunds
+		}
 
+		actualSmiloPay := pool.currentState.GetSmiloPay(from, pool.chain.CurrentBlock().Number())
+		//actualCost := new(big.Int).Sub(tx.Cost(), tx.Value())
+		actualCost := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
+
+		if actualSmiloPay.Cmp(actualCost) < 0 {
+			log.Error("ErrInsufficientSmiloPay", "from", from.String(), "value", tx.Value(), "blockNum", pool.chain.CurrentBlock().Number(), "TX-Hash", tx.Hash().Hex(), "TotalCost", tx.Cost(), "actualCost", actualCost, "actualSmiloPay", actualSmiloPay, "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
+			return ErrInsufficientSmiloPay
+		} else {
+			log.Trace("validateTx smiloPay ok, ", "from", from.String(), "value", tx.Value(), "blockNum", pool.chain.CurrentBlock().Number(), "TX-Hash", tx.Hash().Hex(), "TotalCost", tx.Cost(), "actualCost", actualCost, "actualSmiloPay", actualSmiloPay, "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
+		}
+		// END SMILO SPECIFICS
+
+		// Ensure the transaction has more gas than the basic tx fee.
+		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true)
+		if err != nil {
+			return err
+		}
+		if tx.Gas() < intrGas {
+			log.Error("ErrIntrinsicGas", "from", from.String(), "TX GAS", tx.Gas(), "intrGas", intrGas, "TX-Hash", tx.Hash().Hex(), "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
+			return ErrIntrinsicGas
+		}
+	}
 	log.Debug("Transaction passed validateTx with no errors. ", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "value", tx.Value(), "GasPrice", gasPrice, "Gas", gas, "pool.gasPrice", pool.gasPrice)
-
 	return nil
 }
 

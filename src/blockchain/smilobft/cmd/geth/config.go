@@ -248,7 +248,7 @@ func smiloValidateConsensus(stack *node.Node) {
 		log.Warn("Error retrieving Smilo service:", "err", err)
 	}
 
-	if smilo == nil || smilo.ChainConfig() == nil || smilo.ChainConfig().Sport == nil && smilo.ChainConfig().Clique == nil {
+	if smilo == nil || smilo.ChainConfig() == nil || smilo.ChainConfig().Sport == nil && smilo.ChainConfig().Istanbul == nil && smilo.ChainConfig().SportDAO == nil && smilo.ChainConfig().Tendermint == nil && smilo.ChainConfig().Clique == nil {
 		log.Warn("Consensus not specified")
 	}
 }

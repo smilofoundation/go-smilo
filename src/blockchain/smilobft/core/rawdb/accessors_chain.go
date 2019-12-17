@@ -21,6 +21,8 @@ import (
 	"encoding/binary"
 	"math/big"
 
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 
@@ -55,6 +57,36 @@ func WriteCanonicalHash(db ethdb.KeyValueWriter, hash common.Hash, number uint64
 	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
 		log.Crit("Failed to store number to hash mapping", "err", err)
 	}
+}
+
+// WriteEnodeWhitelist stores the list of permitted enodes
+func WriteEnodeWhitelist(db ethdb.KeyValueWriter, whitelist *types.Nodes) {
+	bytes, err := rlp.EncodeToBytes(whitelist.StrList)
+	if err != nil {
+		log.Crit("Failed to RLP encode enode whitelist", "err", err)
+	}
+	if err := db.Put(enodeWhiteList, bytes); err != nil {
+		log.Crit("Failed to store last header's hash", "err", err)
+	}
+}
+
+// ReadEnodeWhitelist retrieve the list of permitted enodes
+func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) *types.Nodes {
+	var strList []string
+	nodes := &types.Nodes{List: make([]*enode.Node, 0)}
+
+	data, _ := db.Get(enodeWhiteList)
+	if len(data) == 0 {
+		return nodes
+	}
+	if err := rlp.Decode(bytes.NewReader(data), &strList); err != nil {
+		log.Error("Invalid Enode whitelist", "err", err)
+		return nodes
+	}
+	log.Warn("ReadEnodeWhitelist, strList, ", "strList", strList)
+
+	nodes = types.NewNodes(strList, EnableNodePermissionFlag)
+	return nodes
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.

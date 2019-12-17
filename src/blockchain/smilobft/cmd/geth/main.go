@@ -163,6 +163,11 @@ var (
 		utils.SolcPathFlag,
 		utils.SmiloCodeAnalysisPathFlag,
 		utils.MinBlocksEmptyMiningFlag,
+		utils.IstanbulRequestTimeoutFlag,
+		utils.IstanbulBlockPeriodFlag,
+		utils.SportDAORequestTimeoutFlag,
+		utils.SportDAOBlockPeriodFlag,
+		utils.EnableNodePermissionFlag,
 	}
 
 	rpcFlags = []cli.Flag{

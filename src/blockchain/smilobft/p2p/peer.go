@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
@@ -480,4 +482,39 @@ func (p *Peer) Info() *PeerInfo {
 		info.Protocols[proto.Name] = protoInfo
 	}
 	return info
+}
+
+func NewTestPeer(name string, caps []Cap) (*Peer, error) {
+	fd, _ := net.Pipe()
+	c := &conn{
+		fd:   fd,
+		caps: caps,
+		name: name,
+	}
+
+	var r enr.Record
+	enode.ValidSchemes.NodeAddr(&r)
+
+	privkey, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	err = enode.SignV4(&r, privkey)
+	if err != nil {
+		return nil, err
+	}
+
+	c.node, err = enode.New(enode.ValidSchemes, &r)
+	if err != nil {
+		return nil, err
+	}
+
+	c.transport = NewTestTransport(&privkey.PublicKey, fd)
+
+	peer := newPeer(log.Root(), c, nil)
+
+	close(peer.closed) // ensures Disconnect doesn't block
+
+	return peer, nil
 }

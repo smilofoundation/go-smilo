@@ -150,11 +150,20 @@ type Config struct {
 	// whenever a message is sent to or received from a peer
 	EnableMsgEvents bool
 
-	SportEnableNodePermissionFlag bool `toml:",omitempty"`
+	EnableNodePermissionFlag bool `toml:",omitempty"`
 
 	DataDir string `toml:",omitempty"`
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
+
+	// IsRated if network rates limitations set
+	IsRated bool `toml:",omitempty"`
+
+	// InRate ingress network rate in Bytes
+	InRate int64 `toml:",omitempty"`
+
+	// OutRate egress network rate in Bytes
+	OutRate int64 `toml:",omitempty"`
 }
 
 // Server manages all peer connections.
@@ -359,6 +368,46 @@ func (srv *Server) RemoveTrustedPeer(node *enode.Node) {
 	}
 }
 
+// UpdateWhitelist updates the whitelist using static peers logic
+// This function can be heavily optimized if needed
+func (srv *Server) UpdateWhitelist(enodes []*enode.Node) {
+
+	// Check for peers that needs to be disconnected
+	for _, connectedPeer := range srv.Peers() {
+		found := false
+		for _, whitelistedEnode := range enodes {
+			if connectedPeer.Node().ID() == whitelistedEnode.ID() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Info("Dropping no longer authorized peer", "enode", connectedPeer.Node().String())
+			srv.RemovePeer(connectedPeer.Node())
+			srv.RemoveTrustedPeer(connectedPeer.Node())
+		}
+	}
+
+	// Check for peers that needs to be connected
+	for _, whitelistedEnode := range enodes {
+		found := false
+		for _, oldEnode := range srv.TrustedNodes {
+			if oldEnode.ID() == whitelistedEnode.ID() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Info("Connecting to newly authorized peer", "enode", whitelistedEnode.String())
+			srv.AddPeer(whitelistedEnode)
+			srv.AddTrustedPeer(whitelistedEnode)
+		}
+	}
+
+	srv.StaticNodes = enodes
+	srv.TrustedNodes = enodes
+}
+
 // SubscribePeers subscribes the given channel to peer events
 func (srv *Server) SubscribeEvents(ch chan *PeerEvent) event.Subscription {
 	return srv.peerFeed.Subscribe(ch)
@@ -469,12 +518,28 @@ func (srv *Server) Start() (err error) {
 			return err
 		}
 	}
-	if err := srv.setupDiscovery(); err != nil {
-		return err
-	}
 
 	dynPeers := srv.maxDialedConns()
-	dialer := newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
+
+	var dialer *dialstate
+	if !srv.EnableNodePermissionFlag {
+		if err := srv.setupDiscovery(); err != nil {
+			return err
+		}
+		dialer = newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
+		log.Info("EnableNodePermissionFlag false, NetRestrict mode disabled.", "srv.localnode.ID()", srv.localnode.ID(), "srv.ntab", srv.ntab, "dynPeers", dynPeers, "&srv.Config", &srv.Config)
+	} else {
+		// Discovery protocol is disabled for consortium chains.
+		// Bootnodes are disabled.
+		// Static nodes logic is used to handle returned Whitelist and will be populated via the eth service.
+		log.Info("Private-network mode enabled.")
+		srv.NoDiscovery = true
+		srv.StaticNodes = nil
+		//srv.TrustedNodes = nil //-> breaks TestServerAtCap
+		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict: srv.Config.NetRestrict})
+	}
+
+	//dialer := newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
 	srv.loopWG.Add(1)
 	go srv.run(dialer)
 	return nil
@@ -654,7 +719,21 @@ func (srv *Server) run(dialstate dialer) {
 		for ; len(runningTasks) < maxActiveDialTasks && i < len(ts); i++ {
 			t := ts[i]
 			srv.log.Trace("New dial task", "task", t)
-			go func() { t.Do(srv); taskdone <- t }()
+
+			go func() {
+				select {
+				case <-srv.quit:
+					return
+				default:
+					t.Do(srv)
+				}
+
+				select {
+				case <-srv.quit:
+					return
+				case taskdone <- t:
+				}
+			}()
 			runningTasks = append(runningTasks, t)
 		}
 		return ts[i:]
@@ -956,11 +1035,11 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	clog := srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
 
 	//START - SMILO Permissioning
-	if srv.SportEnableNodePermissionFlag {
+	if srv.EnableNodePermissionFlag {
 		currentNode := srv.NodeInfo().ID
 		cnodeName := srv.NodeInfo().Name
 		clog.Trace("Smilo permissioning",
-			"SportEnableNodePermissionFlag", srv.SportEnableNodePermissionFlag,
+			"EnableNodePermissionFlag", srv.EnableNodePermissionFlag,
 			"DataDir", srv.DataDir,
 			"Current Node ID", currentNode,
 			"Node Name", cnodeName,

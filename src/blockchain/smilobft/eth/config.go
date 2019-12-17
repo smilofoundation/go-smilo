@@ -24,6 +24,10 @@ import (
 	"runtime"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
+
 	"go-smilo/src/blockchain/smilobft/miner"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -134,6 +138,15 @@ type Config struct {
 	// Ethash options
 	Ethash ethash.Config
 
+	// Istanbul options
+	Istanbul istanbul.Config
+
+	// SportDAO options
+	SportDAO sportdao.Config
+
+	// Tendermint options
+	Tendermint config.Config
+
 	// Transaction pool options
 	TxPool core.TxPoolConfig
 
@@ -143,7 +156,7 @@ type Config struct {
 	// Enables tracking of SHA3 preimages in the VM
 	EnablePreimageRecording bool
 
-	SportEnableNodePermissionFlag bool
+	EnableNodePermissionFlag bool
 	// Sport options
 	Sport sport.Config
 

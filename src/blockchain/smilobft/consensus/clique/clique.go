@@ -20,6 +20,7 @@ package clique
 import (
 	"bytes"
 	"errors"
+	"io"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -107,6 +108,10 @@ var (
 	// ones).
 	errInvalidCheckpointSigners = errors.New("invalid signer list on checkpoint block")
 
+	// errMismatchingCheckpointSigners is returned if a checkpoint block contains a
+	// list of signers different than the one the local node calculated.
+	//errMismatchingCheckpointSigners = errors.New("mismatching signer list on checkpoint block")
+
 	// errInvalidMixDigest is returned if a block's mix digest is non-zero.
 	errInvalidMixDigest = errors.New("non-zero mix digest")
 
@@ -116,6 +121,10 @@ var (
 	// errInvalidDifficulty is returned if the difficulty of a block is not either
 	// of 1 or 2, or if the value does not match the turn of the signer.
 	errInvalidDifficulty = errors.New("invalid difficulty")
+
+	// errWrongDifficulty is returned if the difficulty of a block doesn't match the
+	// turn of the signer.
+	//errWrongDifficulty = errors.New("wrong difficulty")
 
 	// ErrInvalidTimestamp is returned if the timestamp of a block is lower than
 	// the previous block's timestamp + the minimum block period.
@@ -676,6 +685,16 @@ func CalcDifficulty(snap *Snapshot, signer common.Address) *big.Int {
 	return new(big.Int).Set(diffNoTurn)
 }
 
+// SealHash returns the hash of a block prior to it being sealed.
+func (c *Clique) SealHash(header *types.Header) common.Hash {
+	return SealHash(header)
+}
+
+// Close implements consensus.Engine. It's a noop for clique as there are no background threads.
+func (c *Clique) Close() error {
+	return nil
+}
+
 // APIs implements consensus.Engine, returning the user facing RPC API to allow
 // controlling the signer voting.
 func (c *Clique) APIs(chain consensus.ChainReader) []rpc.API {
@@ -688,6 +707,50 @@ func (c *Clique) APIs(chain consensus.ChainReader) []rpc.API {
 }
 
 // Protocol implements consensus.Engine.Protocol
-func (c *Clique) Protocol() consensus.Protocol {
+func (c *Clique) ProtocolOld() consensus.Protocol {
 	return consensus.EthProtocol
+}
+
+// SealHash returns the hash of a block prior to it being sealed.
+func SealHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+	encodeSigHeader(hasher, header)
+	hasher.Sum(hash[:0])
+	return hash
+}
+
+// CliqueRLP returns the rlp bytes which needs to be signed for the proof-of-authority
+// sealing. The RLP to sign consists of the entire header apart from the 65 byte signature
+// contained at the end of the extra data.
+//
+// Note, the method requires the extra data to be at least 65 bytes, otherwise it
+// panics. This is done to avoid accidentally using both forms (signature present
+// or not), which could be abused to produce different hashes for the same header.
+func CliqueRLP(header *types.Header) []byte {
+	b := new(bytes.Buffer)
+	encodeSigHeader(b, header)
+	return b.Bytes()
+}
+
+func encodeSigHeader(w io.Writer, header *types.Header) {
+	err := rlp.Encode(w, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
+		header.MixDigest,
+		header.Nonce,
+	})
+	if err != nil {
+		panic("can't encode: " + err.Error())
+	}
 }

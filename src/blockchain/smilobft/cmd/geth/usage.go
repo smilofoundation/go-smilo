@@ -34,8 +34,8 @@ import (
 var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
-   Copyright 2018 The go-smilo Authors
-   Copyright 2013-2018 The go-ethereum Authors
+   Copyright 2018-2019 The go-smilo Authors
+   Copyright 2013-2019 The go-ethereum Authors
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}
@@ -158,7 +158,8 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "SMILO",
 		Flags: []cli.Flag{
-			utils.SportEnableNodePermissionFlag,
+			utils.EnableNodePermissionFlag,
+			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 	{
@@ -279,7 +280,6 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.SportRequestTimeoutFlag,
 			utils.SportBlockPeriodFlag,
-			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 	{
@@ -287,6 +287,21 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.SolcPathFlag,
 			utils.SmiloCodeAnalysisPathFlag,
+		},
+	},
+	{
+		Name: "ISTANBUL",
+		Flags: []cli.Flag{
+			utils.IstanbulRequestTimeoutFlag,
+			utils.IstanbulBlockPeriodFlag,
+		},
+	},
+	{
+		Name: "SPORTDAO",
+		Flags: []cli.Flag{
+			utils.SportDAORequestTimeoutFlag,
+			utils.SportDAOBlockPeriodFlag,
+			utils.MinBlocksEmptyMiningFlag,
 		},
 	},
 }

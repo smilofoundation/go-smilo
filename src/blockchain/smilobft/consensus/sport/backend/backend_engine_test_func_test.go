@@ -19,6 +19,7 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"math/big"
 
@@ -49,7 +50,7 @@ func newBlockChain(n int) (*core.BlockChain, *backend) {
 	if err != nil {
 		panic(err)
 	}
-	b.Start(blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
+	b.Start(context.Background(), blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
 	snap, err := b.snapshot(blockchain, 0, common.Hash{}, nil)
 	if err != nil {
 		panic(err)

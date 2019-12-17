@@ -22,6 +22,8 @@ import (
 	"math/big"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/consensus"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -89,6 +91,7 @@ func (r *testerChainReader) GetHeaderByNumber(number uint64) *types.Header {
 	panic("not supported")
 }
 func (r *testerChainReader) State() (*state.StateDB, *state.StateDB, error) { return r.State() }
+func (r *testerChainReader) Engine() consensus.Engine                       { return r.Engine() }
 
 // Tests that voting is evaluated correctly for various simple and complex scenarios.
 func TestVoting(t *testing.T) {

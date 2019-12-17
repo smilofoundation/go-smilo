@@ -26,7 +26,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
 	elog "github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -44,7 +43,7 @@ type testSystemBackend struct {
 
 	engine Engine
 	peers  sport.FullnodeSet
-	events *event.TypeMux
+	events *cmn.TypeMux
 
 	committedMsgs []testCommittedMsgs
 	sentMsgs      [][]byte // store the message when Send is called by core
@@ -71,7 +70,7 @@ func (self *testSystemBackend) Fullnodes(proposal sport.BlockProposal) sport.Ful
 	return self.peers
 }
 
-func (self *testSystemBackend) EventMux() *event.TypeMux {
+func (self *testSystemBackend) EventMux() *cmn.TypeMux {
 	return self.events
 }
 
@@ -278,7 +277,7 @@ func (t *testSystem) NewBackend(id int) *testSystemBackend {
 	backend := &testSystemBackend{
 		id:     id,
 		sys:    t,
-		events: new(event.TypeMux),
+		events: new(cmn.TypeMux),
 		db:     ethDB,
 	}
 

@@ -27,6 +27,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -34,7 +36,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/ethereum/go-ethereum/common/math"
 
@@ -147,6 +149,8 @@ type BlockChain struct {
 	chainHeadFeed event.Feed
 	logsFeed      event.Feed
 	blockProcFeed event.Feed
+	glienickeFeed event.Feed
+	autonityFeed  event.Feed
 	scope         event.SubscriptionScope
 	genesisBlock  *types.Block
 
@@ -182,6 +186,7 @@ type BlockChain struct {
 	vaultStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
+	autonityContract *autonity.Contract
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -240,6 +245,19 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if err := bc.loadLastState(); err != nil {
 		return nil, err
 	}
+
+	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.SportDAO != nil) && chainConfig.AutonityContractConfig != nil {
+		log.Warn("will set new Autonity contract", "chainConfig", chainConfig)
+		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
+			return GetHashFn(ref, chain)
+		})
+		bc.processor.SetAutonityContract(bc.autonityContract)
+	} else {
+		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "
+		log.Warn(logmsg, "chainConfig", chainConfig)
+		//panic(logmsg)
+	}
+
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
@@ -346,7 +364,7 @@ func (bc *BlockChain) loadLastState() error {
 		rawdb.WriteHeadBlockHash(bc.db, currentBlock.Hash())
 	}
 
-	// Smilo
+	// Smilo VAULT
 	if _, err := state.New(GetVaultStateRoot(bc.db, currentBlock.Root()), bc.vaultStateCache); err != nil {
 		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
 		if err := bc.repair(&currentBlock); err != nil {
@@ -354,7 +372,7 @@ func (bc *BlockChain) loadLastState() error {
 			return bc.Reset()
 		}
 	}
-	// Smilo
+	// Smilo VAULT
 
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
@@ -1368,6 +1386,20 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	if err := bc.hc.WriteTd(block.Hash(), block.NumberU64(), externTd); err != nil {
 		return NonStatTy, err
 	}
+
+	log.Warn("Call network permissioning logic before committing the state, UpdateEnodesWhitelist")
+	if bc.chainConfig.Istanbul != nil || bc.chainConfig.SportDAO != nil || bc.chainConfig.Tendermint != nil {
+		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, vaultState, block)
+		if err != nil && err != autonity.ErrAutonityContract {
+			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
+			return NonStatTy, err
+		}
+	} else {
+		msg := "Wont set Istanbul Tendermint SportDAO UpdateEnodesWhitelist, is this correct ? "
+		log.Warn(msg)
+		//panic(msg)
+	}
+
 	rawdb.WriteBlock(bc.db, block)
 
 	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
@@ -1781,8 +1813,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		blockValidationTimer.Update(time.Since(substart) - (thisstate.AccountHashes + thisstate.StorageHashes - triehash))
 
+		// Write the block to the chain and get the status.
 		substart = time.Now()
-		// Smilo
+		// Smilo VAULT
 		// Write vault state changes to database
 		if vaultStateRoot, err = vaultState.Commit(bc.Config().IsEIP158(block.Number())); err != nil {
 			return it.index, events, coalescedLogs, err
@@ -1791,7 +1824,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 			return it.index, events, coalescedLogs, err
 		}
 		allReceipts := mergeReceipts(receipts, vaultReceipts)
-		// Smilo
+		// Smilo VAULT
 
 		// Write the block to the chain and get the status.
 
@@ -2322,8 +2355,8 @@ func (bc *BlockChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []com
 //
 // Note: ancestor == 0 returns the same block, 1 returns its parent and so on.
 func (bc *BlockChain) GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64) {
-	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
+	bc.chainmu.RLock()
+	defer bc.chainmu.RUnlock()
 
 	return bc.hc.GetAncestor(hash, number, ancestor, maxNonCanonical)
 }
@@ -2335,7 +2368,8 @@ func (bc *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
 }
 
 // Config retrieves the blockchain's chain configuration.
-func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
+func (bc *BlockChain) Config() *params.ChainConfig             { return bc.chainConfig }
+func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
 
 // Engine retrieves the blockchain's consensus engine.
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
@@ -2363,6 +2397,19 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 // SubscribeLogsEvent registers a subscription of []*types.Log.
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
+}
+
+func (bc *BlockChain) SubscribeAutonityEvents(ch chan<- WhitelistEvent) event.Subscription {
+	return bc.scope.Track(bc.autonityFeed.Subscribe(ch))
+}
+
+func (bc *BlockChain) UpdateEnodeWhitelist(newWhitelist *types.Nodes) {
+	rawdb.WriteEnodeWhitelist(bc.db, newWhitelist)
+	go bc.autonityFeed.Send(WhitelistEvent{Whitelist: newWhitelist.List})
+}
+
+func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
+	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
 }
 
 // Given a slice of public receipts and an overlapping (smaller) slice of

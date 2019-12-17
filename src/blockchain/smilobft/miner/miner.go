@@ -23,10 +23,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/accounts"
@@ -61,7 +62,7 @@ type Config struct {
 
 // Miner creates blocks and searches for proof-of-work values.
 type Miner struct {
-	mux *event.TypeMux
+	mux *cmn.TypeMux
 
 	worker *worker
 
@@ -74,7 +75,7 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, isLocalBlock func(block *types.Block) bool, minBlocksEmptyMining *big.Int) *Miner {
+func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *cmn.TypeMux, engine consensus.Engine, isLocalBlock func(block *types.Block) bool, minBlocksEmptyMining *big.Int) *Miner {
 	miner := &Miner{
 		eth:      eth,
 		mux:      mux,

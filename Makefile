@@ -157,6 +157,8 @@ devtools:
 generate:
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft/internal/jsre/deps
+	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/eth/config.go
+	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/eth/tracers/tracers.go
 	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/...
 
 
@@ -258,3 +260,9 @@ geth-windows-amd64:
 
 
 
+
+
+
+mockgen:
+	mockgen -source=src/blockchain/smilobft/consensus/tendermint/core/core_backend.go -destination=src/blockchain/smilobft/consensus/tendermint/core/backend_mock.go
+	mockgen -source=src/blockchain/smilobft/consensus/tendermint/validator/validator_interface.go -destination=src/blockchain/smilobft/consensus/tendermint/validator/validator_mock.go

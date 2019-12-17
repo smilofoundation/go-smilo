@@ -5,7 +5,7 @@ matrix:
   include:
     - os: linux
       dist: xenial
-      go: 1.11.x
+      go: 1.12.x
       script:
       - go run src/blockchain/smilobft/build/ci.go install
       - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
@@ -13,13 +13,13 @@ matrix:
     # These are the latest Go versions.
     - os: linux
       dist: xenial
-      go: 1.12.x
+      go: 1.13.x
       script:
         - go run src/blockchain/smilobft/build/ci.go install
         - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
 
     - os: osx
-      go: 1.12.x
+      go: 1.13.x
       script:
         - echo "Increase the maximum number of open file descriptors on macOS"
         - NOFILE=20480
@@ -36,7 +36,7 @@ matrix:
     # This builder only tests code linters on latest version of Go
     - os: linux
       dist: xenial
-      go: 1.12.x
+      go: 1.13.x
       env:
         - lint
       git:
@@ -47,7 +47,7 @@ matrix:
     # This builder only tests coverage on latest version of Go
     - os: linux
       dist: xenial
-      go: 1.12.x
+      go: 1.13.x
       env:
         - COVERALLS_TOKEN
         - CODECOV_TOKEN

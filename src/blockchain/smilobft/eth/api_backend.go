@@ -21,6 +21,9 @@ import (
 	"errors"
 	"math/big"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -113,6 +116,10 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.B
 	}
 	stateDb, vaultState, err := b.eth.BlockChain().StateAt(header.Root)
 	return EthAPIState{stateDb, vaultState}, header, err
+}
+
+func (b *EthAPIBackend) GetHeader(ctx context.Context, hash common.Hash) *types.Header {
+	return b.eth.blockchain.GetHeaderByHash(hash)
 }
 
 func (b *EthAPIBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
@@ -244,12 +251,16 @@ func (b *EthAPIBackend) ChainDb() ethdb.Database {
 	return b.eth.ChainDb()
 }
 
-func (b *EthAPIBackend) EventMux() *event.TypeMux {
+func (b *EthAPIBackend) EventMux() *cmn.TypeMux {
 	return b.eth.EventMux()
 }
 
 func (b *EthAPIBackend) AccountManager() *accounts.Manager {
 	return b.eth.AccountManager()
+}
+
+func (b *EthAPIBackend) AutonityContract() *autonity.Contract {
+	return b.eth.blockchain.GetAutonityContract()
 }
 
 func (b *EthAPIBackend) ExtRPCEnabled() bool {
