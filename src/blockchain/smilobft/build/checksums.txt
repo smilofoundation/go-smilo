@@ -1,6 +1,6 @@
 # This file contains sha256 checksums of optional build dependencies.
 
-95dbeab442ee2746b9acf0934c8e2fc26414a0565c008631b04addb8c02e7624  go1.13.4.src.tar.gz
+27d356e2a0b30d9983b60a788cf225da5f914066b37a6b4f69d457ba55a626ff  go1.13.5.src.tar.gz
 
 1fcbc9e36f4319eeed02beb8cfd1b3d425ffc2f90ddf09a80f18d5064c51e0cb  golangci-lint-1.21.0-linux-386.tar.gz
 267b4066e67139a38d29499331a002d6a29ad5be7aafc83db3b1e88f1b027f90  golangci-lint-1.21.0-linux-armv6.tar.gz
