@@ -246,6 +246,22 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	return msg, err
 }
 
+func (tx *Transaction) GetFrom() (from string, err error) {
+	if tx.data.V != nil {
+		// make a best guess about the signer and use that to derive
+		// the sender.
+		signer := deriveSigner(tx.data.V)
+		if f, err := Sender(signer, tx); err != nil { // derive but don't cache
+			from = "[invalid sender: invalid sig]"
+		} else {
+			from = fmt.Sprintf("%x", f[:])
+		}
+	} else {
+		err = errors.New("[invalid sender: nil V field]")
+	}
+	return from, err
+}
+
 // WithSignature returns a new transaction with the given signature.
 // This signature needs to be in the [R || S || V] format where V is 0 or 1.
 func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, error) {

@@ -49,6 +49,9 @@ type Blockchainer interface {
 
 	UpdateEnodeWhitelist(newWhitelist *types.Nodes)
 	ReadEnodeWhitelist(EnableNodePermissionFlag bool) *types.Nodes
+
+	UpdateBlacklist(newBlacklist *types.Nodes)
+	ReadBlacklist(TxPoolBlacklistFlag bool) *types.Nodes
 }
 
 type Contract struct {

@@ -327,6 +327,10 @@ var (
 		Usage: "Disk journal for local transaction to survive node restarts",
 		Value: core.DefaultTxPoolConfig.Journal,
 	}
+	TxPoolBlacklistFlag = cli.StringFlag{
+		Name:  "txpool.blacklist",
+		Usage: "Disk file for local addresses that are blacklisted by the node",
+	}
 	TxPoolRejournalFlag = cli.DurationFlag{
 		Name:  "txpool.rejournal",
 		Usage: "Time interval to regenerate the local transaction journal",
@@ -1330,6 +1334,9 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	if ctx.GlobalIsSet(TxPoolJournalFlag.Name) {
 		cfg.Journal = ctx.GlobalString(TxPoolJournalFlag.Name)
 	}
+	if ctx.GlobalIsSet(TxPoolBlacklistFlag.Name) {
+		cfg.Blacklist = ctx.GlobalString(TxPoolBlacklistFlag.Name)
+	}
 	if ctx.GlobalIsSet(TxPoolRejournalFlag.Name) {
 		cfg.Rejournal = ctx.GlobalDuration(TxPoolRejournalFlag.Name)
 	}
@@ -1353,6 +1360,9 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	}
 	if ctx.GlobalIsSet(TxPoolLifetimeFlag.Name) {
 		cfg.Lifetime = ctx.GlobalDuration(TxPoolLifetimeFlag.Name)
+	}
+	if ctx.GlobalIsSet(TxPoolBlacklistFlag.Name) {
+		cfg.Blacklist = ctx.GlobalString(TxPoolBlacklistFlag.Name)
 	}
 }
 

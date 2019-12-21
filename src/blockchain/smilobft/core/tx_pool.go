@@ -164,6 +164,7 @@ type TxPoolConfig struct {
 	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
 
 	CustomTransactionSizeLimit uint64 // Maximum size allowed for valid transaction (in KB)
+	Blacklist                  string // Blacklist of addresses we should refuse transactions from
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -566,6 +567,17 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
+	}
+	if (pool.chain.Config().Istanbul != nil || pool.chain.Config().SportDAO != nil || pool.chain.Config().Tendermint != nil) && pool.chain.GetAutonityContract() != nil {
+
+		if blacklistlist, err := pool.chain.GetAutonityContract().GetWhitelist(pool.chain.CurrentBlock(), pool.currentState, pool.currentState); err == nil {
+
+		}
+
+		} else if pool.chain.Config().Sport != nil {
+		if IsAddressBlacklisted(from.String(), pool.config.Blacklist) {
+			return ErrInvalidSender
+		}
 	}
 	// Drop non-local transactions (when isGas=true and tx isVault=false) under our own minimal accepted gas price
 	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network

@@ -2412,6 +2412,15 @@ func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
 	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
 }
 
+func (bc *BlockChain) UpdateBlacklist(newBlacklist *types.Nodes) {
+	rawdb.WriteBlacklist(bc.db, newBlacklist)
+	go bc.autonityFeed.Send(WhitelistEvent{Whitelist: newBlacklist.List})
+}
+
+func (bc *BlockChain) ReadBlacklist(TxPoolBlacklistFlag bool) *types.Nodes {
+	return rawdb.ReadBlacklist(bc.db, TxPoolBlacklistFlag)
+}
+
 // Given a slice of public receipts and an overlapping (smaller) slice of
 // vault receipts, return a new slice where the default for each location is
 // the public receipt but we take the vault receipt in each place we have
