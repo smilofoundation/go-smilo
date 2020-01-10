@@ -570,11 +570,11 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 	if (pool.chain.Config().Istanbul != nil || pool.chain.Config().SportDAO != nil || pool.chain.Config().Tendermint != nil) && pool.chain.GetAutonityContract() != nil {
 
-		if blacklistlist, err := pool.chain.GetAutonityContract().GetWhitelist(pool.chain.CurrentBlock(), pool.currentState, pool.currentState); err == nil {
+		//if blacklistlist, err := pool.chain.GetAutonityContract().GetBlacklist(pool.chain.CurrentBlock(), pool.currentState, pool.currentState); err == nil {
+		//
+		//}
 
-		}
-
-		} else if pool.chain.Config().Sport != nil {
+	} else if pool.chain.Config().Sport != nil {
 		if IsAddressBlacklisted(from.String(), pool.config.Blacklist) {
 			return ErrInvalidSender
 		}

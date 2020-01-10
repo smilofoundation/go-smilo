@@ -2,10 +2,11 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/log"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (

@@ -89,7 +89,6 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) 
 	return nodes
 }
 
-
 // WriteBlacklist stores the list of permitted enodes
 func WriteBlacklist(db ethdb.KeyValueWriter, blacklist *types.Nodes) {
 	bytes, err := rlp.EncodeToBytes(blacklist.StrList)
