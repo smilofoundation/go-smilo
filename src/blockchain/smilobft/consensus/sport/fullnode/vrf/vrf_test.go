@@ -56,7 +56,7 @@ func TestHonestComplete(t *testing.T) {
 	// fmt.Printf("aliceVRF:     %X\n", aliceVRF)
 	// fmt.Printf("aliceProof:   %X\n", aliceProof)
 
-	verifyResult, calculatedVRF := pk.Verify(alice, aliceProof)
+	verifyResult, calculatedVRF := pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult || bytes.Compare(aliceVRF, calculatedVRF) == 0, "Gen -> Compute -> Prove -> Verify -> FALSE")
 
 	require.True(t, bytes.Equal(aliceVRF, aliceVRFFromProof), "Compute != Prove")
@@ -83,7 +83,7 @@ func TestFlipBitForgery(t *testing.T) {
 			aliceVRF := sk.Compute(alice)
 			aliceVRF[i] ^= 1 << j
 			_, aliceProof := sk.Prove(alice)
-			verifyResult, _ := pk.Verify(alice, aliceProof)
+			verifyResult, _ := pk.Verify(alice, aliceVRF, aliceProof)
 			require.False(t, verifyResult,"forged by using aliceVRF[%d]^=%d:\n (sk=%x)", i, j, sk)
 		}
 	}
@@ -93,28 +93,28 @@ func sampleVectorTest(pk PublicKey, aliceVRF, aliceProof []byte, t *testing.T) {
 	alice := []byte{97, 108, 105, 99, 101}
 
 	// Positive test case
-	verifyResult, _ := pk.Verify(alice, aliceProof)
+	verifyResult, _ := pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult,"TestSampleVectors HonestVector Failed")
 
 	// Negative test cases - try increment the first byte of every vector
 	pk[0]++
-	verifyResult, _ = pk.Verify(alice, aliceProof)
+	verifyResult, _ = pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult, "TestSampleVectors ForgedVector (pk modified) Passed")
 	pk[0]--
 
 	alice[0]++
-	verifyResult, _ = pk.Verify(alice, aliceProof)
+	verifyResult, _ = pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult, "TestSampleVectors ForgedVector (alice modified) Passed")
 	alice[0]--
 
 	// todo check
 	aliceVRF[0]++
-	verifyResult, _ = pk.Verify(alice, aliceProof)
+	verifyResult, _ = pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult,"TestSampleVectors ForgedVector (aliceVRF modified) Passed")
 	aliceVRF[0]--
 
 	aliceProof[0]++
-	verifyResult, _ = pk.Verify(alice, aliceProof)
+	verifyResult, _ = pk.Verify(alice, aliceVRF, aliceProof)
 	require.True(t, verifyResult,"TestSampleVectors ForgedVector (aliceProof modified) Passed")
 	aliceProof[0]--
 }
@@ -180,12 +180,13 @@ func BenchmarkVerify(b *testing.B) {
 	require.NoError(b, err, "Could not generate a key.")
 
 	alice := []byte("alice")
+	aliceVRF := sk.Compute(alice)
 	_, aliceProof := sk.Prove(alice)
 	pk, ok := sk.Public()
 	require.True(b, ok, "Could not obtain public key.")
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		pk.Verify(alice, aliceProof)
+		pk.Verify(alice, aliceVRF, aliceProof)
 	}
 }

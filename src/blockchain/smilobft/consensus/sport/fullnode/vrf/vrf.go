@@ -51,6 +51,7 @@
 package vrf
 
 import (
+	"bytes"
 	"crypto/rand"
 	"errors"
 	"go-smilo/src/blockchain/smilobft/consensus/sport"
@@ -207,11 +208,12 @@ func (sk PrivateKey) Prove(m []byte) (vrf, proof []byte) {
 
 // Verify returns true and vrf value if vrf=Compute(m) for the sk that
 // corresponds to pk.
-func (pkBytes PublicKey) Verify(m, proof []byte) (bool, []byte) {
-	if len(proof) != ProofSize || len(pkBytes) != PublicKeySize {
+func (pkBytes PublicKey) Verify(m, vrfBytes, proof []byte) (bool, []byte) {
+	if len(proof) != ProofSize ||  len(vrfBytes) != Size || len(pkBytes) != PublicKeySize {
 		return false, nil
 	}
-	var pk, s, sRef, t, hxB, hB, gB, ABytes, BBytes [32]byte
+	var pk, s, sRef, t, vrf, hxB, hB, gB, ABytes, BBytes [32]byte
+	copy(vrf[:], vrfBytes)
 	copy(pk[:], pkBytes[:])
 	copy(s[:32], proof[:32])
 	copy(t[:32], proof[32:64])
@@ -222,6 +224,9 @@ func (pkBytes PublicKey) Verify(m, proof []byte) (bool, []byte) {
 	hash.Write(m)
 	var hCheck [Size]byte
 	hash.Read(hCheck[:])
+	if !bytes.Equal(hCheck[:], vrf[:]) {
+		return false, nil
+	}
 	hash.Reset()
 
 	var P, B, ii, iic edwards25519.ExtendedGroupElement
