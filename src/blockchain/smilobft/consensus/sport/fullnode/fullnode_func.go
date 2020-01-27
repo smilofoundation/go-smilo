@@ -64,7 +64,7 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 	}
 
 	var fullnodeSetString []string
-	for _,v := range fullnodeSet.List() {
+	for _, v := range fullnodeSet.List() {
 		fullnodeSetString = append(fullnodeSetString, v.String())
 	}
 
@@ -97,12 +97,15 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 	log.Debug("Going to lotterySpeaker .... ", "key", keyStr)
 	//
 	//skb := vrf.PrivateKey(keyStr)
-	b:=bytes.NewReader([]byte(keyStr))
+	b := bytes.NewReader([]byte(keyStr))
 
 	skb, _ := vrf.GenerateKey(b)
 	//log.Debug("Going to lotterySpeaker for real .... ", "key", hex.EncodeToString(skb))
 
 	provableMessage := append(participantsJson, []byte("\n"+fmt.Sprintf("%s", blockHash))...)
+
+	messageVRF := skb.Compute(provableMessage)
+
 	vrfBytes, proof := skb.Prove(provableMessage)
 	pk, works := skb.Public()
 	if !works {
@@ -110,7 +113,7 @@ func lotterySpeaker(fullnodeSet sport.FullnodeSet, nodepk *ecdsa.PrivateKey, blo
 		return nil
 	}
 
-	verifyResult, _ := pk.Verify(provableMessage, proof)
+	verifyResult, _ := pk.Verify(provableMessage, messageVRF, proof)
 	if !verifyResult {
 		log.Error("Proof lottery verification has failed")
 		return nil
