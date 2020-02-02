@@ -91,6 +91,7 @@ var (
 		utils.TxPoolLocalsFlag,
 		utils.TxPoolNoLocalsFlag,
 		utils.TxPoolJournalFlag,
+		utils.TxPoolBlacklistFlag,
 		utils.TxPoolRejournalFlag,
 		utils.TxPoolPriceLimitFlag,
 		utils.TxPoolPriceBumpFlag,

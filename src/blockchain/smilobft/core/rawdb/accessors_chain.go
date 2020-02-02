@@ -89,6 +89,36 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) 
 	return nodes
 }
 
+// WriteBlacklist stores the list of permitted enodes
+func WriteBlacklist(db ethdb.KeyValueWriter, blacklist *types.Nodes) {
+	bytes, err := rlp.EncodeToBytes(blacklist.StrList)
+	if err != nil {
+		log.Crit("Failed to RLP encode addresses blacklist", "err", err)
+	}
+	if err := db.Put(enodeWhiteList, bytes); err != nil {
+		log.Crit("Failed to store last header's hash", "err", err)
+	}
+}
+
+// ReadBlacklist retrieve the list of permitted enodes
+func ReadBlacklist(db ethdb.KeyValueReader, TxPoolBlacklistFlag bool) *types.Nodes {
+	var strList []string
+	nodes := &types.Nodes{List: make([]*enode.Node, 0)}
+
+	data, _ := db.Get(blackList)
+	if len(data) == 0 {
+		return nodes
+	}
+	if err := rlp.Decode(bytes.NewReader(data), &strList); err != nil {
+		log.Error("Invalid blacklist", "err", err)
+		return nodes
+	}
+	log.Warn("ReadBlacklist, strList, ", "strList", strList)
+
+	nodes = types.NewNodes(strList, TxPoolBlacklistFlag)
+	return nodes
+}
+
 // DeleteCanonicalHash removes the number to hash canonical mapping.
 func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) {
 	if err := db.Delete(headerHashKey(number)); err != nil {

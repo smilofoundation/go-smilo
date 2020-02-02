@@ -261,6 +261,10 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
+	if config.TxPool.Blacklist != "" {
+		config.TxPool.Blacklist = ctx.ResolvePath(config.TxPool.Blacklist)
+	}
+
 	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, eth.blockchain)
 
 	// Permit the downloader to use the trie cache allowance during fast sync
@@ -318,7 +322,7 @@ func makeExtraData(extra []byte, isSmilo bool) []byte {
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Smilo service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, config *Config, notify []string, noverify bool, db ethdb.Database, vmConfig *vm.Config) consensus.Engine {
-	log.Info("****************** KARAI DI ASA!!!!!!!!!!!!!!!!!!!")
+	log.Info("****************** Going to create the required type of consensus engine instance for an Smilo service !!!!!!!!!!!!!!!!!!!")
 
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {

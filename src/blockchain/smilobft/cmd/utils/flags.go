@@ -327,6 +327,10 @@ var (
 		Usage: "Disk journal for local transaction to survive node restarts",
 		Value: core.DefaultTxPoolConfig.Journal,
 	}
+	TxPoolBlacklistFlag = cli.StringFlag{
+		Name:  "txpool.blacklist",
+		Usage: "Disk file for local addresses that are blacklisted by the node",
+	}
 	TxPoolRejournalFlag = cli.DurationFlag{
 		Name:  "txpool.rejournal",
 		Usage: "Time interval to regenerate the local transaction journal",
@@ -900,6 +904,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 				log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
 				continue
 			}
+			log.Info("BootstrapNodes V4 added OK ", "url", url)
 			cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
 		}
 	}
@@ -1223,6 +1228,10 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 		cfg.DiscoveryV5 = true
 	}
 
+	if cfg.DiscoveryV5 {
+		log.Info("SetP2PConfig, Node configured with DiscoveryV5!")
+	}
+
 	if netrestrict := ctx.GlobalString(NetrestrictFlag.Name); netrestrict != "" {
 		list, err := netutil.ParseNetlist(netrestrict)
 		if err != nil {
@@ -1330,6 +1339,9 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	if ctx.GlobalIsSet(TxPoolJournalFlag.Name) {
 		cfg.Journal = ctx.GlobalString(TxPoolJournalFlag.Name)
 	}
+	if ctx.GlobalIsSet(TxPoolBlacklistFlag.Name) {
+		cfg.Blacklist = ctx.GlobalString(TxPoolBlacklistFlag.Name)
+	}
 	if ctx.GlobalIsSet(TxPoolRejournalFlag.Name) {
 		cfg.Rejournal = ctx.GlobalDuration(TxPoolRejournalFlag.Name)
 	}
@@ -1353,6 +1365,9 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 	}
 	if ctx.GlobalIsSet(TxPoolLifetimeFlag.Name) {
 		cfg.Lifetime = ctx.GlobalDuration(TxPoolLifetimeFlag.Name)
+	}
+	if ctx.GlobalIsSet(TxPoolBlacklistFlag.Name) {
+		cfg.Blacklist = ctx.GlobalString(TxPoolBlacklistFlag.Name)
 	}
 }
 
