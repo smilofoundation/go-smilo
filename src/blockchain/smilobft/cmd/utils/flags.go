@@ -904,6 +904,7 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 				log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
 				continue
 			}
+			log.Info("BootstrapNodes V4 added OK ", "url", url)
 			cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
 		}
 	}
@@ -1225,6 +1226,10 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 		cfg.DiscoveryV5 = ctx.GlobalBool(DiscoveryV5Flag.Name)
 	} else if forceV5Discovery {
 		cfg.DiscoveryV5 = true
+	}
+
+	if cfg.DiscoveryV5 {
+		log.Info("SetP2PConfig, Node configured with DiscoveryV5!")
 	}
 
 	if netrestrict := ctx.GlobalString(NetrestrictFlag.Name); netrestrict != "" {

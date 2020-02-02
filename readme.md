@@ -62,6 +62,12 @@ This command will:
    This tool is optional and if you leave it out you can always attach to an already running Geth instance
    with `geth attach`.
 
+### Fast node on the main Smilo SPoRT network
+The second most common scenario is people wanting to simply interact with the Smilo Proof of Resource and Time (SPoRT) network quickly:
+
+To do so:
+`geth --sport --syncmode fast --verbosity 3`
+
 ### A Full node on the Smilo test network
 
 Transitioning towards developers, if you'd like to play around with creating Smilo contracts, you
@@ -172,6 +178,4 @@ The go-smilo binaries (i.e. all code inside of the `cmd` directory) is licensed 
 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), also included
 in our repository in the `COPYING` file.
 
-<p align="center">
-	<img src=".github/xsmgopher01.jpg">
-</p>
+![smilo logo](/.github/xsmgopher01.jpg)
