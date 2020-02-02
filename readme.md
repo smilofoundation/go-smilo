@@ -14,6 +14,8 @@ Official Golang implementation of the Smilo protocol.
 [![Beerpay](https://beerpay.io/Smilo-platform/go-smilo/badge.svg)](https://beerpay.io/Smilo-platform/go-smilo)
 [![Gitter](https://badges.gitter.im/go-smilo/community.svg)](https://gitter.im/go-smilo/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
+![smilo logo](/.github/logo.png)
+
 ## Building the source
 
 Building geth requires both a Go (version 1.9 or later) and a C compiler.
@@ -169,3 +171,7 @@ included in our repository in the `COPYING.LESSER` file.
 The go-smilo binaries (i.e. all code inside of the `cmd` directory) is licensed under the
 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), also included
 in our repository in the `COPYING` file.
+
+<p align="center">
+	<img src=".github/xsmgopher01.jpg">
+</p>
