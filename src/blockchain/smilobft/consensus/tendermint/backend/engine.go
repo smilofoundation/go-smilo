@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
@@ -69,8 +68,6 @@ var (
 	errInconsistentValidatorSet = errors.New("inconsistent validator set")
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
-
-	//errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -271,14 +268,14 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 		// Every validator can have only one seal. If more than one seals are signed by a
 		// validator, the validator cannot be found and errInvalidCommittedSeals is returned.
 		if validators.RemoveValidator(addr) {
-			validSeal += 1
+			validSeal++
 		} else {
 			return types.ErrInvalidCommittedSeals
 		}
 	}
 
-	// The length of validSeal should be larger than number of faulty node + 1
-	if validSeal <= 2*validators.F() {
+	// The length of validSeal should be larger than a Quorum of nodes
+	if validSeal < validators.Quorum() {
 		return types.ErrInvalidCommittedSeals
 	}
 
@@ -349,7 +346,7 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	header.Extra = extra
 
 	// set header's timestamp
-	header.Time = parent.Time + sb.config.BlockPeriod
+	header.Time = new(big.Int).Add(big.NewInt(int64(parent.Time)), new(big.Int).SetUint64(sb.config.BlockPeriod)).Uint64()
 	if int64(header.Time) < time.Now().Unix() {
 		header.Time = uint64(time.Now().Unix())
 	}
@@ -407,7 +404,7 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 		}
 		contractAddress, err := sb.blockchain.GetAutonityContract().DeployAutonityContract(chain, header, state)
 		if err != nil {
-			log.Error("Deploy autonity contract error", "error", err)
+			sb.logger.Error("Deploy autonity contract error", "error", err)
 			return nil, err
 		}
 		sb.autonityContractAddress = contractAddress
@@ -418,13 +415,13 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 
 	} else {
 		if sb.autonityContractAddress == common.HexToAddress("0000000000000000000000000000000000000000") {
-			sb.autonityContractAddress = crypto.CreateAddress(chain.Config().AutonityContractConfig.Deployer, 0)
+			sb.autonityContractAddress = crypto.CreateAddress(sb.blockchain.Config().AutonityContractConfig.Deployer, 0)
 		}
 
 		var err error
 		validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(chain, header, state)
 		if err != nil {
-			log.Error("ContractGetValidators returns err", "err", err)
+			sb.logger.Error("ContractGetValidators returns err", "err", err)
 			return nil, err
 		}
 	}
@@ -513,6 +510,27 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 
 }
 
+func (sb *Backend) setResultChan(results chan *types.Block) {
+	sb.coreMu.Lock()
+	defer sb.coreMu.Unlock()
+
+	sb.commitCh = results
+}
+
+func (sb *Backend) sendResultChan(block *types.Block) {
+	sb.coreMu.Lock()
+	defer sb.coreMu.Unlock()
+
+	sb.commitCh <- block
+}
+
+func (sb *Backend) isResultChanNil() bool {
+	sb.coreMu.RLock()
+	defer sb.coreMu.RUnlock()
+
+	return sb.commitCh == nil
+}
+
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have based on the previous blocks in the blockchain and the
 // current signer.
@@ -559,6 +577,8 @@ func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, curre
 		return ErrStartedEngine
 	}
 
+	sb.stopped = make(chan struct{})
+
 	// clear previous data
 	sb.proposedBlockHash = common.Hash{}
 	if sb.commitCh != nil {
@@ -572,9 +592,6 @@ func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, curre
 
 	sb.coreStarted = true
 
-	sb.resend = make(chan messageToPeers, 1024)
-	sb.ReSend(ctx, 10)
-
 	return nil
 }
 
@@ -587,17 +604,7 @@ func (sb *Backend) Close() error {
 	}
 	sb.coreStarted = false
 
-	return nil
-}
-
-// Stop implements consensus.tendermint.Stop
-func (sb *Backend) Stop() error {
-	sb.coreMu.Lock()
-	defer sb.coreMu.Unlock()
-	if !sb.coreStarted {
-		return ErrStoppedEngine
-	}
-	sb.coreStarted = false
+	close(sb.stopped)
 
 	return nil
 }
@@ -610,15 +617,14 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 
 	header := chain.GetHeaderByNumber(number - 1)
 	if header == nil {
-		sb.logger.Error("Error when chain.GetHeaderByNumber, ", "errUnknownBlock", errUnknownBlock)
 		return nil, errUnknownBlock
 	}
 
 	log.Debug("retrieveSavedValidators, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "block.Number", number-1, "header", header, "extraData", common.Bytes2Hex(header.Extra))
 	if len(header.Extra) < types.BFTExtraVanity {
-		log.Warn("panic(\"retrieveSavedValidators, types.ExtractBFTHeaderExtra\")")
-		//panic("retrieveSavedValidators, types.ExtractBFTHeaderExtra")
+		panic("retrieveSavedValidators, types.ExtractBFTHeaderExtra")
 	}
+
 	tendermintExtra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)

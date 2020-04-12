@@ -20,20 +20,19 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"math"
 	"math/big"
 	"sync"
 	"time"
 
-	"go-smilo/src/blockchain/smilobft/cmn"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
+	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 var (
@@ -50,6 +49,9 @@ var (
 	errOldRoundMessage = errors.New("same height but old round message")
 	// errFutureRoundMessage message is returned when message is of the same Height but form a newer round
 	errFutureRoundMessage = errors.New("same height but future round message")
+	// errFutureStepMessage message is returned when it's a prevote or precommit message of the same Height same round
+	// while the current step is propose.
+	errFutureStepMessage = errors.New("same round but future step message")
 	// errInvalidMessage is returned when the message is malformed.
 	errInvalidMessage = errors.New("invalid message")
 	// errInvalidSenderOfCommittedSeal is returned when the committed seal is not from the sender of the message.
@@ -72,10 +74,11 @@ var (
 
 // New creates an Tendermint consensus core
 func New(backend Backend, config *config.Config) *core {
+	logger := log.New("addr", backend.Address().String())
 	return &core{
 		config:                       config,
 		address:                      backend.Address(),
-		logger:                       log.New(),
+		logger:                       logger,
 		backend:                      backend,
 		backlogs:                     make(map[validator.Validator]*prque.Prque),
 		pendingUnminedBlocks:         make(map[uint64]*types.Block),
@@ -87,12 +90,13 @@ func New(backend Backend, config *config.Config) *core {
 		isStopped:                    new(uint32),
 		valSet:                       new(validatorSet),
 		futureRoundsChange:           make(map[int64]int64),
-		currentHeightOldRoundsStates: make(map[int64]roundState),
+		currentHeightOldRoundsStates: make(map[int64]*roundState),
 		lockedRound:                  big.NewInt(-1),
 		validRound:                   big.NewInt(-1),
-		proposeTimeout:               newTimeout(propose),
-		prevoteTimeout:               newTimeout(prevote),
-		precommitTimeout:             newTimeout(precommit),
+		currentRoundState:            new(roundState),
+		proposeTimeout:               newTimeout(propose, logger),
+		prevoteTimeout:               newTimeout(prevote, logger),
+		precommitTimeout:             newTimeout(precommit, logger),
 	}
 }
 
@@ -108,6 +112,7 @@ type core struct {
 	newUnminedBlockEventSub *cmn.TypeMuxSubscription
 	committedSub            *cmn.TypeMuxSubscription
 	timeoutEventSub         *cmn.TypeMuxSubscription
+	syncEventSub            *cmn.TypeMuxSubscription
 	futureProposalTimer     *time.Timer
 	stopped                 chan struct{}
 	isStarted               *uint32
@@ -138,7 +143,7 @@ type core struct {
 	lockedValue *types.Block
 	validValue  *types.Block
 
-	currentHeightOldRoundsStates   map[int64]roundState
+	currentHeightOldRoundsStates   map[int64]*roundState
 	currentHeightOldRoundsStatesMu sync.RWMutex
 
 	proposeTimeout   *timeout
@@ -160,6 +165,7 @@ func (c *core) GetCurrentHeightMessages() []*Message {
 		totalLen += len(msgs[i])
 	}
 	msgs[len(msgs)-1] = c.currentRoundState.GetMessages()
+
 	totalLen += len(msgs[len(msgs)-1])
 
 	result := make([]*Message, 0, totalLen)
@@ -225,9 +231,9 @@ func (c *core) commit() {
 
 	if proposal != nil {
 		if proposal.ProposalBlock != nil {
-			log.Warn("commit a block", "hash", proposal.ProposalBlock.Header().Hash())
+			c.logger.Warn("commit a block", "hash", proposal.ProposalBlock.Header().Hash())
 		} else {
-			log.Error("commit a NIL block",
+			c.logger.Error("commit a NIL block",
 				"block", proposal.ProposalBlock,
 				"height", c.currentRoundState.height.String(),
 				"round", c.currentRoundState.round.String())
@@ -240,14 +246,27 @@ func (c *core) commit() {
 		}
 
 		if err := c.backend.Commit(*proposal.ProposalBlock, committedSeals); err != nil {
-			log.Error("Failed to Commit block", "err", err)
+			c.logger.Error("Failed to Commit block", "err", err)
 			return
 		}
 	}
 }
 
+// Metric collecton of round change and height change.
+func (c *core) measureHeightRoundMetrics(round *big.Int) {
+	if round.Cmp(common.Big0) == 0 {
+		// in case of height change, round changed too, so count it also.
+		tendermintRoundChangeMeter.Mark(1)
+		tendermintHeightChangeMeter.Mark(1)
+	} else {
+		tendermintRoundChangeMeter.Mark(1)
+	}
+}
+
 // startRound starts a new round. if round equals to 0, it means to starts a new height
 func (c *core) startRound(ctx context.Context, round *big.Int) {
+
+	c.measureHeightRoundMetrics(round)
 	lastCommittedProposalBlock, lastCommittedProposalBlockProposer := c.backend.LastCommittedProposal()
 	height := new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
 
@@ -302,7 +321,7 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 		// Assuming that round == 0 only when the node moves to a new height
 		// Therefore, resetting round related maps
 		c.currentHeightOldRoundsStatesMu.Lock()
-		c.currentHeightOldRoundsStates = make(map[int64]roundState)
+		c.currentHeightOldRoundsStates = make(map[int64]*roundState)
 		c.currentHeightOldRoundsStatesMu.Unlock()
 		c.futureRoundsChange = make(map[int64]int64)
 	}
@@ -314,7 +333,9 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 	// Get all rounds from c.futureRoundsChange and remove previous rounds
 	var i int64
 	for i = 0; i <= r.Int64(); i++ {
-		delete(c.futureRoundsChange, i)
+		if _, ok := c.futureRoundsChange[i]; ok {
+			delete(c.futureRoundsChange, i)
+		}
 	}
 	// Add a copy of c.currentRoundState to c.currentHeightOldRoundsStates and then update c.currentRoundState
 	// We only add old round prevote messages to c.currentHeightOldRoundsStates, while future messages are sent to the
@@ -322,10 +343,11 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 	if r.Int64() > 0 {
 		// This is a shallow copy, should be fine for now
 		c.currentHeightOldRoundsStatesMu.Lock()
-		c.currentHeightOldRoundsStates[r.Int64()-1] = *c.currentRoundState
+		c.currentHeightOldRoundsStates[r.Int64()-1] = c.currentRoundState
 		c.currentHeightOldRoundsStatesMu.Unlock()
 	}
 	c.currentRoundState.Update(r, h)
+
 	// Calculate new proposer
 	c.valSet.CalcProposer(lastProposer, r.Uint64())
 	c.sentProposal = false
