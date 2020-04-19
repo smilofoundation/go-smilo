@@ -277,20 +277,40 @@ func (sb *Backend) Subscribe(types ...interface{}) *cmn.TypeMuxSubscription {
 	return sb.eventMux.Subscribe(types...)
 }
 
+var (
+
+	errMismatchTxhashes = errors.New("mismatch transactions hashes")
+	errInvalidProposal = errors.New("invalid proposal")
+
+)
+
 // VerifyProposal implements tendermint.Backend.VerifyProposal
 func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	// Check if the proposal is a valid block
 	// TODO: fix always false statement and check for non nil
 	// TODO: use interface instead of type
 	block := &proposal
-	//if block == nil {
-	//	sb.logger.Error("Invalid proposal, %v", proposal)
-	//	return 0, errInvalidProposal
-	//}
+	if block == nil {
+		sb.logger.Error("Invalid proposal, %v", proposal)
+		return 0, errInvalidProposal
+	}
 
 	// check bad block
 	if sb.HasBadProposal(block.Hash()) {
+		sb.logger.Error("Invalid proposal, core.ErrBlacklistedHash %v", proposal)
 		return 0, core.ErrBlacklistedHash
+	}
+
+	// check block body
+	txnHash := types.DeriveSha(block.Transactions())
+	uncleHash := types.CalcUncleHash(block.Uncles())
+	if txnHash != block.Header().TxHash {
+		sb.logger.Error("Invalid proposal, errMismatchTxhashes %v", proposal)
+		return 0, errMismatchTxhashes
+	}
+	if uncleHash != nilUncleHash {
+		sb.logger.Error("Invalid proposal, errInvalidUncleHash %v", proposal)
+		return 0, errInvalidUncleHash
 	}
 
 	// verify the header of proposed block
@@ -314,28 +334,25 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		if stateErr != nil {
 			return 0, stateErr
 		}
+		if header.Number.Uint64() > 1 {
 
-		// Validate the body of the proposal
-		if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
-			return 0, err
-		}
-
-		// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
-		// Instead only the transactions are applied to the copied state
-		for i, tx := range block.Transactions() {
-			state.Prepare(tx.Hash(), block.Hash(), i)
-			// Might be vulnerable to DoS Attack depending on gaslimit
-			// Todo : Double check
-			receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
-			if receiptErr != nil {
-				return 0, receiptErr
+			// Validate the body of the proposal
+			if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
+				return 0, err
 			}
-			receipts = append(receipts, receipt)
-			//logs := receipt.Logs
-			//if vaultReceipt != nil {
-			//	logs = append(receipt.Logs, vaultReceipt.Logs...)
-			//	vaultReceipt = append(w.current.privateReceipts, vaultReceipt)
-			//}
+
+			// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
+			// Instead only the transactions are applied to the copied state
+			for i, tx := range block.Transactions() {
+				state.Prepare(tx.Hash(), block.Hash(), i)
+				// Might be vulnerable to DoS Attack depending on gaslimit
+				// Todo : Double check
+				receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
+				if receiptErr != nil {
+					return 0, receiptErr
+				}
+				receipts = append(receipts, receipt)
+			}
 		}
 
 		// Here the order of applying transaction matters
