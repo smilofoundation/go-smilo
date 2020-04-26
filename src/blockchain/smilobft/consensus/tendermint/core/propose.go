@@ -43,7 +43,7 @@ func (c *core) sendProposal(ctx context.Context, p *types.Block) {
 				"Round", c.currentRoundState.round.String(), "Height",
 				c.currentRoundState.height.String(), "ValidRound", c.validRound)
 
-			//return
+			return
 		}
 
 		c.sentProposal = true

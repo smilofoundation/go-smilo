@@ -643,15 +643,15 @@ func newBlockChain(n int) (*core.BlockChain, *Backend) {
 	cfg := config.DefaultConfig()
 	// Use the first key as private key
 	b := New(cfg, nodeKeys[0], memDB, genesis.Config, &vm.Config{})
-	c := tendermintCore.New(b, cfg)
+	//c := tendermintCore.New(b, cfg)
 
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, c, vm.Config{}, nil)
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.Start(context.Background(), blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
+	err = b.core.Start(context.Background(), blockchain, blockchain.CurrentBlock, blockchain.HasBadBlock)
 	if err != nil {
 		panic(err)
 	}

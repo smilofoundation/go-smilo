@@ -83,17 +83,20 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 
 	backend := &Backend{
 		config:         config,
-		eventMux:       cmn.NewTypeMuxSilent(logger),
+		eventMux:       new(cmn.TypeMux),
 		privateKey:     privateKey,
 		address:        crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:         logger,
 		db:             db,
+		commitCh:         make(chan *types.Block, 1),
 		recents:        recents,
 		coreStarted:    false,
 		recentMessages: recentMessages,
 		knownMessages:  knownMessages,
 		vmConfig:       vmConfig,
 	}
+
+	backend.core = tendermintCore.New(backend, backend.config)
 
 	backend.pendingMessages.SetCapacity(ringCapacity)
 	return backend
@@ -103,7 +106,7 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 
 type Backend struct {
 	config           *tendermintConfig.Config
-	eventMux         *cmn.TypeMuxSilent
+	eventMux         *cmn.TypeMux
 	privateKey       *ecdsa.PrivateKey
 	privateKeyMu     sync.RWMutex
 	address          common.Address
@@ -113,6 +116,7 @@ type Backend struct {
 	blockchainInitMu sync.Mutex
 	currentBlock     func() *types.Block
 	hasBadBlock      func(hash common.Hash) bool
+	core             tendermintCore.Engine
 
 	// the channels for tendermint engine notifications
 	commitCh          chan *types.Block
@@ -226,7 +230,12 @@ func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []b
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			go p.Send(tendermintMsg, payload) //nolint
+			err := p.Send(tendermintMsg, payload) //nolint
+			if err != nil {
+				log.Error("Gossip, tendermintMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				log.Debug("Gossip, tendermintMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
 		}
 	}
 }
@@ -235,11 +244,10 @@ func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []b
 func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// Check if the proposal is a valid block
 	block := &proposal
-
-	//if block == nil {
-	//	sb.logger.Error("Invalid proposal, %v", proposal)
-	//	return errInvalidProposal
-	//}
+	if block == nil {
+		sb.logger.Error("Invalid proposal, %v", proposal)
+		return errInvalidProposal
+	}
 
 	h := block.Header()
 	// Append seals into extra-data
@@ -257,14 +265,17 @@ func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// -- if success, the ChainHeadEvent event will be broadcasted, try to build
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
-	if sb.proposedBlockHash == block.Hash() {
+	if sb.proposedBlockHash == block.Hash() && sb.commitCh != nil {
 		// feed block hash to Seal() and wait the Seal() result
 		sb.commitCh <- block
 		return nil
 	}
 
 	if sb.broadcaster != nil {
+		sb.logger.Debug("broadcaster Enqueue fetcherID block")
 		sb.broadcaster.Enqueue(fetcherID, block)
+	} else {
+		sb.logger.Debug("Failed broadcast Enqueue fetcherID block, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 	return nil
 }
@@ -301,20 +312,8 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		return 0, core.ErrBlacklistedHash
 	}
 
-	// check block body
-	txnHash := types.DeriveSha(block.Transactions())
-	uncleHash := types.CalcUncleHash(block.Uncles())
-	if txnHash != block.Header().TxHash {
-		sb.logger.Error("Invalid proposal, errMismatchTxhashes %v", proposal)
-		return 0, errMismatchTxhashes
-	}
-	if uncleHash != nilUncleHash {
-		sb.logger.Error("Invalid proposal, errInvalidUncleHash %v", proposal)
-		return 0, errInvalidUncleHash
-	}
-
 	// verify the header of proposed block
-	log.Debug("verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
+	log.Debug("VerifyProposal, verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 	err := sb.VerifyHeader(sb.blockchain, block.Header(), false)
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
@@ -332,14 +331,15 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		// We need to process all of the transaction to get the latest state to get the latest validators
 		state, vaultstate, stateErr := sb.blockchain.StateAt(parent.Root())
 		if stateErr != nil {
+			log.Error("VerifyProposal, could not get StateAt ", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 			return 0, stateErr
 		}
 		if header.Number.Uint64() > 1 {
 
-			// Validate the body of the proposal
-			if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
-				return 0, err
-			}
+			//// Validate the body of the proposal
+			//if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
+			//	return 0, err
+			//}
 
 			// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
 			// Instead only the transactions are applied to the copied state
@@ -550,7 +550,13 @@ func (sb *Backend) SyncPeer(address common.Address, messages []*tendermintCore.M
 			continue
 		}
 		//We do not save sync messages in the arc cache as recipient could not have been able to process some previous sent.
-		go p.Send(tendermintMsg, payload) //nolint
+		hash := types.RLPHash(payload)
+		err = p.Send(tendermintMsg, payload) //nolint
+		if err != nil {
+			log.Error("SyncPeer, tendermintMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+		} else {
+			log.Debug("SyncPeer, tendermintMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+		}
 	}
 }
 
@@ -561,4 +567,9 @@ func (sb *Backend) ResetPeerCache(address common.Address) {
 		m, _ = ms.(*lru.ARCCache)
 		m.Purge()
 	}
+}
+
+
+func (sb *Backend) Close() error {
+	return nil
 }

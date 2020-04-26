@@ -21,17 +21,23 @@ import (
 	"context"
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/hashicorp/golang-lru"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"io"
+	"io/ioutil"
+	"math/big"
+	"reflect"
 )
 
 const (
 	tendermintMsg     = 0x11
 	tendermintSyncMsg = 0x12
+	NewBlockMsg = 0x07
+
 )
 
 type UnhandledMsg struct {
@@ -68,15 +74,14 @@ func (sb *Backend) HandleUnhandledMsgs(ctx context.Context) {
 
 // HandleMsg implements consensus.Handler.HandleMsg
 func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
-	if msg.Code != tendermintMsg && msg.Code != tendermintSyncMsg {
-		return false, nil
-	}
-
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 
-	switch msg.Code {
-	case tendermintMsg:
+	//if msg.Code != tendermintMsg && msg.Code != tendermintSyncMsg {
+	//	return false, nil
+	//}
+
+	if msg.Code == tendermintMsg {
 		if !sb.coreStarted {
 			buffer := new(bytes.Buffer)
 			if _, err := io.Copy(buffer, msg.Payload); err != nil {
@@ -112,21 +117,62 @@ func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 		}
 		sb.knownMessages.Add(hash, true)
 
-		sb.postEvent(events.MessageEvent{
-			Payload: data,
-		})
-	case tendermintSyncMsg:
+		go func() {
+			err := sb.eventMux.Post(events.MessageEvent{
+				Payload: data,
+			})
+			if err != nil {
+				log.Error("Could not send sb.eventMux.Post, tendermintMsg", "err", err, "msg", msg.String())
+			} else {
+				log.Error("Sent sb.eventMux.Post, tendermintMsg", "msg", msg.String())
+			}
+		}()
+		return true, nil
+	}
+	if msg.Code == tendermintSyncMsg {
 		if !sb.coreStarted {
 			sb.logger.Info("Sync message received but core not running")
 			return true, nil // we return nil as we don't want to shutdown the connection if core is stopped
 		}
 		sb.logger.Info("Received sync message", "from", addr)
-		sb.postEvent(events.SyncEvent{Addr: addr})
-	default:
-		return false, nil
+		go func() {
+			err := sb.eventMux.Post(events.SyncEvent{Addr: addr})
+			if err != nil {
+				log.Error("Could not send sb.eventMux.Post, tendermintSyncMsg", "err", err, "msg", msg.String())
+			} else {
+				log.Error("Sent sb.eventMux.Post, tendermintSyncMsg", "msg", msg.String())
+			}
+		}()
+
+		return true, nil
 	}
 
-	return true, nil
+	if msg.Code == NewBlockMsg {
+		log.Debug("Speaker received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr, "msg", msg.String())
+		if reader, ok := msg.Payload.(*bytes.Reader); ok {
+			payload, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return true, err
+			}
+			reader.Reset(payload)
+			defer reader.Reset(payload)
+			var request struct {
+				Block *types.Block
+				TD    *big.Int
+			}
+			if err := msg.Decode(&request); err != nil {
+				log.Debug("Speaker was unable to decode the NewBlockMsg", "error", err, "msg", msg.String())
+				return false, nil
+			}
+			newRequestedBlock := request.Block
+			if newRequestedBlock.Header().MixDigest == types.SportDigest {
+				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr, "msg", msg.String())
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // SetBroadcaster implements consensus.Handler.SetBroadcaster

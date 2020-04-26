@@ -183,14 +183,12 @@ func (sb *Backend) Gossip(valSet istanbul.ValidatorSet, payload []byte) error {
 			m.Add(hash, true)
 			sb.recentMessages.Add(addr, m)
 
-			//go func() {
 			err := p.Send(istanbulMsg, payload)
 			if err != nil {
 				log.Error("Gossip, istanbulMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
 			} else {
 				//log.Debug("Gossip, istanbulMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
 			}
-			//}()
 		}
 	}
 	return nil

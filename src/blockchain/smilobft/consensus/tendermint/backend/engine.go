@@ -108,10 +108,6 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Ensure that the extra data format is satisfied
-	log.Debug("verifyHeader, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		//panic("verifyHeader, types.ExtractBFTHeaderExtra")
-	}
 	if _, err := types.ExtractBFTHeaderExtra(header); err != nil {
 		return errInvalidExtraDataFormat
 	}
@@ -241,10 +237,6 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 	}
 	validators := validator.NewSet(validatorAddresses, sb.config.GetProposerPolicy())
 
-	log.Debug("verifyCommittedSeals, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		panic("verifyCommittedSeals, types.ExtractBFTHeaderExtra")
-	}
 	extra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		return err
@@ -359,14 +351,25 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 // Note, the block header and state database might be updated to reflect any
 // consensus rules that happen at finalization (e.g. block rewards).
 func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
+	sb.blockchainInitMu.Lock()
 	if sb.blockchain == nil {
 		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
 	}
+	sb.blockchainInitMu.Unlock()
 
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
-		log.Error("Backend) Finalize( after getValidators", "err", err.Error())
+		sb.logger.Error("FinalizeAndAssemble. after getValidators", "err", err.Error())
 		return nil, err
+	}
+
+	ac := sb.blockchain.GetAutonityContract()
+	if ac != nil && header.Number.Uint64() > 1 {
+		err = ac.ApplyPerformRedistribution(txs, receipts, header, state)
+		if err != nil {
+			sb.logger.Error("ApplyPerformRedistribution", "err", err.Error())
+			return nil, err
+		}
 	}
 
 	// add validators to extraData's validators section
@@ -570,7 +573,7 @@ func (sb *Backend) APIs(chain consensus.ChainReader) []rpc.API {
 }
 
 // Start implements consensus.tendermint.Start
-func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
+func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if sb.coreStarted {
@@ -586,9 +589,16 @@ func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, curre
 	}
 	sb.commitCh = make(chan *types.Block, 1)
 
-	sb.blockchain = chain.(*core.BlockChain)
+	//sb.blockchainInitMu.Lock()
+	sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
+	//sb.blockchainInitMu.Unlock()
+
 	sb.currentBlock = currentBlock
 	sb.hasBadBlock = hasBadBlock
+
+	//if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
+	//	return err
+	//}
 
 	sb.coreStarted = true
 
@@ -596,11 +606,14 @@ func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, curre
 }
 
 // Stop implements consensus.tendermint.Stop
-func (sb *Backend) Close() error {
+func (sb *Backend) Stop() error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if !sb.coreStarted {
 		return ErrStoppedEngine
+	}
+	if err := sb.core.Stop(); err != nil {
+		return err
 	}
 	sb.coreStarted = false
 
@@ -618,11 +631,6 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 	header := chain.GetHeaderByNumber(number - 1)
 	if header == nil {
 		return nil, errUnknownBlock
-	}
-
-	log.Debug("retrieveSavedValidators, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "block.Number", number-1, "header", header, "extraData", common.Bytes2Hex(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		panic("retrieveSavedValidators, types.ExtractBFTHeaderExtra")
 	}
 
 	tendermintExtra, err := types.ExtractBFTHeaderExtra(header)

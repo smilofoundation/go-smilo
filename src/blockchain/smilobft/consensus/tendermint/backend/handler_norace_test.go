@@ -20,7 +20,7 @@ func TestUnhandledMsgs(t *testing.T) {
 		blockchain, backend := newBlockChain(1)
 		engine := blockchain.Engine().(consensus.BFT)
 		// we close the engine for enabling cache storing
-		if err := engine.Close(); err != nil {
+		if err := engine.Stop(); err != nil {
 			t.Fatalf("can't stop the engine")
 		}
 		//we generate a bunch of messages overflowing max capacity
@@ -67,7 +67,7 @@ func TestUnhandledMsgs(t *testing.T) {
 		blockchain, backend := newBlockChain(1)
 		engine := blockchain.Engine().(consensus.BFT)
 		// we close the engine for enabling cache storing
-		if err := engine.Close(); err != nil {
+		if err := engine.Stop(); err != nil {
 			t.Fatalf("can't stop the engine")
 		}
 		for i := int64(0); i < ringCapacity; i++ {

@@ -18,6 +18,7 @@ package backend
 
 import (
 	"bytes"
+	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"math/big"
 	"reflect"
 	"testing"
@@ -562,7 +563,7 @@ func TestClose(t *testing.T) {
 	t.Run("engine is not running, error returned", func(t *testing.T) {
 		b := &Backend{}
 
-		err := b.Close()
+		err := b.Stop()
 		if err != ErrStoppedEngine {
 			t.Fatalf("expected %v, got %v", ErrStoppedEngine, err)
 		}
@@ -573,6 +574,7 @@ func TestClose(t *testing.T) {
 			coreStarted: true,
 			stopped:     make(chan struct{}),
 		}
+		b.core = tendermintCore.New(b, b.config)
 
 		err := b.Close()
 		if err != nil {

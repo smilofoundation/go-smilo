@@ -17,7 +17,9 @@
 package core
 
 import (
+	"context"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus"
 	"io"
 	"math/big"
 
@@ -27,6 +29,11 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
+
+type Engine interface {
+	Start(context.Context, consensus.ChainReader, func() *types.Block, func(hash common.Hash) bool) error
+	Stop() error
+}
 
 type Proposal struct {
 	Round      *big.Int
