@@ -22,12 +22,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Start implements core.Engine.Start

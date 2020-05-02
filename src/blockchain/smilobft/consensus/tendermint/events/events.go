@@ -17,8 +17,9 @@
 package events
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // NewUnminedBlockEvent is posted to propose a proposal

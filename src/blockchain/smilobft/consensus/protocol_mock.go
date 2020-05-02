@@ -1,10 +1,11 @@
 package consensus
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
 	types "go-smilo/src/blockchain/smilobft/core/types"
 	reflect "reflect"
+
+	"github.com/ethereum/go-ethereum/common"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockBroadcaster is a mock of Broadcaster interface

@@ -20,15 +20,14 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
-	"github.com/zfjagann/golang-ring"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
+
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
@@ -40,6 +39,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	lru "github.com/hashicorp/golang-lru"
+	ring "github.com/zfjagann/golang-ring"
 )
 
 const (
@@ -109,18 +111,18 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 // ----------------------------------------------------------------------------
 
 type Backend struct {
-	config           *tendermintConfig.Config
-	eventMux         *cmn.TypeMux
-	privateKey       *ecdsa.PrivateKey
-	privateKeyMu     sync.RWMutex
-	address          common.Address
-	core             tendermintCore.Engine
-	logger           log.Logger
-	db               ethdb.Database
-	blockchain       *core.BlockChain
-	chain            consensus.ChainReader
-	currentBlock     func() *types.Block
-	hasBadBlock      func(hash common.Hash) bool
+	config       *tendermintConfig.Config
+	eventMux     *cmn.TypeMux
+	privateKey   *ecdsa.PrivateKey
+	privateKeyMu sync.RWMutex
+	address      common.Address
+	core         tendermintCore.Engine
+	logger       log.Logger
+	db           ethdb.Database
+	blockchain   *core.BlockChain
+	chain        consensus.ChainReader
+	currentBlock func() *types.Block
+	hasBadBlock  func(hash common.Hash) bool
 
 	// the channels for tendermint engine notifications
 	commitCh          chan *types.Block

@@ -32,6 +32,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -266,7 +267,7 @@ func (c *core) commit() {
 	}
 }
 
-// Metric collecton of round change and height change.
+// Metric collection of round change and height change.
 func (c *core) measureHeightRoundMetrics(round *big.Int) {
 	if round.Cmp(common.Big0) == 0 {
 		// in case of height change, round changed too, so count it also.
@@ -359,9 +360,7 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 	// Get all rounds from c.futureRoundsChange and remove previous rounds
 	var i int64
 	for i = 0; i <= r.Int64(); i++ {
-		if _, ok := c.futureRoundsChange[i]; ok {
-			delete(c.futureRoundsChange, i)
-		}
+		delete(c.futureRoundsChange, i)
 	}
 	// Add a copy of c.currentRoundState to c.currentHeightOldRoundsStates and then update c.currentRoundState
 	// We only add old round prevote messages to c.currentHeightOldRoundsStates, while future messages are sent to the

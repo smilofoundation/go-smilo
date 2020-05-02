@@ -2,8 +2,6 @@ package consensus
 
 import (
 	context "context"
-	"github.com/ethereum/go-ethereum/common"
-	gomock "github.com/golang/mock/gomock"
 	state "go-smilo/src/blockchain/smilobft/core/state"
 	types "go-smilo/src/blockchain/smilobft/core/types"
 	p2p "go-smilo/src/blockchain/smilobft/p2p"
@@ -11,6 +9,9 @@ import (
 	rpc "go-smilo/src/blockchain/smilobft/rpc"
 	big "math/big"
 	reflect "reflect"
+
+	"github.com/ethereum/go-ethereum/common"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockChainReader is a mock of ChainReader interface

@@ -20,9 +20,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/hashicorp/golang-lru"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -31,6 +28,10 @@ import (
 	"io/ioutil"
 	"math/big"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
