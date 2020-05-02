@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+//TODO: why is this like this ?
 const (
 	initialProposeTimeout   = 3000 * time.Millisecond
 	proposeTimeoutDelta     = 500 * time.Millisecond
@@ -18,6 +19,13 @@ const (
 	prevoteTimeoutDelta     = 500 * time.Millisecond
 	initialPrecommitTimeout = 1000 * time.Millisecond
 	precommitTimeoutDelta   = 500 * time.Millisecond
+
+	//initialProposeTimeout   = 4000 * time.Millisecond
+	//proposeTimeoutDelta     = 1500 * time.Millisecond
+	//initialPrevoteTimeout   = 2000 * time.Millisecond
+	//prevoteTimeoutDelta     = 1500 * time.Millisecond
+	//initialPrecommitTimeout = 2000 * time.Millisecond
+	//precommitTimeoutDelta   = 1500 * time.Millisecond
 )
 
 type TimeoutEvent struct {

@@ -43,9 +43,9 @@ func TestTendermintSuccess(t *testing.T) {
 	cases := []*testCase{
 		{
 			name:      "no malicious",
-			numPeers:  5,
+			numPeers:  3,
 			numBlocks: 5,
-			txPerPeer: 1,
+			txPerPeer: 0,
 		},
 	}
 
@@ -1162,6 +1162,7 @@ func (validator *testNode) startNode() error {
 
 	validator.node.ResetEventMux()
 
+	// start
 	if err := validator.node.Start(); err != nil {
 		return fmt.Errorf("cannot start a node %s", err)
 	}
@@ -1302,7 +1303,7 @@ func sendTransactions(t *testing.T, test *testCase, validators []*testNode, txPe
 					}
 
 					// actual forming and sending transaction
-					log.Debug("peer", "address", crypto.PubkeyToAddress(validator.privateKey.PublicKey).String(), "block", ev.Block.Number().Uint64(), "isRunning", validator.isRunning)
+					log.Debug("actual forming and sending transaction", "address", crypto.PubkeyToAddress(validator.privateKey.PublicKey).String(), "block", ev.Block.Number().Uint64(), "isRunning", validator.isRunning)
 
 					if validator.isRunning {
 						txsMu.Lock()

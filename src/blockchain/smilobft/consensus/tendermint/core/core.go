@@ -183,6 +183,19 @@ func (c *core) IsValidator(address common.Address) bool {
 
 func (c *core) finalizeMessage(msg *Message) ([]byte, error) {
 	var err error
+	// Add sender address
+	msg.Address = c.address
+
+	// Add proof of consensus
+	msg.CommittedSeal = []byte{}
+	// Assign the CommittedSeal if it's a COMMIT message and proposal is not nil
+	if msg.Code == msgPrecommit && c.currentRoundState.Proposal() != nil {
+		seal := PrepareCommittedSeal(c.currentRoundState.Proposal().Hash())
+		msg.CommittedSeal, err = c.backend.Sign(seal)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Sign message
 	data, err := msg.PayloadNoSig()
@@ -280,6 +293,8 @@ func (c *core) startRound(ctx context.Context, round *big.Int) {
 	// If the node is the proposer for this round then it would propose validValue or a new block, otherwise,
 	// proposeTimeout is started, where the node waits for a proposal from the proposer of the current round.
 	if c.isProposer() {
+		log.Debug("I AM THE PROPOSER!!!!!!!!!!!!!!!! ", "Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock)
+
 		// validValue and validRound represent a block they received a quorum of prevote and the round quorum was
 		// received, respectively. If the block is not committed in that round then the round is changed.
 		// The new proposer will chose the validValue, if present, which was set in one of the previous rounds otherwise
@@ -289,14 +304,24 @@ func (c *core) startRound(ctx context.Context, round *big.Int) {
 			p = c.validValue
 		} else {
 			p = c.getUnminedBlock()
+			log.Debug("I AM THE PROPOSER AND getUnminedBlock!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
+				"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock)
+
 			if p == nil {
 				select {
 				case <-ctx.Done():
+					log.Warn("I AM THE PROPOSER AND TIMEOUT!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
+						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock)
 					return
 				case p = <-c.pendingUnminedBlockCh:
+					log.Warn("I AM THE PROPOSER GOT A BLOCK from pendingUnminedBlockCh!!!!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
+						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock)
 				}
 			}
 		}
+
+		log.Debug("I AM THE PROPOSER AND sendProposal!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
+			"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock)
 		c.sendProposal(ctx, p)
 	} else {
 		timeoutDuration := timeoutPropose(round.Int64())
@@ -357,18 +382,23 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 }
 
 func (c *core) acceptVote(roundState *roundState, step Step, hash common.Hash, msg Message) {
+	log.Debug("Going to acceptVote!!!!!!!! ", "step", step, "hash", hash, "roundState", roundState, "msg", msg)
 	emptyHash := hash == (common.Hash{})
 	switch step {
 	case prevote:
 		if emptyHash {
+			log.Debug("Going to acceptVote!!!!!!!! prevote, AddNilVote,", "step", step, "hash", hash, "roundState", roundState, "msg", msg)
 			roundState.Prevotes.AddNilVote(msg)
 		} else {
+			log.Debug("Going to acceptVote!!!!!!!! prevote, AddVote,", "step", step, "hash", hash, "roundState", roundState, "msg", msg)
 			roundState.Prevotes.AddVote(hash, msg)
 		}
 	case precommit:
 		if emptyHash {
+			log.Debug("Going to acceptVote!!!!!!!! precommit, AddNilVote", "step", step, "hash", hash, "roundState", roundState, "msg", msg)
 			roundState.Precommits.AddNilVote(msg)
 		} else {
+			log.Debug("Going to acceptVote!!!!!!!! precommit, ddVote", "step", step, "hash", hash, "roundState", roundState, "msg", msg)
 			roundState.Precommits.AddVote(hash, msg)
 		}
 	}

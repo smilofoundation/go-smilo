@@ -36,8 +36,7 @@ import (
 const (
 	tendermintMsg     = 0x11
 	tendermintSyncMsg = 0x12
-	NewBlockMsg = 0x07
-
+	NewBlockMsg       = 0x07
 )
 
 type UnhandledMsg struct {
@@ -148,7 +147,7 @@ func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	}
 
 	if msg.Code == NewBlockMsg {
-		log.Debug("Speaker received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr, "msg", msg.String())
+		log.Debug("Tendermint received NewBlockMsg", "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr, "msg", msg.String())
 		if reader, ok := msg.Payload.(*bytes.Reader); ok {
 			payload, err := ioutil.ReadAll(reader)
 			if err != nil {
@@ -165,11 +164,16 @@ func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 				return false, nil
 			}
 			newRequestedBlock := request.Block
-			if newRequestedBlock.Header().MixDigest == types.SportDigest {
+			if newRequestedBlock.Header().MixDigest == types.BFTDigest {
 				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr, "msg", msg.String())
 				return true, nil
+			} else {
+				log.Debug("newRequestedBlock.Header().MixDigest != types.BFTDigest", "MixDigest", newRequestedBlock.Header().MixDigest, "BFTDigest", types.BFTDigest)
 			}
 		}
+	} else {
+		log.Debug("Tendermint received other msg", "msg.Code", msg.Code, "size", msg.Size, "payload.type", reflect.TypeOf(msg.Payload), "sender", addr, "msg", msg.String())
+
 	}
 
 	return false, nil
@@ -186,6 +190,6 @@ func (sb *Backend) NewChainHead() error {
 	if !sb.coreStarted {
 		return ErrStoppedEngine
 	}
-	sb.postEvent(events.CommitEvent{})
+	go sb.Post(events.CommitEvent{})
 	return nil
 }

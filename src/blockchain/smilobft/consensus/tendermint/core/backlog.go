@@ -140,7 +140,7 @@ func (c *core) processBacklog() {
 			err := c.checkMessage(round, height, Step(msg.Code))
 			if err != nil {
 				if err == errFutureHeightMessage || err == errFutureRoundMessage || err == errFutureStepMessage {
-					logger.Debug("Stop processing backlog", "msg", msg, "err", err)
+					logger.Debug("core/backlog.go, checkMessage, errFutureMessage, Stop processing backlog", "msg", msg, "err", err, "round", round, "height", height)
 					backlog.Push(msg, prio)
 					isFuture = true
 					break

@@ -175,6 +175,8 @@ eventLoop:
 					c.logger.Error("core.handleConsensusEvents Get message(MessageEvent) empty payload")
 				}
 
+				c.logger.Debug("$$$ tendermint, handleEvents, MessageEvent arrived, will send Gossip to valSet")
+
 				if err := c.handleMsg(ctx, e.Payload); err != nil {
 					c.logger.Debug("core.handleConsensusEvents Get message(MessageEvent) payload failed", "err", err)
 					continue
@@ -322,6 +324,10 @@ func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender valida
 			if totalFutureRoundMessages > int64(c.valSet.F()) {
 				logger.Debug("Received ceil(N/3) - 1 messages for higher round", "New round", msgRound)
 				c.startRound(ctx, big.NewInt(msgRound))
+			} else {
+				logger.Debug("totalFutureRoundMessages false, messages for higher round",
+					"New round", msgRound, "totalFutureRoundMessages", totalFutureRoundMessages,
+					"int64(c.valSet.F())", int64(c.valSet.F()))
 			}
 		} else if err == errFutureStepMessage {
 			logger.Debug("Storing future step message in backlog")
@@ -333,13 +339,13 @@ func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender valida
 
 	switch msg.Code {
 	case msgProposal:
-		logger.Debug("tendermint.MessageEvent: PROPOSAL")
+		logger.Debug("tendermint.MessageEvent: PROPOSAL", "msg", msg)
 		return testBacklog(c.handleProposal(ctx, msg))
 	case msgPrevote:
-		logger.Debug("tendermint.MessageEvent: PREVOTE")
+		logger.Debug("tendermint.MessageEvent: PREVOTE", "msg", msg)
 		return testBacklog(c.handlePrevote(ctx, msg))
 	case msgPrecommit:
-		logger.Debug("tendermint.MessageEvent: PRECOMMIT")
+		logger.Debug("tendermint.MessageEvent: PRECOMMIT", "msg", msg)
 		return testBacklog(c.handlePrecommit(ctx, msg))
 	default:
 		logger.Error("Invalid message", "msg", msg)

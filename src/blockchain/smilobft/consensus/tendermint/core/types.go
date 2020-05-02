@@ -56,6 +56,10 @@ func NewProposal(r *big.Int, h *big.Int, vr *big.Int, p *types.Block, logger log
 	}
 }
 
+func (p *Proposal) Hash() common.Hash {
+	return p.ProposalBlock.Hash()
+}
+
 // EncodeRLP serializes b into the Ethereum RLP format.
 func (p *Proposal) EncodeRLP(w io.Writer) error {
 	if p.ValidRound.Int64() == -1 {

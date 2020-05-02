@@ -179,7 +179,7 @@ func TestCommit(t *testing.T) {
 
 		backend.proposedBlockHash = expBlock.Hash()
 		if err := backend.Commit(expBlock, test.expectedSignature); err != nil {
-			if err.Error() != test.expectedErr.Error() {
+			if err != test.expectedErr {
 				t.Errorf("error mismatch: have %v, want %v", err, test.expectedErr)
 			}
 		}
@@ -266,8 +266,8 @@ func (slice Keys) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func newBackend() (b *Backend, err error) {
-	_, b, err = newBlockChain(4)
+func newBackend() (*Backend, error) {
+	_, b, err := newBlockChain(4)
 	if err != nil {
 		return nil, err
 	}
@@ -277,5 +277,5 @@ func newBackend() (b *Backend, err error) {
 	}
 
 	b.privateKey = key
-	return
+	return b, nil
 }

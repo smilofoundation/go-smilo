@@ -221,11 +221,11 @@ func (s *Snapshot) apply(headers []*types.Header) (*Snapshot, error) {
 			return nil, err
 		}
 		if _, ok := snap.Signers[signer]; !ok {
-			return nil, errUnauthorized
+			return nil, errUnauthorizedSigner
 		}
 		for _, recent := range snap.Recents {
 			if recent == signer {
-				return nil, errUnauthorized
+				return nil, errRecentlySigned
 			}
 		}
 		snap.Recents[number] = signer

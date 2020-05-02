@@ -35,7 +35,7 @@ func (c *core) sendPrevote(ctx context.Context, isNil bool) {
 		prevote.ProposedBlockHash = common.Hash{}
 	} else {
 		if h := c.currentRoundState.GetCurrentProposalHash(); h == (common.Hash{}) {
-			c.logger.Error("sendPrecommit Proposal is empty! It should not be empty!")
+			c.logger.Error("sendPrevote GetCurrentProposalHash is empty! It should not be empty!")
 			return
 		}
 		prevote.ProposedBlockHash = c.currentRoundState.GetCurrentProposalHash()
@@ -47,15 +47,19 @@ func (c *core) sendPrevote(ctx context.Context, isNil bool) {
 		return
 	}
 
-	c.logPrevoteMessageEvent("MessageEvent(Prevote): Sent", prevote, c.address.String(), "broadcast")
-
-	c.sentPrevote = true
-	c.broadcast(ctx, &Message{
+	targetMsg := &Message{
 		Code:          msgPrevote,
 		Msg:           encodedVote,
 		Address:       c.address,
 		CommittedSeal: []byte{},
-	})
+	}
+
+	c.logPrevoteMessageEvent("MessageEvent(Prevote): broadcast", prevote, c.address.String(), "broadcast")
+
+	logger.Debug("MessageEvent(Prevote): broadcast", "From", c.address, "targetMsg", targetMsg)
+
+	c.sentPrevote = true
+	c.broadcast(ctx, targetMsg)
 }
 
 func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
@@ -69,6 +73,8 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 		// Store old round prevote messages for future rounds since it is required for validRound
 		if err == errOldRoundMessage {
 			// We only process old rounds while future rounds messages are pushed on to the backlog
+			c.logger.Debug("prevote, We only process old rounds while future rounds messages are pushed on to the backlog",
+				"preVote.ProposedBlockHash", preVote.ProposedBlockHash, "preVote.Round", preVote.Round, "preVote.Heigh", preVote.Height)
 			c.currentHeightOldRoundsStatesMu.Lock()
 			defer c.currentHeightOldRoundsStatesMu.Unlock()
 			oldRoundState, ok := c.currentHeightOldRoundsStates[preVote.Round.Int64()]
@@ -94,6 +100,7 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 	c.logPrevoteMessageEvent("MessageEvent(Prevote): Received", preVote, msg.Address.String(), c.address.String())
 
 	// Now we can add the preVote to our current round state
+
 	if c.currentRoundState.Step() >= prevote {
 		curProposalHash := c.currentRoundState.GetCurrentProposalHash()
 		curR := c.currentRoundState.Round().Int64()
@@ -101,6 +108,7 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 
 		// Line 36 in Algorithm 1 of The latest gossip on BFT consensus
 		if curProposalHash != (common.Hash{}) && c.Quorum(c.currentRoundState.Prevotes.VotesSize(curProposalHash)) && !c.setValidRoundAndValue {
+			c.logPrevoteMessageEvent("Line 36 in Algorithm 1 of The latest gossip on BFT consensus", preVote, msg.Address.String(), c.address.String())
 			// this piece of code should only run once
 			if err := c.prevoteTimeout.stopTimer(); err != nil {
 				return err
@@ -118,6 +126,8 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 			c.setValidRoundAndValue = true
 			// Line 44 in Algorithm 1 of The latest gossip on BFT consensus
 		} else if c.currentRoundState.Step() == prevote && c.Quorum(c.currentRoundState.Prevotes.NilVotesSize()) {
+			c.logPrevoteMessageEvent("Line 44 in Algorithm 1 of The latest gossip on BFT consensus", preVote, msg.Address.String(), c.address.String())
+
 			if err := c.prevoteTimeout.stopTimer(); err != nil {
 				return err
 			}
@@ -128,9 +138,23 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 
 			// Line 34 in Algorithm 1 of The latest gossip on BFT consensus
 		} else if c.currentRoundState.Step() == prevote && !c.prevoteTimeout.timerStarted() && !c.sentPrecommit && c.Quorum(c.currentRoundState.Prevotes.TotalSize()) {
+			c.logPrevoteMessageEvent("Line 34 in Algorithm 1 of The latest gossip on BFT consensus", preVote, msg.Address.String(), c.address.String())
+
 			timeoutDuration := timeoutPrevote(curR)
 			c.prevoteTimeout.scheduleTimeout(timeoutDuration, curR, curH, c.onTimeoutPrevote)
 			c.logger.Debug("Scheduled Prevote Timeout", "Timeout Duration", timeoutDuration)
+		} else {
+
+			c.logger.Warn("no condition matched ? WTF!", "curProposalHash", curProposalHash,
+				"c.currentRoundState.Prevotes.VotesSize(curProposalHash)", c.currentRoundState.Prevotes.VotesSize(curProposalHash),
+				"c.setValidRoundAndValue", c.setValidRoundAndValue,
+				"c.currentRoundState.Step()", c.currentRoundState.Step(),
+				"c.currentRoundState.Prevotes.NilVotesSize()", c.currentRoundState.Prevotes.NilVotesSize(),
+				"preVote", preVote,
+				"msg.Address.String()", msg.Address.String(),
+				"c.address.String()", c.address.String(),
+			)
+
 		}
 	}
 

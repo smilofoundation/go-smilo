@@ -68,6 +68,7 @@ var (
 	errInconsistentValidatorSet = errors.New("inconsistent validator set")
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
+	errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -338,7 +339,7 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	header.Extra = extra
 
 	// set header's timestamp
-	header.Time = new(big.Int).Add(big.NewInt(int64(parent.Time)), new(big.Int).SetUint64(sb.config.BlockPeriod)).Uint64()
+	header.Time = parent.Time + sb.config.BlockPeriod
 	if int64(header.Time) < time.Now().Unix() {
 		header.Time = uint64(time.Now().Unix())
 	}
@@ -351,15 +352,13 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 // Note, the block header and state database might be updated to reflect any
 // consensus rules that happen at finalization (e.g. block rewards).
 func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	sb.blockchainInitMu.Lock()
 	if sb.blockchain == nil {
 		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
 	}
-	sb.blockchainInitMu.Unlock()
 
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
-		sb.logger.Error("FinalizeAndAssemble. after getValidators", "err", err.Error())
+		sb.logger.Error("Finalize after getValidators", "err", err.Error())
 		return nil, err
 	}
 
@@ -401,6 +400,8 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 	var validators []common.Address
 
 	if header.Number.Int64() == 1 {
+		log.Info("Autonity Contract Deployer", "Address", chain.Config().AutonityContractConfig.Deployer)
+
 		sb.blockchain.GetAutonityContract().SavedValidatorsRetriever = func(i uint64) (addresses []common.Address, e error) {
 			chain := chain
 			return sb.retrieveSavedValidators(i, chain)
@@ -418,7 +419,7 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 
 	} else {
 		if sb.autonityContractAddress == common.HexToAddress("0000000000000000000000000000000000000000") {
-			sb.autonityContractAddress = crypto.CreateAddress(sb.blockchain.Config().AutonityContractConfig.Deployer, 0)
+			sb.autonityContractAddress = crypto.CreateAddress(chain.Config().AutonityContractConfig.Deployer, 0)
 		}
 
 		var err error
@@ -448,13 +449,13 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 
 	// Bail out if we're unauthorized to sign a block
 	if _, v := sb.Validators(number).GetByAddress(sb.Address()); v == nil {
-		sb.logger.Error("error validator errUnauthorized", "addr", sb.address.String())
+		sb.logger.Error("Seal, Bail out if we're unauthorized to sign a block", "addr", sb.address.String())
 		return nil, errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
-		sb.logger.Error("Error ancestor")
+		sb.logger.Error("Seal, Bail out ErrUnknownAncestor")
 		return nil, consensus.ErrUnknownAncestor
 	}
 	block, err := sb.updateBlock(block)
@@ -472,6 +473,8 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		return nil, nil
 	}
 
+	//log.Debug("will crash ?? ", "sb.config.MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining)
+	//log.Debug("will crash ?? ", "block.Number()", block.Number())
 	//log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
 	//if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
 	//	log.Debug("Seal, Bail out errWaitTransactions")
@@ -479,17 +482,17 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	//}
 
 	// get the proposed block hash and clear it if the seal() is completed.
-	sb.coreMu.Lock()
+	sb.sealMu.Lock()
 	sb.proposedBlockHash = block.Hash()
 	sb.logger.Debug("get the proposed block hash and clear it if the seal() is completed ", "hash", sb.proposedBlockHash)
 	clear := func() {
 		sb.proposedBlockHash = common.Hash{}
-		sb.coreMu.Unlock()
+		sb.sealMu.Unlock()
 	}
 	defer clear()
 
 	// post block into BFT engine
-	sb.postEvent(events.NewUnminedBlockEvent{
+	go sb.eventMux.Post(events.NewUnminedBlockEvent{ //RequestEvent
 		NewUnminedBlock: *block,
 	})
 
@@ -513,12 +516,12 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 
 }
 
-func (sb *Backend) setResultChan(results chan *types.Block) {
-	sb.coreMu.Lock()
-	defer sb.coreMu.Unlock()
-
-	sb.commitCh = results
-}
+//func (sb *Backend) setResultChan(results chan *types.Block) {
+//	sb.coreMu.Lock()
+//	defer sb.coreMu.Unlock()
+//
+//	sb.commitCh = results
+//}
 
 func (sb *Backend) sendResultChan(block *types.Block) {
 	sb.coreMu.Lock()
@@ -589,10 +592,7 @@ func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, current
 	}
 	sb.commitCh = make(chan *types.Block, 1)
 
-	//sb.blockchainInitMu.Lock()
 	sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
-	//sb.blockchainInitMu.Unlock()
-
 	sb.currentBlock = currentBlock
 	sb.hasBadBlock = hasBadBlock
 
@@ -630,6 +630,7 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 
 	header := chain.GetHeaderByNumber(number - 1)
 	if header == nil {
+		sb.logger.Error("Error when chain.GetHeaderByNumber, ", "errUnknownBlock", errUnknownBlock)
 		return nil, errUnknownBlock
 	}
 
@@ -665,6 +666,7 @@ func (sb *Backend) retrieveValidators(header *types.Header, parents []*types.Hea
 		//}
 		tendermintExtra, err = types.ExtractBFTHeaderExtra(parent)
 		if err == nil {
+			log.Debug("OK types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "err", err, "Total Validators", len(tendermintExtra.Validators))
 			validators = tendermintExtra.Validators
 		}
 	} else {

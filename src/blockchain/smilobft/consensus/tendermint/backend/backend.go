@@ -70,6 +70,10 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 		config.BlockPeriod = chainConfig.Tendermint.BlockPeriod
 	}
 
+	if config.MinBlocksEmptyMining == nil {
+		config.MinBlocksEmptyMining = tendermintConfig.DefaultConfig().MinBlocksEmptyMining
+	}
+
 	config.SetProposerPolicy(tendermintConfig.ProposerPolicy(chainConfig.Tendermint.ProposerPolicy))
 
 	recents, _ := lru.NewARC(inmemorySnapshots)
@@ -88,7 +92,7 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 		address:        crypto.PubkeyToAddress(privateKey.PublicKey),
 		logger:         logger,
 		db:             db,
-		commitCh:         make(chan *types.Block, 1),
+		commitCh:       make(chan *types.Block, 1),
 		recents:        recents,
 		coreStarted:    false,
 		recentMessages: recentMessages,
@@ -110,17 +114,18 @@ type Backend struct {
 	privateKey       *ecdsa.PrivateKey
 	privateKeyMu     sync.RWMutex
 	address          common.Address
+	core             tendermintCore.Engine
 	logger           log.Logger
 	db               ethdb.Database
 	blockchain       *core.BlockChain
-	blockchainInitMu sync.Mutex
+	chain            consensus.ChainReader
 	currentBlock     func() *types.Block
 	hasBadBlock      func(hash common.Hash) bool
-	core             tendermintCore.Engine
 
 	// the channels for tendermint engine notifications
 	commitCh          chan *types.Block
 	proposedBlockHash common.Hash
+	sealMu            sync.Mutex
 	coreStarted       bool
 	stopped           chan struct{}
 	coreMu            sync.RWMutex
@@ -151,8 +156,8 @@ func (sb *Backend) Address() common.Address {
 }
 
 func (sb *Backend) Validators(number uint64) validator.Set {
-	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	proposerPolicy := sb.config.GetProposerPolicy()
+	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	if err != nil {
 		return validator.NewSet(nil, proposerPolicy)
 	}
@@ -167,12 +172,10 @@ func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload 
 	msg := events.MessageEvent{
 		Payload: payload,
 	}
-	sb.postEvent(msg)
+	go func() {
+		sb.eventMux.Post(msg)
+	}()
 	return nil
-}
-
-func (sb *Backend) postEvent(event interface{}) {
-	go sb.Post(event)
 }
 
 func (sb *Backend) AskSync(valSet validator.Set) {
@@ -214,6 +217,9 @@ func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []b
 
 	if sb.broadcaster != nil && len(targets) > 0 {
 		ps := sb.broadcaster.FindPeers(targets)
+		if len(ps) == 0 {
+			log.Warn("Gossip FindPeers returned zero peers ....")
+		}
 		for addr, p := range ps {
 			ms, ok := sb.recentMessages.Get(addr)
 			var m *lru.ARCCache
@@ -267,6 +273,7 @@ func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// -- otherwise, a error will be returned and a round change event will be fired.
 	if sb.proposedBlockHash == block.Hash() && sb.commitCh != nil {
 		// feed block hash to Seal() and wait the Seal() result
+		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitCh <- block
 		return nil
 	}
@@ -289,10 +296,8 @@ func (sb *Backend) Subscribe(types ...interface{}) *cmn.TypeMuxSubscription {
 }
 
 var (
-
 	errMismatchTxhashes = errors.New("mismatch transactions hashes")
-	errInvalidProposal = errors.New("invalid proposal")
-
+	errInvalidProposal  = errors.New("invalid proposal")
 )
 
 // VerifyProposal implements tendermint.Backend.VerifyProposal
@@ -310,6 +315,18 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	if sb.HasBadProposal(block.Hash()) {
 		sb.logger.Error("Invalid proposal, core.ErrBlacklistedHash %v", proposal)
 		return 0, core.ErrBlacklistedHash
+	}
+
+	// check block body
+	txnHash := types.DeriveSha(block.Transactions())
+	uncleHash := types.CalcUncleHash(block.Uncles())
+	if txnHash != block.Header().TxHash {
+		sb.logger.Error("Invalid proposal, errMismatchTxhashes %v", proposal)
+		return 0, errMismatchTxhashes
+	}
+	if uncleHash != nilUncleHash {
+		sb.logger.Error("Invalid proposal, errInvalidUncleHash %v", proposal)
+		return 0, errInvalidUncleHash
 	}
 
 	// verify the header of proposed block
@@ -336,10 +353,11 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		}
 		if header.Number.Uint64() > 1 {
 
-			//// Validate the body of the proposal
-			//if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
-			//	return 0, err
-			//}
+			// Validate the body of the proposal
+			if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
+				sb.logger.Error("Error when ValidateBody ", "err", err)
+				return 0, err
+			}
 
 			// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
 			// Instead only the transactions are applied to the copied state
@@ -349,6 +367,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 				// Todo : Double check
 				receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 				if receiptErr != nil {
+					sb.logger.Error("Error when ApplyTransaction ", "receiptErr", receiptErr)
 					return 0, receiptErr
 				}
 				receipts = append(receipts, receipt)
@@ -363,28 +382,34 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 
 			_, err = sb.blockchain.GetAutonityContract().DeployAutonityContract(sb.blockchain, header, state)
 			if err != nil {
+				sb.logger.Error("Error when DeployAutonityContract Autonity Contract ", "err", err)
 				return 0, err
 			}
 		} else if proposalNumber > 1 {
 			err = sb.blockchain.GetAutonityContract().ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), state)
 			if err != nil {
+				sb.logger.Error("Error when ApplyPerformRedistribution Autonity Contract ", "err", err)
 				return 0, err
 			}
 		}
 
 		//Validate the state of the proposal
 		if err = sb.blockchain.Validator().ValidateState(block, parent, state, receipts, *usedGas); err != nil {
+			sb.logger.Error("Error when ValidateState ", "err", err)
 			return 0, err
 		}
 
 		if proposalNumber > 1 {
 			validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(sb.blockchain, header, state)
 			if err != nil {
+				sb.logger.Error("Error when ContractGetValidators ", "err", err)
+
 				return 0, err
 			}
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
 			if err != nil {
+				sb.logger.Error("Error when retrieveSavedValidators ", "err", err)
 				return 0, err
 			}
 		}
@@ -392,7 +417,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		// Verify the validator set by comparing the validators in extra data and Soma-contract
 		log.Debug("VerifyProposal, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
 		if len(header.Extra) < types.BFTExtraVanity {
-			//panic("VerifyProposal, types.ExtractBFTHeaderExtra")
+			panic("VerifyProposal, types.ExtractBFTHeaderExtra")
 		}
 		tendermintExtra, _ := types.ExtractBFTHeaderExtra(header)
 
@@ -406,23 +431,23 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 
 		log.Debug("log all autonity Validators and validators on ExtraData")
 		for i := range validators {
-			validator := validators[i]
+			val := validators[i]
 			validatorExtra := tendermintExtra.Validators[i]
-			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
+			log.Debug("validator each ", "validator", val, "validatorExtra", validatorExtra)
 		}
 
 		for i := range validators {
-			validator := validators[i]
+			val := validators[i]
 			found := false
 			for j := range tendermintExtra.Validators {
 				validatorExtra := tendermintExtra.Validators[j]
-				if validator == validatorExtra {
+				if val == validatorExtra {
 					found = true
 					break
 				}
 			}
 			if !found {
-				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i])
+				log.Error("*&*&*&*&*& errInconsistentValidatorSet, !found, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i], "val", val)
 				return 0, errInconsistentValidatorSet
 			}
 		}
@@ -430,6 +455,8 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
+		sb.logger.Error("Error when ErrFutureBlock ", "err", err)
+
 		return time.Unix(int64(block.Header().Time), 0).Sub(now()), consensus.ErrFutureBlock
 	}
 	return 0, err
@@ -498,13 +525,13 @@ func (sb *Backend) GetContractABI() string {
 
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	db, vaultstate, err := sb.blockchain.State()
+	state, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
 	}
 
-	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), db, vaultstate)
+	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state, vaultstate)
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
@@ -568,7 +595,6 @@ func (sb *Backend) ResetPeerCache(address common.Address) {
 		m.Purge()
 	}
 }
-
 
 func (sb *Backend) Close() error {
 	return nil
