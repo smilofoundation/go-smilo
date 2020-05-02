@@ -26,6 +26,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
+	"go-smilo/src/blockchain/smilobft/params"
 	"sort"
 	"testing"
 
