@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -32,10 +31,13 @@ func (c *core) sendProposal(ctx context.Context, p *types.Block) {
 
 	// If I'm the proposer and I have the same height with the proposal
 	if c.currentRoundState.Height().Int64() == p.Number().Int64() && c.isProposer() && !c.sentProposal {
-		proposalBlock := NewProposal(c.currentRoundState.Round(), c.currentRoundState.Height(), c.validRound, p)
+		logger.Debug("I'm the proposer and I have the same height with the proposal", "c.currentRoundState.Height().Int64()", c.currentRoundState.Height().Int64(),
+			"p.Number().Int64()", p.Number().Int64(), "c.sentProposal", c.sentProposal)
+
+		proposalBlock := NewProposal(c.currentRoundState.Round(), c.currentRoundState.Height(), c.validRound, p, c.logger)
 		proposal, err := Encode(proposalBlock)
 		if err != nil {
-			logger.Error("Failed to encode", "Round", proposalBlock.Round, "Height", proposalBlock.Height, "ValidRound", c.validRound)
+			logger.Error("sendProposal, Failed to encode", "Round", proposalBlock.Round, "Height", proposalBlock.Height, "ValidRound", c.validRound)
 			return
 		}
 
@@ -50,14 +52,18 @@ func (c *core) sendProposal(ctx context.Context, p *types.Block) {
 		c.sentProposal = true
 		c.backend.SetProposedBlockHash(p.Hash())
 
-		c.logProposalMessageEvent("MessageEvent(Proposal): Sent", *proposalBlock, c.address.String(), "broadcast")
-
-		c.broadcast(ctx, &Message{
+		msg := &Message{
 			Code:          msgProposal,
 			Msg:           proposal,
 			Address:       c.address,
 			CommittedSeal: []byte{},
-		})
+		}
+
+		c.logProposalMessageEvent("MessageEvent(Proposal): Sent", *proposalBlock, c.address.String(), "broadcast")
+
+		logger.Debug("I'm the proposer and broadcast", "msg", msg)
+
+		c.broadcast(ctx, msg)
 	}
 }
 
@@ -69,55 +75,70 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 	}
 
 	// Ensure we have the same view with the Proposal message
-	if err := c.checkMessage(proposal.Round, proposal.Height); err != nil {
+	if err := c.checkMessage(proposal.Round, proposal.Height, propose); err != nil {
 		// We don't care about old proposals so they are ignored
+		c.logger.Warn("We don't care about old proposals so they are ignored", "msg", msg)
 		return err
 	}
 
 	// Check if the message comes from currentRoundState proposer
 	if !c.valSet.IsProposer(msg.Address) {
-		c.logger.Warn("Ignore proposal messages from non-proposer")
+		c.logger.Warn("Ignore proposal messages from non-proposer", "msg", msg)
 		return errNotFromProposer
 	}
 
 	// Verify the proposal we received
 	if duration, err := c.backend.VerifyProposal(*proposal.ProposalBlock); err != nil {
+		c.logger.Warn("Verify the proposal we received", "msg", msg, "duration", duration, "proposal.ProposalBlock", proposal.ProposalBlock)
+
 		if timeoutErr := c.proposeTimeout.stopTimer(); timeoutErr != nil {
+			c.logger.Warn("Verify the proposal timeoutErr", "msg", msg, "duration", duration,
+				"proposal.ProposalBlock", proposal.ProposalBlock, "timeoutErr", timeoutErr)
 			return timeoutErr
 		}
-		c.logger.Debug("Stopped Scheduled Proposal Timeout")
+
+		c.logger.Debug("Stopped Scheduled Proposal Timeout, sendPrevote nil", "duration", duration, "proposal.ProposalBlock", proposal.ProposalBlock)
 		c.sendPrevote(ctx, true)
 		// do not to accept another proposal in current round
 		c.setStep(prevote)
 
-		c.logger.Warn("Failed to verify proposal", "err", err, "duration", duration)
+		c.logger.Error("Failed to verify proposal", "err", err, "duration", duration)
 		// if it's a future block, we will handle it again after the duration
 		// TIME FIELD OF HEADER CHECKED HERE - NOT HEIGHT
 		// TODO: implement wiggle time / median time
 		if err == consensus.ErrFutureBlock {
+			c.logger.Warn("if it's a future block, we will handle it again after the duration", "err", err, "duration", duration)
+
 			c.stopFutureProposalTimer()
 			c.futureProposalTimer = time.AfterFunc(duration, func() {
 				_, sender := c.valSet.GetByAddress(msg.Address)
-				c.sendEvent(backlogEvent{
+				toSend := backlogEvent{
 					src: sender,
 					msg: msg,
-				})
+				}
+
+				c.logger.Warn("if it's a future block, time.AfterFunc, ", "err", err, "duration", duration, "toSend", toSend)
+
+				c.sendEvent(toSend)
 			})
 		}
 		return err
 	}
 
-	// Here is about to accept the Proposal
+	//
 	if c.currentRoundState.Step() == propose {
+		c.logger.Warn("Here is about to accept the Proposal ", "c.currentRoundState.Step()", c.currentRoundState.Step())
+
 		if err := c.proposeTimeout.stopTimer(); err != nil {
+			c.logger.Error("propose, Here is about to accept the Proposal, proposeTimeout err ", "c.currentRoundState.Step()", c.currentRoundState.Step(), "err", err)
 			return err
 		}
-		c.logger.Debug("Stopped Scheduled Proposal Timeout")
+		c.logger.Debug("propose, Stopped Scheduled Proposal Timeout")
 
 		// Set the proposal for the current round
 		c.currentRoundState.SetProposal(&proposal, msg)
 
-		c.logProposalMessageEvent("MessageEvent(Proposal): Received", proposal, msg.Address.String(), c.address.String())
+		c.logProposalMessageEvent("propose, MessageEvent(Proposal): Received", proposal, msg.Address.String(), c.address.String())
 
 		vr := proposal.ValidRound.Int64()
 		h := proposal.ProposalBlock.Hash()
@@ -133,6 +154,7 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 				voteForProposal = c.lockedRound.Int64() == -1 || h == c.lockedValue.Hash()
 
 			}
+			c.logger.Debug("prevote, Line 22 in Algorithm 1 of The latest gossip on BFT consensus", "voteForProposal", voteForProposal)
 			c.sendPrevote(ctx, voteForProposal)
 			c.setStep(prevote)
 			return nil
@@ -140,7 +162,7 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 
 		rs, ok := c.currentHeightOldRoundsStates[vr]
 		if !ok {
-			log.Error("handleProposal. unknown old round",
+			c.logger.Error("handleProposal. unknown old round",
 				"proposalHeight", h,
 				"proposalRound", vr,
 				"currentHeight", c.currentRoundState.height.Uint64(),
@@ -153,8 +175,11 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 			var voteForProposal = false
 			if c.lockedValue != nil {
 				voteForProposal = c.lockedRound.Int64() <= vr || h == c.lockedValue.Hash()
-
 			}
+
+			c.logger.Debug("prevote, Line 28 in Algorithm 1 of The latest gossip on BFT consensus", "ok", ok, "vr", vr, "curR", curR, "rs.Prevotes.VotesSize(h)", rs.Prevotes.VotesSize(h),
+				"voteForProposal", voteForProposal)
+
 			c.sendPrevote(ctx, voteForProposal)
 			c.setStep(prevote)
 		}

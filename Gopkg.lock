@@ -649,6 +649,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:00510be0e55c92b0e24a808f480559b7dba5c12d352832e0b78f46c369fcee76"
+  name = "github.com/zfjagann/golang-ring"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d34796e0a6c20df67b614d69184ee4c8093a6856"
+
+[[projects]]
+  branch = "master"
   digest = "1:e29619c18c30446b292f362abcce0c8776c4656bcd7765be2d6fc9c48611cfc9"
   name = "golang.org/x/crypto"
   packages = [
@@ -880,6 +888,7 @@
     "github.com/tv42/httpunix",
     "github.com/tyler-smith/go-bip39",
     "github.com/wsddn/go-ecdh",
+    "github.com/zfjagann/golang-ring",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/pbkdf2",
     "golang.org/x/crypto/ripemd160",

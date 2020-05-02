@@ -3,6 +3,7 @@ package test
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -123,7 +124,7 @@ func makeGenesis(validators []*testNode) *core.Genesis {
 	genesis.Nonce = 0
 	genesis.Mixhash = types.BFTDigest
 
-	genesis.Config = params.TestChainConfig
+	genesis.Config = params.SmiloTestChainConfig
 	genesis.Config.Tendermint = &params.TendermintConfig{}
 	genesis.Config.Ethash = nil
 	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
@@ -214,7 +215,7 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 		return nil, err
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		return eth.New(ctx, &eth.Config{
+		config := &eth.Config{
 			Genesis:         genesis,
 			NetworkId:       genesis.Config.ChainID.Uint64(),
 			SyncMode:        downloader.FullSync,
@@ -222,7 +223,10 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 			DatabaseHandles: 256,
 			TxPool:          core.DefaultTxPoolConfig,
 			Tendermint:      *config.DefaultConfig(),
-		}, cons)
+		}
+		config.Ethash.PowMode = ethash.ModeFake
+
+		return eth.New(ctx, config, cons)
 	}); err != nil {
 		return nil, err
 	}

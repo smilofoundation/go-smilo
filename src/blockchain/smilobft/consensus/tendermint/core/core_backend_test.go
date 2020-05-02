@@ -409,12 +409,15 @@ func TestCore_Close(t *testing.T) {
 
 		messageEventSub := evmux.Subscribe(events.MessageEvent{}, backlogEvent{})
 		newUnminedBlockEventSub := evmux.Subscribe(events.NewUnminedBlockEvent{})
-		committedSub := evmux.Subscribe(events.CommitEvent{})
+		//committedSub := evmux.Subscribe(events.CommitEvent{})
 		timeoutEventSub := evmux.Subscribe(TimeoutEvent{})
+		syncEventSub := evmux.Subscribe(events.SyncEvent{})
 
 		stopped := make(chan struct{}, 2)
 		stopped <- struct{}{}
 		stopped <- struct{}{}
+
+		logger := log.New("backend", "test", "id", 0)
 
 		c := &core{
 			backend:                 backendMock,
@@ -423,14 +426,15 @@ func TestCore_Close(t *testing.T) {
 			isStarted:               new(uint32),
 			isStopping:              new(uint32),
 			isStopped:               new(uint32),
-			committedSub:            committedSub,
+			//committedSub:            committedSub,
 			logger:                  log.New("backend", "test", "id", 0),
 			messageEventSub:         messageEventSub,
 			newUnminedBlockEventSub: newUnminedBlockEventSub,
-			proposeTimeout:          newTimeout(propose),
-			prevoteTimeout:          newTimeout(prevote),
-			precommitTimeout:        newTimeout(precommit),
+			proposeTimeout:          newTimeout(propose, logger),
+			prevoteTimeout:          newTimeout(prevote, logger),
+			precommitTimeout:        newTimeout(precommit, logger),
 			timeoutEventSub:         timeoutEventSub,
+			syncEventSub:            syncEventSub,
 			stopped:                 stopped,
 		}
 
@@ -455,13 +459,15 @@ func TestCore_Close(t *testing.T) {
 
 		messageEventSub := evmux.Subscribe(events.MessageEvent{}, backlogEvent{})
 		newUnminedBlockEventSub := evmux.Subscribe(events.NewUnminedBlockEvent{})
-		committedSub := evmux.Subscribe(events.CommitEvent{})
+		//committedSub := evmux.Subscribe(events.CommitEvent{})
 		timeoutEventSub := evmux.Subscribe(TimeoutEvent{})
+		syncEventSub := evmux.Subscribe(events.SyncEvent{})
 
 		stopped := make(chan struct{}, 2)
 		stopped <- struct{}{}
 		stopped <- struct{}{}
 
+		logger := log.New("backend", "test", "id", 0)
 		c := &core{
 			backend:                 backendMock,
 			cancel:                  cancel,
@@ -469,14 +475,15 @@ func TestCore_Close(t *testing.T) {
 			isStarted:               new(uint32),
 			isStopping:              new(uint32),
 			isStopped:               new(uint32),
-			committedSub:            committedSub,
-			logger:                  log.New("backend", "test", "id", 0),
+			//committedSub:            committedSub,
+			logger:                  logger,
 			messageEventSub:         messageEventSub,
 			newUnminedBlockEventSub: newUnminedBlockEventSub,
-			proposeTimeout:          newTimeout(propose),
-			prevoteTimeout:          newTimeout(prevote),
-			precommitTimeout:        newTimeout(precommit),
+			proposeTimeout:          newTimeout(propose, logger),
+			prevoteTimeout:          newTimeout(prevote, logger),
+			precommitTimeout:        newTimeout(precommit, logger),
 			timeoutEventSub:         timeoutEventSub,
+			syncEventSub:            syncEventSub,
 			stopped:                 stopped,
 		}
 

@@ -387,6 +387,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 // SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values
 func (g *Genesis) SetBFT() error {
 	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
+
+		log.Debug("goint to SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values")
+
 		var validators []string
 		for _, v := range g.Config.AutonityContractConfig.Users {
 			validators = append(validators, v.Address.String())

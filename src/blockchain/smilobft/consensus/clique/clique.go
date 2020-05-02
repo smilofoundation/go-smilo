@@ -124,7 +124,7 @@ var (
 
 	// errWrongDifficulty is returned if the difficulty of a block doesn't match the
 	// turn of the signer.
-	//errWrongDifficulty = errors.New("wrong difficulty")
+	errWrongDifficulty = errors.New("wrong difficulty")
 
 	// ErrInvalidTimestamp is returned if the timestamp of a block is lower than
 	// the previous block's timestamp + the minimum block period.
@@ -134,13 +134,17 @@ var (
 	// be modified via out-of-range or non-contiguous headers.
 	errInvalidVotingChain = errors.New("invalid voting chain")
 
-	// errUnauthorized is returned if a header is signed by a non-authorized entity.
-	errUnauthorized = errors.New("unauthorized")
-
 	// errWaitTransactions is returned if an empty block is attempted to be sealed
 	// on an instant chain (0 second period). It's important to refuse these as the
 	// block reward is zero, so an empty block just bloats the chain... fast.
 	errWaitTransactions = errors.New("waiting for transactions")
+
+	// errUnauthorizedSigner is returned if a header is signed by a non-authorized entity.
+	errUnauthorizedSigner = errors.New("unauthorized signer")
+
+	// errRecentlySigned is returned if a header is signed by an authorized entity
+	// that already signed a header recently, thus is temporarily not allowed to.
+	errRecentlySigned = errors.New("recently signed")
 )
 
 // SignerFn is a signer callback function to request a hash to be signed by a
@@ -217,6 +221,9 @@ type Clique struct {
 	signer common.Address // Ethereum address of the signing key
 	signFn SignerFn       // Signer function to authorize hashes with
 	lock   sync.RWMutex   // Protects the signer fields
+
+	// The fields below are for testing only
+	fakeDiff bool // Skip difficulty verifications
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
@@ -399,8 +406,11 @@ func (c *Clique) snapshot(chain consensus.ChainReader, number uint64, hash commo
 				break
 			}
 		}
-		// If we're at an checkpoint block, make a snapshot if it's known
-		if number == 0 || (number%c.config.Epoch == 0 && chain.GetHeaderByNumber(number-1) == nil) {
+		// If we're at the genesis, snapshot the initial state. Alternatively if we're
+		// at a checkpoint block without a parent (light client CHT), or we have piled
+		// up more headers than allowed to be reorged (chain reinit from a freezer),
+		// consider the checkpoint trusted and snapshot it.
+		if number == 0 || (number%c.config.Epoch == 0 && (len(headers) > params.ImmutabilityThreshold || chain.GetHeaderByNumber(number-1) == nil)) {
 			checkpoint := chain.GetHeaderByNumber(number)
 			if checkpoint != nil {
 				hash := checkpoint.Hash()
@@ -493,23 +503,25 @@ func (c *Clique) verifySeal(chain consensus.ChainReader, header *types.Header, p
 		return err
 	}
 	if _, ok := snap.Signers[signer]; !ok {
-		return errUnauthorized
+		return errUnauthorizedSigner
 	}
 	for seen, recent := range snap.Recents {
 		if recent == signer {
 			// Signer is among recents, only fail if the current block doesn't shift it out
 			if limit := uint64(len(snap.Signers)/2 + 1); seen > number-limit {
-				return errUnauthorized
+				return errRecentlySigned
 			}
 		}
 	}
 	// Ensure that the difficulty corresponds to the turn-ness of the signer
-	inturn := snap.inturn(header.Number.Uint64(), signer)
-	if inturn && header.Difficulty.Cmp(diffInTurn) != 0 {
-		return errInvalidDifficulty
-	}
-	if !inturn && header.Difficulty.Cmp(diffNoTurn) != 0 {
-		return errInvalidDifficulty
+	if !c.fakeDiff {
+		inturn := snap.inturn(header.Number.Uint64(), signer)
+		if inturn && header.Difficulty.Cmp(diffInTurn) != 0 {
+			return errWrongDifficulty
+		}
+		if !inturn && header.Difficulty.Cmp(diffNoTurn) != 0 {
+			return errWrongDifficulty
+		}
 	}
 	return nil
 }
@@ -612,6 +624,7 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, stop <-ch
 	}
 	// For 0-period chains, refuse to seal empty blocks (no reward but would spin sealing)
 	if c.config.Period == 0 && len(block.Transactions()) == 0 {
+		log.Info("Sealing paused, waiting for transactions")
 		return nil, errWaitTransactions
 	}
 	// Don't hold the signer fields for the entire sealing procedure
@@ -625,7 +638,7 @@ func (c *Clique) Seal(chain consensus.ChainReader, block *types.Block, stop <-ch
 		return nil, err
 	}
 	if _, authorized := snap.Signers[signer]; !authorized {
-		return nil, errUnauthorized
+		return nil, errUnauthorizedSigner
 	}
 	// If we're amongst the recent signers, wait for the next block
 	for seen, recent := range snap.Recents {

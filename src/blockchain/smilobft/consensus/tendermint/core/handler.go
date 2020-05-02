@@ -20,15 +20,15 @@ import (
 	"context"
 	"math/big"
 	"sync/atomic"
-
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
+	"time"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Start implements core.Engine.Start
@@ -58,13 +58,15 @@ func (c *core) Start(ctx context.Context, chain consensus.ChainReader, currentBl
 	// set currentRoundState before starting go routines
 	lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
 	height := new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
-	c.currentRoundState = NewRoundState(big.NewInt(0), height)
+	c.currentRoundState.Update(big.NewInt(0), height)
 
 	//We need a separate go routine to keep c.latestPendingUnminedBlock up to date
 	go c.handleNewUnminedBlockEvent(ctx)
 
 	//We want to sequentially handle all the event which modify the current consensus state
 	go c.handleConsensusEvents(ctx)
+
+	go c.backend.HandleUnhandledMsgs(ctx)
 
 	return nil
 }
@@ -118,6 +120,9 @@ func (c *core) subscribeEvents() {
 
 	s3 := c.backend.Subscribe(events.CommitEvent{})
 	c.committedSub = s3
+
+	s4 := c.backend.Subscribe(events.SyncEvent{})
+	c.syncEventSub = s4
 }
 
 // Unsubscribe all messageEventSub
@@ -126,6 +131,7 @@ func (c *core) unsubscribeEvents() {
 	c.newUnminedBlockEventSub.Unsubscribe()
 	c.timeoutEventSub.Unsubscribe()
 	c.committedSub.Unsubscribe()
+	c.syncEventSub.Unsubscribe()
 }
 
 // TODO: update all of the TypeMuxSilent to event.Feed and should not use backend.EventMux for core internal messageEventSub: backlogEvent, TimeoutEvent
@@ -142,7 +148,7 @@ eventLoop:
 			pb := &newUnminedBlockEvent.NewUnminedBlock
 			c.storeUnminedBlockMsg(pb)
 		case <-ctx.Done():
-			log.Info("handleNewUnminedBlockEvent is stopped", "event", ctx.Err())
+			c.logger.Info("handleNewUnminedBlockEvent is stopped", "event", ctx.Err())
 			break eventLoop
 		}
 	}
@@ -153,6 +159,8 @@ eventLoop:
 func (c *core) handleConsensusEvents(ctx context.Context) {
 	// Start a new round from last height + 1
 	c.startRound(ctx, common.Big0)
+
+	go c.syncLoop(ctx)
 
 eventLoop:
 	for {
@@ -167,6 +175,8 @@ eventLoop:
 				if len(e.Payload) == 0 {
 					c.logger.Error("core.handleConsensusEvents Get message(MessageEvent) empty payload")
 				}
+
+				c.logger.Debug("$$$ tendermint, handleEvents, MessageEvent arrived, will send Gossip to valSet")
 
 				if err := c.handleMsg(ctx, e.Payload); err != nil {
 					c.logger.Debug("core.handleConsensusEvents Get message(MessageEvent) payload failed", "err", err)
@@ -213,12 +223,51 @@ eventLoop:
 				c.handleCommit(ctx)
 			}
 		case <-ctx.Done():
-			log.Info("handleConsensusEvents is stopped", "event", ctx.Err())
+			c.logger.Info("handleConsensusEvents is stopped", "event", ctx.Err())
 			break eventLoop
 		}
 	}
 
 	c.stopped <- struct{}{}
+}
+
+func (c *core) syncLoop(ctx context.Context) {
+	/*
+		this method is responsible for asking the network to send us the current consensus state
+		and to process sync queries events.
+	*/
+	timer := time.NewTimer(10 * time.Second)
+
+	round := c.currentRoundState.Round()
+	height := c.currentRoundState.Height()
+
+	// Ask for sync when the engine starts
+	c.backend.AskSync(c.valSet.Copy())
+
+	for {
+		select {
+		case <-timer.C:
+			currentRound := c.currentRoundState.Round()
+			currentHeight := c.currentRoundState.Height()
+
+			// we only ask for sync if the current view stayed the same for the past 10 seconds
+			if currentHeight.Cmp(height) == 0 && currentRound.Cmp(round) == 0 {
+				c.backend.AskSync(c.valSet.Copy())
+			}
+			round = currentRound
+			height = currentHeight
+			timer = time.NewTimer(10 * time.Second)
+		case ev, ok := <-c.syncEventSub.Chan():
+			if !ok {
+				return
+			}
+			event := ev.Data.(events.SyncEvent)
+			c.logger.Info("Processing sync message", "from", event.Addr)
+			c.SyncPeer(event.Addr)
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // sendEvent sends event to mux
@@ -232,7 +281,7 @@ func (c *core) handleMsg(ctx context.Context, payload []byte) error {
 	// Decode message and check its signature
 	msg := new(Message)
 
-	sender, err := msg.FromPayload(payload, c.valSet.Copy(), validator.CheckValidatorSignature)
+	sender, err := msg.FromPayload(payload, c.valSet.Copy(), crypto.CheckValidatorSignature)
 	if err != nil {
 		logger.Error("Failed to decode message from payload", "err", err)
 		return err
@@ -251,7 +300,7 @@ func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender valida
 			logger.Debug("Storing future height message in backlog")
 			c.storeBacklog(msg, sender)
 		} else if err == errFutureRoundMessage {
-			logger.Debug("Storing future height message in backlog")
+			logger.Debug("Storing future round message in backlog")
 			c.storeBacklog(msg, sender)
 			//We cannot move to a round in a new height without receiving a new block
 			var msgRound int64
@@ -276,7 +325,14 @@ func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender valida
 			if totalFutureRoundMessages > int64(c.valSet.F()) {
 				logger.Debug("Received ceil(N/3) - 1 messages for higher round", "New round", msgRound)
 				c.startRound(ctx, big.NewInt(msgRound))
+			} else {
+				logger.Debug("totalFutureRoundMessages false, messages for higher round",
+					"New round", msgRound, "totalFutureRoundMessages", totalFutureRoundMessages,
+					"int64(c.valSet.F())", int64(c.valSet.F()))
 			}
+		} else if err == errFutureStepMessage {
+			logger.Debug("Storing future step message in backlog")
+			c.storeBacklog(msg, sender)
 		}
 
 		return err
@@ -284,13 +340,13 @@ func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender valida
 
 	switch msg.Code {
 	case msgProposal:
-		logger.Debug("tendermint.MessageEvent: PROPOSAL")
+		logger.Debug("tendermint.MessageEvent: PROPOSAL", "msg", msg)
 		return testBacklog(c.handleProposal(ctx, msg))
 	case msgPrevote:
-		logger.Debug("tendermint.MessageEvent: PREVOTE")
+		logger.Debug("tendermint.MessageEvent: PREVOTE", "msg", msg)
 		return testBacklog(c.handlePrevote(ctx, msg))
 	case msgPrecommit:
-		logger.Debug("tendermint.MessageEvent: PRECOMMIT")
+		logger.Debug("tendermint.MessageEvent: PRECOMMIT", "msg", msg)
 		return testBacklog(c.handlePrecommit(ctx, msg))
 	default:
 		logger.Error("Invalid message", "msg", msg)

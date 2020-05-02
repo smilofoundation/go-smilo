@@ -123,7 +123,7 @@ func (sb *backend) Commit(proposal sport.BlockProposal, seals [][]byte) error {
 	// -- if success, the ChainHeadEvent event will be broadcasted, try to build
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
-	if sb.proposedBlockHash == block.Hash() {
+	if sb.proposedBlockHash == block.Hash() && sb.commitChBlock != nil {
 		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitChBlock <- block
 		return nil

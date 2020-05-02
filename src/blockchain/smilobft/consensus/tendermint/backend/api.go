@@ -20,13 +20,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 // API is a user facing RPC API to dump BFT state
 type API struct {
 	chain      consensus.ChainReader
-	tendermint *Backend
+	tendermint core.Backend
 }
 
 // GetValidators retrieves the list of authorized validators at the specified block.
@@ -56,12 +57,12 @@ func (api *API) GetValidatorsAtHash(hash common.Hash) ([]common.Address, error) 
 
 // Get Autonity contract address
 func (api *API) GetContractAddress() common.Address {
-	return api.tendermint.blockchain.GetAutonityContract().Address()
+	return api.tendermint.GetContractAddress()
 }
 
 // Get Autonity contract ABI
 func (api *API) GetContractABI() string {
-	return api.tendermint.blockchain.Config().AutonityContractConfig.ABI
+	return api.tendermint.GetContractABI()
 }
 
 // Get current white list

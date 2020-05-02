@@ -23,11 +23,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
@@ -36,6 +31,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -69,8 +69,6 @@ var (
 	errInconsistentValidatorSet = errors.New("inconsistent validator set")
 	// errInvalidTimestamp is returned if the timestamp of a block is lower than the previous block's timestamp + the minimum block period.
 	errInvalidTimestamp = errors.New("invalid timestamp")
-
-	//errWaitTransactions = errors.New("waiting for transactions")
 )
 var (
 	defaultDifficulty = big.NewInt(1)
@@ -111,10 +109,6 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// Ensure that the extra data format is satisfied
-	log.Debug("verifyHeader, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		//panic("verifyHeader, types.ExtractBFTHeaderExtra")
-	}
 	if _, err := types.ExtractBFTHeaderExtra(header); err != nil {
 		return errInvalidExtraDataFormat
 	}
@@ -244,10 +238,6 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 	}
 	validators := validator.NewSet(validatorAddresses, sb.config.GetProposerPolicy())
 
-	log.Debug("verifyCommittedSeals, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		panic("verifyCommittedSeals, types.ExtractBFTHeaderExtra")
-	}
 	extra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		return err
@@ -271,14 +261,14 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 		// Every validator can have only one seal. If more than one seals are signed by a
 		// validator, the validator cannot be found and errInvalidCommittedSeals is returned.
 		if validators.RemoveValidator(addr) {
-			validSeal += 1
+			validSeal++
 		} else {
 			return types.ErrInvalidCommittedSeals
 		}
 	}
 
-	// The length of validSeal should be larger than number of faulty node + 1
-	if validSeal <= 2*validators.F() {
+	// The length of validSeal should be larger than a Quorum of nodes
+	if validSeal < validators.Quorum() {
 		return types.ErrInvalidCommittedSeals
 	}
 
@@ -368,8 +358,17 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
-		log.Error("Backend) Finalize( after getValidators", "err", err.Error())
+		sb.logger.Error("Finalize after getValidators", "err", err.Error())
 		return nil, err
+	}
+
+	ac := sb.blockchain.GetAutonityContract()
+	if ac != nil && header.Number.Uint64() > 1 {
+		err = ac.ApplyPerformRedistribution(txs, receipts, header, state)
+		if err != nil {
+			sb.logger.Error("ApplyPerformRedistribution", "err", err.Error())
+			return nil, err
+		}
 	}
 
 	// add validators to extraData's validators section
@@ -401,13 +400,15 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 	var validators []common.Address
 
 	if header.Number.Int64() == 1 {
+		log.Info("Autonity Contract Deployer", "Address", chain.Config().AutonityContractConfig.Deployer)
+
 		sb.blockchain.GetAutonityContract().SavedValidatorsRetriever = func(i uint64) (addresses []common.Address, e error) {
 			chain := chain
 			return sb.retrieveSavedValidators(i, chain)
 		}
 		contractAddress, err := sb.blockchain.GetAutonityContract().DeployAutonityContract(chain, header, state)
 		if err != nil {
-			log.Error("Deploy autonity contract error", "error", err)
+			sb.logger.Error("Deploy autonity contract error", "error", err)
 			return nil, err
 		}
 		sb.autonityContractAddress = contractAddress
@@ -424,7 +425,7 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 		var err error
 		validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(chain, header, state)
 		if err != nil {
-			log.Error("ContractGetValidators returns err", "err", err)
+			sb.logger.Error("ContractGetValidators returns err", "err", err)
 			return nil, err
 		}
 	}
@@ -448,13 +449,13 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 
 	// Bail out if we're unauthorized to sign a block
 	if _, v := sb.Validators(number).GetByAddress(sb.Address()); v == nil {
-		sb.logger.Error("error validator errUnauthorized", "addr", sb.address.String())
+		sb.logger.Error("Seal, Bail out if we're unauthorized to sign a block", "addr", sb.address.String())
 		return nil, errUnauthorized
 	}
 
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
-		sb.logger.Error("Error ancestor")
+		sb.logger.Error("Seal, Bail out ErrUnknownAncestor")
 		return nil, consensus.ErrUnknownAncestor
 	}
 	block, err := sb.updateBlock(block)
@@ -472,6 +473,8 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		return nil, nil
 	}
 
+	//log.Debug("will crash ?? ", "sb.config.MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining)
+	//log.Debug("will crash ?? ", "block.Number()", block.Number())
 	//log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksEmptyMining", sb.config.MinBlocksEmptyMining, "BlockNum", block.Number(), "BlockNum Cmp MinBlocksMining", block.Number().Cmp(sb.config.MinBlocksEmptyMining))
 	//if len(block.Transactions()) == 0 && block.Number().Cmp(sb.config.MinBlocksEmptyMining) >= 0 {
 	//	log.Debug("Seal, Bail out errWaitTransactions")
@@ -479,17 +482,17 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	//}
 
 	// get the proposed block hash and clear it if the seal() is completed.
-	sb.coreMu.Lock()
+	sb.sealMu.Lock()
 	sb.proposedBlockHash = block.Hash()
 	sb.logger.Debug("get the proposed block hash and clear it if the seal() is completed ", "hash", sb.proposedBlockHash)
 	clear := func() {
 		sb.proposedBlockHash = common.Hash{}
-		sb.coreMu.Unlock()
+		sb.sealMu.Unlock()
 	}
 	defer clear()
 
 	// post block into BFT engine
-	sb.postEvent(events.NewUnminedBlockEvent{
+	go sb.eventMux.Post(events.NewUnminedBlockEvent{ //RequestEvent
 		NewUnminedBlock: *block,
 	})
 
@@ -511,6 +514,27 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 		}
 	}
 
+}
+
+//func (sb *Backend) setResultChan(results chan *types.Block) {
+//	sb.coreMu.Lock()
+//	defer sb.coreMu.Unlock()
+//
+//	sb.commitCh = results
+//}
+
+func (sb *Backend) sendResultChan(block *types.Block) {
+	sb.coreMu.Lock()
+	defer sb.coreMu.Unlock()
+
+	sb.commitCh <- block
+}
+
+func (sb *Backend) isResultChanNil() bool {
+	sb.coreMu.RLock()
+	defer sb.coreMu.RUnlock()
+
+	return sb.commitCh == nil
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
@@ -552,12 +576,14 @@ func (sb *Backend) APIs(chain consensus.ChainReader) []rpc.API {
 }
 
 // Start implements consensus.tendermint.Start
-func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
+func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 	if sb.coreStarted {
 		return ErrStartedEngine
 	}
+
+	sb.stopped = make(chan struct{})
 
 	// clear previous data
 	sb.proposedBlockHash = common.Hash{}
@@ -566,26 +592,15 @@ func (sb *Backend) Start(ctx context.Context, chain consensus.ChainReader, curre
 	}
 	sb.commitCh = make(chan *types.Block, 1)
 
-	sb.blockchain = chain.(*core.BlockChain)
+	sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
 	sb.currentBlock = currentBlock
 	sb.hasBadBlock = hasBadBlock
 
+	//if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
+	//	return err
+	//}
+
 	sb.coreStarted = true
-
-	sb.resend = make(chan messageToPeers, 1024)
-	sb.ReSend(ctx, 10)
-
-	return nil
-}
-
-// Stop implements consensus.tendermint.Stop
-func (sb *Backend) Close() error {
-	sb.coreMu.Lock()
-	defer sb.coreMu.Unlock()
-	if !sb.coreStarted {
-		return ErrStoppedEngine
-	}
-	sb.coreStarted = false
 
 	return nil
 }
@@ -597,7 +612,12 @@ func (sb *Backend) Stop() error {
 	if !sb.coreStarted {
 		return ErrStoppedEngine
 	}
+	if err := sb.core.Stop(); err != nil {
+		return err
+	}
 	sb.coreStarted = false
+
+	close(sb.stopped)
 
 	return nil
 }
@@ -614,11 +634,6 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 		return nil, errUnknownBlock
 	}
 
-	log.Debug("retrieveSavedValidators, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "block.Number", number-1, "header", header, "extraData", common.Bytes2Hex(header.Extra))
-	if len(header.Extra) < types.BFTExtraVanity {
-		log.Warn("panic(\"retrieveSavedValidators, types.ExtractBFTHeaderExtra\")")
-		//panic("retrieveSavedValidators, types.ExtractBFTHeaderExtra")
-	}
 	tendermintExtra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
 		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)
@@ -651,6 +666,7 @@ func (sb *Backend) retrieveValidators(header *types.Header, parents []*types.Hea
 		//}
 		tendermintExtra, err = types.ExtractBFTHeaderExtra(parent)
 		if err == nil {
+			log.Debug("OK types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra), "err", err, "Total Validators", len(tendermintExtra.Validators))
 			validators = tendermintExtra.Validators
 		}
 	} else {

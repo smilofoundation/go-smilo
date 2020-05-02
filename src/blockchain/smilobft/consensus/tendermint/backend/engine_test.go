@@ -18,6 +18,7 @@ package backend
 
 import (
 	"bytes"
+	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"math/big"
 	"reflect"
 	"testing"
@@ -542,5 +543,51 @@ func TestWriteCommittedSeals(t *testing.T) {
 	err = types.WriteCommittedSeals(h, [][]byte{unexpectedCommittedSeal})
 	if err != types.ErrInvalidCommittedSeals {
 		t.Errorf("error mismatch: have %v, want %v", err, types.ErrInvalidCommittedSeals)
+	}
+}
+
+func TestAPIs(t *testing.T) {
+	b := &Backend{}
+
+	APIS := b.APIs(nil)
+	if len(APIS) < 1 {
+		t.Fatalf("expected non empty slice")
+	}
+
+	if APIS[0].Namespace != "tendermint" {
+		t.Fatalf("expected 'tendermint', got %v", APIS[0].Namespace)
+	}
+}
+
+func TestClose(t *testing.T) {
+	t.Run("engine is not running, error returned", func(t *testing.T) {
+		b := &Backend{}
+
+		err := b.Stop()
+		if err != ErrStoppedEngine {
+			t.Fatalf("expected %v, got %v", ErrStoppedEngine, err)
+		}
+	})
+
+	t.Run("engine is running, no errors", func(t *testing.T) {
+		b := &Backend{
+			coreStarted: true,
+			stopped:     make(chan struct{}),
+		}
+		b.core = tendermintCore.New(b, b.config)
+
+		err := b.Close()
+		if err != nil {
+			t.Fatalf("expected <nil>, got %v", err)
+		}
+	})
+}
+
+func TestBackendSealHash(t *testing.T) {
+	b := &Backend{}
+
+	res := b.SealHash(&types.Header{})
+	if res.Hex() == "" {
+		t.Fatalf("expected not empty string")
 	}
 }

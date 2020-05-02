@@ -20,18 +20,15 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
-	"go-smilo/src/blockchain/smilobft/cmn"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	lru "github.com/hashicorp/golang-lru"
 
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	tendermintConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
@@ -42,11 +39,16 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	lru "github.com/hashicorp/golang-lru"
+	ring "github.com/zfjagann/golang-ring"
 )
 
 const (
 	// fetcherID is the ID indicates the block is from BFT engine
 	fetcherID = "tendermint"
+	// ring buffer to be able to handle at maximum 10 rounds, 20 validators and 3 messages types
+	ringCapacity = 10 * 20 * 3
 )
 
 var (
@@ -59,10 +61,6 @@ var (
 
 // New creates an Ethereum Backend for BFT core engine.
 func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb.Database, chainConfig *params.ChainConfig, vmConfig *vm.Config) *Backend {
-	log.Warn("new backend with public key",
-		"backAddress", crypto.PubkeyToAddress(privateKey.PublicKey).String(),
-	)
-
 	if chainConfig.Tendermint.Epoch != 0 {
 		config.Epoch = chainConfig.Tendermint.Epoch
 	}
@@ -74,18 +72,27 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 		config.BlockPeriod = chainConfig.Tendermint.BlockPeriod
 	}
 
+	if config.MinBlocksEmptyMining == nil {
+		config.MinBlocksEmptyMining = tendermintConfig.DefaultConfig().MinBlocksEmptyMining
+	}
+
 	config.SetProposerPolicy(tendermintConfig.ProposerPolicy(chainConfig.Tendermint.ProposerPolicy))
 
 	recents, _ := lru.NewARC(inmemorySnapshots)
 	recentMessages, _ := lru.NewARC(inmemoryPeers)
 	knownMessages, _ := lru.NewARC(inmemoryMessages)
-	logger := log.New()
+
+	pub := crypto.PubkeyToAddress(privateKey.PublicKey).String()
+	logger := log.New("addr", pub)
+
+	logger.Warn("new backend with public key")
+
 	backend := &Backend{
 		config:         config,
-		eventMux:       cmn.NewTypeMuxSilent(logger),
+		eventMux:       new(cmn.TypeMux),
 		privateKey:     privateKey,
 		address:        crypto.PubkeyToAddress(privateKey.PublicKey),
-		logger:         log.New(),
+		logger:         logger,
 		db:             db,
 		commitCh:       make(chan *types.Block, 1),
 		recents:        recents,
@@ -95,6 +102,9 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 		vmConfig:       vmConfig,
 	}
 
+	backend.core = tendermintCore.New(backend, backend.config)
+
+	backend.pendingMessages.SetCapacity(ringCapacity)
 	return backend
 }
 
@@ -102,24 +112,31 @@ func New(config *tendermintConfig.Config, privateKey *ecdsa.PrivateKey, db ethdb
 
 type Backend struct {
 	config       *tendermintConfig.Config
-	eventMux     *cmn.TypeMuxSilent
+	eventMux     *cmn.TypeMux
 	privateKey   *ecdsa.PrivateKey
 	privateKeyMu sync.RWMutex
 	address      common.Address
+	core         tendermintCore.Engine
 	logger       log.Logger
 	db           ethdb.Database
 	blockchain   *core.BlockChain
+	chain        consensus.ChainReader
 	currentBlock func() *types.Block
 	hasBadBlock  func(hash common.Hash) bool
 
 	// the channels for tendermint engine notifications
 	commitCh          chan *types.Block
 	proposedBlockHash common.Hash
+	sealMu            sync.Mutex
 	coreStarted       bool
+	stopped           chan struct{}
 	coreMu            sync.RWMutex
 
 	// Snapshots for recent block to speed up reorgs
 	recents *lru.ARCCache
+
+	// we save the last received p2p.messages in the ring buffer
+	pendingMessages ring.Ring
 
 	// event subscription for ChainHeadEvent event
 	broadcaster consensus.Broadcaster
@@ -131,8 +148,6 @@ type Backend struct {
 	autonityContractAddress common.Address // Ethereum address of the white list contract
 	contractsMu             sync.RWMutex
 	vmConfig                *vm.Config
-
-	resend chan messageToPeers
 }
 
 // Address implements tendermint.Backend.Address
@@ -143,8 +158,8 @@ func (sb *Backend) Address() common.Address {
 }
 
 func (sb *Backend) Validators(number uint64) validator.Set {
-	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	proposerPolicy := sb.config.GetProposerPolicy()
+	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	if err != nil {
 		return validator.NewSet(nil, proposerPolicy)
 	}
@@ -159,76 +174,88 @@ func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload 
 	msg := events.MessageEvent{
 		Payload: payload,
 	}
-	sb.postEvent(msg)
+	go func() {
+		sb.eventMux.Post(msg)
+	}()
 	return nil
 }
 
-func (sb *Backend) postEvent(event interface{}) {
-	go sb.Post(event)
-}
+func (sb *Backend) AskSync(valSet validator.Set) {
+	sb.logger.Info("Broadcasting consensus sync-me")
 
-const TTL = 10           //seconds
-const retryInterval = 50 //milliseconds
+	targets := make(map[common.Address]struct{})
+	for _, val := range valSet.List() {
+		if val.Address() != sb.Address() {
+			targets[val.Address()] = struct{}{}
+		}
+	}
+
+	if sb.broadcaster != nil && len(targets) > 0 {
+		ps := sb.broadcaster.FindPeers(targets)
+		count := 0
+		for addr, p := range ps {
+			//ask to quorum nodes to sync, 1 must then be honest and updated
+			if count == valSet.Quorum() {
+				break
+			}
+			sb.logger.Info("Asking sync to", "addr", addr)
+			go p.Send(tendermintSyncMsg, []byte{}) //nolint
+			count++
+		}
+	}
+}
 
 // Broadcast implements tendermint.Backend.Gossip
 func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []byte) {
 	hash := types.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 
-	var targets []common.Address
+	targets := make(map[common.Address]struct{})
 	for _, val := range valSet.List() {
 		if val.Address() != sb.Address() {
-			targets = append(targets, val.Address())
+			targets[val.Address()] = struct{}{}
 		}
 	}
 
 	if sb.broadcaster != nil && len(targets) > 0 {
-		sb.trySend(ctx, messageToPeers{
-			message{
-				hash,
-				payload,
-			},
-			targets,
-			time.Now(),
-			time.Now(),
-		})
+		ps := sb.broadcaster.FindPeers(targets)
+		if len(ps) == 0 {
+			log.Warn("Gossip FindPeers returned zero peers ....")
+		}
+		for addr, p := range ps {
+			ms, ok := sb.recentMessages.Get(addr)
+			var m *lru.ARCCache
+			if ok {
+				m, _ = ms.(*lru.ARCCache)
+				if _, k := m.Get(hash); k {
+					// This peer had this event, skip it
+					continue
+				}
+			} else {
+				m, _ = lru.NewARC(inmemoryMessages)
+			}
+
+			m.Add(hash, true)
+			sb.recentMessages.Add(addr, m)
+
+			err := p.Send(tendermintMsg, payload) //nolint
+			if err != nil {
+				log.Error("Gossip, tendermintMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+			} else {
+				log.Debug("Gossip, tendermintMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+			}
+		}
 	}
-}
-
-type messageToPeers struct {
-	msg       message
-	peers     []common.Address
-	startTime time.Time
-	lastTry   time.Time
-}
-
-func (m messageToPeers) String() string {
-	msg := fmt.Sprintf("msg hash %s   length %d", m.msg.hash.String(), len(m.msg.payload))
-	t := fmt.Sprintf("time %s", m.startTime.String())
-
-	peers := peersToString(m.peers)
-
-	return fmt.Sprintf("%s %s %s", msg, t, peers)
-}
-
-func peersToString(ps []common.Address) string {
-	peersStr := fmt.Sprintf("peers %d: ", len(ps))
-	for _, p := range ps {
-		peersStr = fmt.Sprintf("%s%s ", peersStr, p.Hex())
-	}
-
-	return peersStr
 }
 
 // Commit implements tendermint.Backend.Commit
 func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// Check if the proposal is a valid block
 	block := &proposal
-
-	//if block == nil {
-	//	sb.logger.Error("Invalid proposal, %v", proposal)
-	//	return errInvalidProposal
-	//}
+	if block == nil {
+		sb.logger.Error("Invalid proposal, %v", proposal)
+		return errInvalidProposal
+	}
 
 	h := block.Header()
 	// Append seals into extra-data
@@ -246,14 +273,18 @@ func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// -- if success, the ChainHeadEvent event will be broadcasted, try to build
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
-	if sb.proposedBlockHash == block.Hash() {
+	if sb.proposedBlockHash == block.Hash() && sb.commitCh != nil {
 		// feed block hash to Seal() and wait the Seal() result
+		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 		sb.commitCh <- block
 		return nil
 	}
 
 	if sb.broadcaster != nil {
+		sb.logger.Debug("broadcaster Enqueue fetcherID block")
 		sb.broadcaster.Enqueue(fetcherID, block)
+	} else {
+		sb.logger.Debug("Failed broadcast Enqueue fetcherID block, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
 	}
 	return nil
 }
@@ -266,24 +297,42 @@ func (sb *Backend) Subscribe(types ...interface{}) *cmn.TypeMuxSubscription {
 	return sb.eventMux.Subscribe(types...)
 }
 
+var (
+	errMismatchTxhashes = errors.New("mismatch transactions hashes")
+	errInvalidProposal  = errors.New("invalid proposal")
+)
+
 // VerifyProposal implements tendermint.Backend.VerifyProposal
 func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	// Check if the proposal is a valid block
 	// TODO: fix always false statement and check for non nil
 	// TODO: use interface instead of type
 	block := &proposal
-	//if block == nil {
-	//	sb.logger.Error("Invalid proposal, %v", proposal)
-	//	return 0, errInvalidProposal
-	//}
+	if block == nil {
+		sb.logger.Error("Invalid proposal, %v", proposal)
+		return 0, errInvalidProposal
+	}
 
 	// check bad block
 	if sb.HasBadProposal(block.Hash()) {
+		sb.logger.Error("Invalid proposal, core.ErrBlacklistedHash %v", proposal)
 		return 0, core.ErrBlacklistedHash
 	}
 
+	// check block body
+	txnHash := types.DeriveSha(block.Transactions())
+	uncleHash := types.CalcUncleHash(block.Uncles())
+	if txnHash != block.Header().TxHash {
+		sb.logger.Error("Invalid proposal, errMismatchTxhashes %v", proposal)
+		return 0, errMismatchTxhashes
+	}
+	if uncleHash != nilUncleHash {
+		sb.logger.Error("Invalid proposal, errInvalidUncleHash %v", proposal)
+		return 0, errInvalidUncleHash
+	}
+
 	// verify the header of proposed block
-	log.Debug("verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
+	log.Debug("VerifyProposal, verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 	err := sb.VerifyHeader(sb.blockchain, block.Header(), false)
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
@@ -301,62 +350,68 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		// We need to process all of the transaction to get the latest state to get the latest validators
 		state, vaultstate, stateErr := sb.blockchain.StateAt(parent.Root())
 		if stateErr != nil {
+			log.Error("VerifyProposal, could not get StateAt ", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 			return 0, stateErr
 		}
+		if header.Number.Uint64() > 1 {
 
-		// Validate the body of the proposal
-		if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
-			return 0, err
-		}
-
-		// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
-		// Instead only the transactions are applied to the copied state
-		for i, tx := range block.Transactions() {
-			state.Prepare(tx.Hash(), block.Hash(), i)
-			// Might be vulnerable to DoS Attack depending on gaslimit
-			// Todo : Double check
-			receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
-			if receiptErr != nil {
-				return 0, receiptErr
+			// Validate the body of the proposal
+			if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
+				sb.logger.Error("Error when ValidateBody ", "err", err)
+				return 0, err
 			}
-			receipts = append(receipts, receipt)
-			//logs := receipt.Logs
-			//if vaultReceipt != nil {
-			//	logs = append(receipt.Logs, vaultReceipt.Logs...)
-			//	vaultReceipt = append(w.current.privateReceipts, vaultReceipt)
-			//}
+
+			// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
+			// Instead only the transactions are applied to the copied state
+			for i, tx := range block.Transactions() {
+				state.Prepare(tx.Hash(), block.Hash(), i)
+				// Might be vulnerable to DoS Attack depending on gaslimit
+				// Todo : Double check
+				receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
+				if receiptErr != nil {
+					sb.logger.Error("Error when ApplyTransaction ", "receiptErr", receiptErr)
+					return 0, receiptErr
+				}
+				receipts = append(receipts, receipt)
+			}
 		}
 
 		// Here the order of applying transaction matters
 		// We need to ensure that the block transactions applied before the Autonity contract
 		if proposalNumber == 1 {
 			//Apply the same changes from consensus/tendermint/backend/engine.go:getValidator()349-369
-			log.Info("Autonity Contract Deployer in test state", "Address", sb.blockchain.Config().AutonityContractConfig.Deployer)
+			sb.logger.Info("Autonity Contract Deployer in test state", "Address", sb.blockchain.Config().AutonityContractConfig.Deployer)
 
 			_, err = sb.blockchain.GetAutonityContract().DeployAutonityContract(sb.blockchain, header, state)
 			if err != nil {
+				sb.logger.Error("Error when DeployAutonityContract Autonity Contract ", "err", err)
 				return 0, err
 			}
 		} else if proposalNumber > 1 {
 			err = sb.blockchain.GetAutonityContract().ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), state)
 			if err != nil {
+				sb.logger.Error("Error when ApplyPerformRedistribution Autonity Contract ", "err", err)
 				return 0, err
 			}
 		}
 
 		//Validate the state of the proposal
 		if err = sb.blockchain.Validator().ValidateState(block, parent, state, receipts, *usedGas); err != nil {
+			sb.logger.Error("Error when ValidateState ", "err", err)
 			return 0, err
 		}
 
 		if proposalNumber > 1 {
 			validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(sb.blockchain, header, state)
 			if err != nil {
+				sb.logger.Error("Error when ContractGetValidators ", "err", err)
+
 				return 0, err
 			}
 		} else {
 			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
 			if err != nil {
+				sb.logger.Error("Error when retrieveSavedValidators ", "err", err)
 				return 0, err
 			}
 		}
@@ -364,7 +419,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 		// Verify the validator set by comparing the validators in extra data and Soma-contract
 		log.Debug("VerifyProposal, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
 		if len(header.Extra) < types.BFTExtraVanity {
-			//panic("VerifyProposal, types.ExtractBFTHeaderExtra")
+			panic("VerifyProposal, types.ExtractBFTHeaderExtra")
 		}
 		tendermintExtra, _ := types.ExtractBFTHeaderExtra(header)
 
@@ -378,23 +433,23 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 
 		log.Debug("log all autonity Validators and validators on ExtraData")
 		for i := range validators {
-			validator := validators[i]
+			val := validators[i]
 			validatorExtra := tendermintExtra.Validators[i]
-			log.Debug("validator each ", "validator", validator, "validatorExtra", validatorExtra)
+			log.Debug("validator each ", "validator", val, "validatorExtra", validatorExtra)
 		}
 
 		for i := range validators {
-			validator := validators[i]
+			val := validators[i]
 			found := false
 			for j := range tendermintExtra.Validators {
 				validatorExtra := tendermintExtra.Validators[j]
-				if validator == validatorExtra {
+				if val == validatorExtra {
 					found = true
 					break
 				}
 			}
 			if !found {
-				log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i])
+				log.Error("*&*&*&*&*& errInconsistentValidatorSet, !found, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i], "val", val)
 				return 0, errInconsistentValidatorSet
 			}
 		}
@@ -402,6 +457,8 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
+		sb.logger.Error("Error when ErrFutureBlock ", "err", err)
+
 		return time.Unix(int64(block.Header().Time), 0).Sub(now()), consensus.ErrFutureBlock
 	}
 	return 0, err
@@ -417,7 +474,7 @@ func (sb *Backend) Sign(data []byte) ([]byte, error) {
 func (sb *Backend) CheckSignature(data []byte, address common.Address, sig []byte) error {
 	signer, err := types.GetSignatureAddress(data, sig)
 	if err != nil {
-		log.Error("Failed to get signer address", "err", err)
+		sb.logger.Error("Failed to get signer address", "err", err)
 		return err
 	}
 	// Compare derived addresses
@@ -460,15 +517,23 @@ func (sb *Backend) HasBadProposal(hash common.Hash) bool {
 	return sb.hasBadBlock(hash)
 }
 
+func (sb *Backend) GetContractAddress() common.Address {
+	return sb.blockchain.GetAutonityContract().Address()
+}
+
+func (sb *Backend) GetContractABI() string {
+	return sb.blockchain.Config().AutonityContractConfig.ABI
+}
+
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	db, vaultstate, err := sb.blockchain.State()
+	state, vaultstate, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
 	}
 
-	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), db, vaultstate)
+	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state, vaultstate)
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
@@ -501,22 +566,26 @@ func (sb *Backend) SyncPeer(address common.Address, messages []*tendermintCore.M
 	}
 
 	sb.logger.Info("Syncing", "peer", address)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	targets := map[common.Address]struct{}{address: {}}
+	ps := sb.broadcaster.FindPeers(targets)
+	p, connected := ps[address]
+	if !connected {
+		return
+	}
 	for _, msg := range messages {
 		payload, err := msg.Payload()
 		if err != nil {
-			sb.logger.Error("Sending", "code", msg.GetCode(), "sig", msg.GetSignature(), "err", err)
+			sb.logger.Debug("Sending", "code", msg.GetCode(), "sig", msg.GetSignature(), "err", err)
 			continue
 		}
+		//We do not save sync messages in the arc cache as recipient could not have been able to process some previous sent.
 		hash := types.RLPHash(payload)
-		now := time.Now()
-		sb.trySend(ctx, messageToPeers{
-			message{hash: hash, payload: payload},
-			[]common.Address{address},
-			now,
-			now,
-		})
+		err = p.Send(tendermintMsg, payload) //nolint
+		if err != nil {
+			log.Error("SyncPeer, tendermintMsg message, FAIL!!!", "payload hash", hash.Hex(), "peer", p.String(), "err", err)
+		} else {
+			log.Debug("SyncPeer, tendermintMsg message, OK!!!", "payload hash", hash.Hex(), "peer", p.String())
+		}
 	}
 }
 
@@ -527,4 +596,8 @@ func (sb *Backend) ResetPeerCache(address common.Address) {
 		m, _ = ms.(*lru.ARCCache)
 		m.Purge()
 	}
+}
+
+func (sb *Backend) Close() error {
+	return nil
 }

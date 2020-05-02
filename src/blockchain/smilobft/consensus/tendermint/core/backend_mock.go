@@ -146,19 +146,19 @@ func (mr *MockBackendMockRecorder) Finalize(chain, header, state, txs, uncles, r
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finalize", reflect.TypeOf((*MockBackend)(nil).Finalize), chain, header, state, txs, uncles, receipts)
 }
 
-// CalcDifficulty mocks base method
-func (m *MockBackend) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CalcDifficulty", chain, time, parent)
-	ret0, _ := ret[0].(*big.Int)
-	return ret0
-}
+//// CalcDifficulty mocks base method
+//func (m *MockBackend) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+//	m.ctrl.T.Helper()
+//	ret := m.ctrl.Call(m, "CalcDifficulty", chain, time, parent)
+//	ret0, _ := ret[0].(*big.Int)
+//	return ret0
+//}
 
-// CalcDifficulty indicates an expected call of CalcDifficulty
-func (mr *MockBackendMockRecorder) CalcDifficulty(chain, time, parent interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalcDifficulty", reflect.TypeOf((*MockBackend)(nil).CalcDifficulty), chain, time, parent)
-}
+//// CalcDifficulty indicates an expected call of CalcDifficulty
+//func (mr *MockBackendMockRecorder) CalcDifficulty(chain, time, parent interface{}) *gomock.Call {
+//	mr.mock.ctrl.T.Helper()
+//	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalcDifficulty", reflect.TypeOf((*MockBackend)(nil).CalcDifficulty), chain, time, parent)
+//}
 
 // Seal mocks base method
 func (m *MockBackend) Seal(chain consensus.ChainReader, block *types.Block, stop <-chan struct{}) (*types.Block, error) {
@@ -187,6 +187,20 @@ func (m *MockBackend) SealHash(header *types.Header) common.Hash {
 func (mr *MockBackendMockRecorder) SealHash(header interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SealHash", reflect.TypeOf((*MockBackend)(nil).SealHash), header)
+}
+
+// CalcDifficulty mocks base method
+func (m *MockBackend) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CalcDifficulty", chain, time, parent)
+	ret0, _ := ret[0].(*big.Int)
+	return ret0
+}
+
+// CalcDifficulty indicates an expected call of CalcDifficulty
+func (mr *MockBackendMockRecorder) CalcDifficulty(chain, time, parent interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalcDifficulty", reflect.TypeOf((*MockBackend)(nil).CalcDifficulty), chain, time, parent)
 }
 
 // APIs mocks base method
@@ -520,4 +534,70 @@ func (m *MockBackend) ResetPeerCache(address common.Address) {
 func (mr *MockBackendMockRecorder) ResetPeerCache(address interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetPeerCache", reflect.TypeOf((*MockBackend)(nil).ResetPeerCache), address)
+}
+
+// AskSync mocks base method
+func (m *MockBackend) AskSync(set validator.Set) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AskSync", set)
+}
+
+// AskSync indicates an expected call of AskSync
+func (mr *MockBackendMockRecorder) AskSync(set interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AskSync", reflect.TypeOf((*MockBackend)(nil).AskSync), set)
+}
+
+// HandleUnhandledMsgs mocks base method
+func (m *MockBackend) HandleUnhandledMsgs(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "HandleUnhandledMsgs", ctx)
+}
+
+// HandleUnhandledMsgs indicates an expected call of HandleUnhandledMsgs
+func (mr *MockBackendMockRecorder) HandleUnhandledMsgs(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleUnhandledMsgs", reflect.TypeOf((*MockBackend)(nil).HandleUnhandledMsgs), ctx)
+}
+
+// GetContractAddress mocks base method
+func (m *MockBackend) GetContractAddress() common.Address {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractAddress")
+	ret0, _ := ret[0].(common.Address)
+	return ret0
+}
+
+// GetContractAddress indicates an expected call of GetContractAddress
+func (mr *MockBackendMockRecorder) GetContractAddress() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractAddress", reflect.TypeOf((*MockBackend)(nil).GetContractAddress))
+}
+
+// GetContractABI mocks base method
+func (m *MockBackend) GetContractABI() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractABI")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetContractABI indicates an expected call of GetContractABI
+func (mr *MockBackendMockRecorder) GetContractABI() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractABI", reflect.TypeOf((*MockBackend)(nil).GetContractABI))
+}
+
+// WhiteList mocks base method
+func (m *MockBackend) WhiteList() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WhiteList")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// WhiteList indicates an expected call of WhiteList
+func (mr *MockBackendMockRecorder) WhiteList() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WhiteList", reflect.TypeOf((*MockBackend)(nil).WhiteList))
 }
