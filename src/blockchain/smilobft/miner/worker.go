@@ -271,6 +271,11 @@ func (self *worker) stop() {
 		if err != nil {
 			log.Error("$$$ Error stopping Consensus Engine", "error", err)
 		}
+
+		err = sport.Close()
+		if err != nil {
+			log.Error("$$$ Error stopping Consensus Engine", "error", err)
+		}
 	} else {
 		//panic("$$$ Could not stop non BFT Consensus Engine")
 		log.Warn("Could not stop non BFT Consensus Engine")

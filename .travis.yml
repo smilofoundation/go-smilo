@@ -70,9 +70,6 @@ jobs:
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintSlowConnections
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintLongRun
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStopUpToFNodes
-        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckFeeRedirectionAndRedistribution
-        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckBlockWithSmallFee
-        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStartStopSingleNode
 
     - stage: build
       os: linux
@@ -84,6 +81,9 @@ jobs:
         submodules: false # avoid cloning ethereum/tests
       script:
         - go run src/blockchain/smilobft/build/ci.go install
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckFeeRedirectionAndRedistribution
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckBlockWithSmallFee
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStartStopSingleNode
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFNodes
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusOneNodes
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusTwoNodes
