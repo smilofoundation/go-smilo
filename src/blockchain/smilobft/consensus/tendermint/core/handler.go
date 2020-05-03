@@ -102,10 +102,10 @@ func (c *core) Stop() error {
 	<-c.stopped
 	<-c.stopped
 
-	err := c.backend.Close()
-	if err != nil {
-		return err
-	}
+	//err := c.backend.Close()
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
