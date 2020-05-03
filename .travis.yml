@@ -54,7 +54,7 @@ jobs:
       git:
         submodules: false # avoid cloning ethereum/tests
       script:
-        - CONSENSUS_TEST_MODE=tendermint go run src/blockchain/smilobft/build/ci.go test -v -t 15m ./src/blockchain/smilobft/consensus/test
+        - CONSENSUS_TEST_MODE=tendermint go run src/blockchain/smilobft/build/ci.go test -t 20m ./src/blockchain/smilobft/consensus/test
 
     # This builder only tests coverage on latest version of Go
     - os: linux
