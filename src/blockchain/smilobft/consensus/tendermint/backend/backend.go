@@ -599,5 +599,14 @@ func (sb *Backend) ResetPeerCache(address common.Address) {
 }
 
 func (sb *Backend) Close() error {
+	sb.coreMu.Lock()
+	defer sb.coreMu.Unlock()
+	if !sb.coreStarted {
+		return ErrStoppedEngine
+	}
+	sb.coreStarted = false
+
+	close(sb.stopped)
+
 	return nil
 }

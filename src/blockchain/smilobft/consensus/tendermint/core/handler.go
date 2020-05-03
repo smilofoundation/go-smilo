@@ -92,7 +92,9 @@ func (c *core) Stop() error {
 	_ = c.prevoteTimeout.stopTimer()
 	_ = c.precommitTimeout.stopTimer()
 
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
 
 	c.stopFutureProposalTimer()
 	c.unsubscribeEvents()

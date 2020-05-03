@@ -332,12 +332,14 @@ func (self *worker) update() {
 				self.current.commitTransactions(self.mux, txset, self.chain, self.coinbase)
 				self.updateSnapshot()
 				self.currentMu.Unlock()
-			} else {
+			} else if self.current.header != nil && self.current.Block != nil {
 				// If we're mining, but nothing is being processed, wake on new transactions
 				log.Trace("If we're mining, but nothing is being processed, wake on new transactions ? ", "MinBlocksMining", self.minBlocksEmptyMining, "IsSport", self.chainConfig.Sport != nil, "BlockNum Cmp MinBlocksMining", self.current.Block.Number().Cmp(self.minBlocksEmptyMining))
 				if self.chainConfig.Sport != nil && self.current.Block.Number().Cmp(self.minBlocksEmptyMining) >= 0 {
 					self.commitNewWork(time.Now().Unix())
 				}
+			} else {
+				self.commitNewWork(time.Now().Unix())
 			}
 
 			// System stopped
