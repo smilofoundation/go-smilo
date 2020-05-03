@@ -4,7 +4,6 @@ sudo: false
 jobs:
   allow_failures:
     - stage: build
-      os: xenial
       env:
         - TENDERMINT_SLOW
 
@@ -85,9 +84,9 @@ jobs:
         submodules: false # avoid cloning ethereum/tests
       script:
         - go run src/blockchain/smilobft/build/ci.go install
-        - travis_wait 20 CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFNodes
-        - travis_wait 20 CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusOneNodes
-        - travis_wait 20 CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusTwoNodes
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFNodes
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusOneNodes
+        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusTwoNodes
 
 #    - stage: build
 #      os: linux
