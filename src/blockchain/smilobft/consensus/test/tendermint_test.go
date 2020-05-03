@@ -61,7 +61,6 @@ func TestTendermintSuccess(t *testing.T) {
 	}
 }
 
-
 func TestTendermintOneMalicious(t *testing.T) {
 	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
@@ -344,6 +343,7 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 		})
 	}
 }
+
 func TestCheckBlockWithSmallFee(t *testing.T) {
 	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
@@ -528,6 +528,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
 	}
+
 
 	cases := []*testCase{
 		{
