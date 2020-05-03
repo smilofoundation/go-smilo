@@ -6,6 +6,7 @@ jobs:
     - stage: build
       env:
         - TENDERMINT_SLOW
+        - CODECOV_TOKEN
 
   include:
     - stage: build
@@ -101,7 +102,7 @@ jobs:
 #        - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStartStopAllNodes
 
     # This builder only tests coverage on latest version of Go
-    - stage: lint
+    - stage: build
       os: linux
       dist: xenial
       go: 1.13.x
