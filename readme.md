@@ -11,7 +11,6 @@ Official Golang implementation of the Smilo protocol.
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/2918/badge)](https://bestpractices.coreinfrastructure.org/projects/2918)
 [![Docker Repository on Quay](https://quay.io/repository/smilo/go-smilo/status "Docker Repository on Quay")](https://quay.io/repository/smilo/go-smilo)
 [![Downloads](https://img.shields.io/github/downloads/smilofoundation/go-smilo/total.svg)](https://github.com/smilofoundation/go-smilo/releases)
-[![Beerpay](https://beerpay.io/Smilo-platform/go-smilo/badge.svg)](https://beerpay.io/Smilo-platform/go-smilo)
 [![Gitter](https://badges.gitter.im/go-smilo/community.svg)](https://gitter.im/go-smilo/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ![smilo logo](/.github/logo.png)
@@ -38,7 +37,22 @@ The go-smilo project comes with several wrappers/executables found in the `cmd` 
 | `rlpdump` | Developer utility tool to convert binary RLP dumps (data encoding used by the Smilo protocol both network as well as consensus wise) to user-friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 | `swarm`    | Swarm daemon and tools. This is the entry point for the Swarm network. `swarm --help` for command line options and subcommands. |
 | `puppeth`    | a CLI wizard that aids in creating a new Smilo network. |
+| `smiloutils`    | Smilo Utils is a CLI with useful commands to operate Smilo Blockchain. |
+| `extradata`    | Extradata is a CLI with useful commands to generate extradata, fullnodes, vanity, etc. |
 
+
+## Consensus
+
+The `go-smilo` project comes with a hand full of consensus available for you. 
+
+| Command    | Description |
+|:----------:|-------------|
+| `SPoRT`      | A modified version of Istanbul consensus, with increased security enforcing a min 66% BFT consensus and mining rewards. |
+| `SPoRT DAO`   | A modified version of SPoRT consensus, with Autonity Smart contracts backing the consensus. |
+| `Istanbul DAO`   | A modified version of Istanbul consensus, with Autonity Smart contracts backing the consensus. |
+| `Tendermint DAO` | A modified version of Tendermint consensus, with Autonity Smart contracts backing the consensus. |
+| `Clique`     | A standard version of Clique consensus. |
+| `Ethash`     | A standard version of Ethash consensus. |
 
 ### Full node on the main Smilo SPoRT network
 
