@@ -213,8 +213,7 @@ func (ac *Contract) ContractGetValidators(chain consensus.ChainReader, header *t
 		"header Number", header.Number.Int64(),
 		"Address", chain.Config().AutonityContractConfig.Deployer,
 		"sender", sender,
-		"gas", gas,
-		"contractABI.Methods", contractABI.Methods)
+		"gas", gas)
 
 	//A standard call is issued - we leave the possibility to modify the state
 	ret, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)

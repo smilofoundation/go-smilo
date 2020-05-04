@@ -101,15 +101,15 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  digest = "1:354e3776cdd837e1053751b09e2599d43d57db5d8a9b51aee4a38778044a5803"
+  digest = "1:2b2daa41f40acd66f4aa0ae213bfd286096663c999a26deb773127b7864c6bd0"
   name = "github.com/elastic/gosigar"
   packages = [
     ".",
     "sys/windows",
   ]
   pruneopts = "UT"
-  revision = "f75810decf6f4d88b130bfc4d2ba7ccdcea0c01d"
-  version = "v0.10.4"
+  revision = ""
+  version = "v0.10.5"
 
 [[projects]]
   digest = "1:4e8b2bfffe1da477607a589cccf673e4e5fad980a748343e214a8a60900a71f3"

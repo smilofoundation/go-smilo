@@ -41,11 +41,11 @@ Create the source packages:
 
 Then go into the source package directory for your running distribution and build the package:
 
-    $ cd build/dist/smilo-unstable-1.9.2.2+bionic
+    $ cd build/dist/smilo-unstable-1.9.2.4+bionic
     $ dpkg-buildpackage
 
 Built packages are placed in the dist/ directory.
 
     $ cd ..
-    $ dpkg-deb -c sgeth-unstable_1.9.2.2+bionic_amd64.deb
+    $ dpkg-deb -c sgeth-unstable_1.9.2.4+bionic_amd64.deb
     $ smilo-unstable-1.9.2.1+bionic/debian/sgeth-unstable/usr/bin/sgeth version

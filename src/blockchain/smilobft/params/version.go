@@ -29,7 +29,7 @@ const (
 	SmiloVersionMajor = 1
 	SmiloVersionMinor = 9
 	SmiloVersionPatch = 2
-	SmiloMinorPatch   = 3
+	SmiloMinorPatch   = 4
 )
 
 // Version holds the textual version string.

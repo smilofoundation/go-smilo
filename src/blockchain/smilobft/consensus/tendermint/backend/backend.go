@@ -332,7 +332,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	}
 
 	// verify the header of proposed block
-	log.Debug("VerifyProposal, verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
+	log.Debug("VerifyProposal, verify the header of proposed block", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", len(block.Header().Extra))
 	err := sb.VerifyHeader(sb.blockchain, block.Header(), false)
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
@@ -599,5 +599,14 @@ func (sb *Backend) ResetPeerCache(address common.Address) {
 }
 
 func (sb *Backend) Close() error {
+	sb.coreMu.Lock()
+	defer sb.coreMu.Unlock()
+	if !sb.coreStarted {
+		return ErrStoppedEngine
+	}
+	sb.coreStarted = false
+
+	close(sb.stopped)
+
 	return nil
 }

@@ -153,6 +153,7 @@ var (
 		"bionic": "golang-go",
 		"disco":  "golang-go",
 		"eoan":   "golang-go",
+		"focal":  "golang-go",
 	}
 
 	debGoBootPaths = map[string]string{
@@ -363,6 +364,8 @@ func goToolArch(arch string, cc string, subcmd string, args ...string) *exec.Cmd
 func doTest(cmdline []string) {
 	coverage := flag.Bool("coverage", false, "Whether to record code coverage")
 	verbose := flag.Bool("v", false, "Whether to log verbosely")
+	timeout := flag.String("t", "5m", "Timeout for tests")
+
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
 
@@ -376,7 +379,12 @@ func doTest(cmdline []string) {
 	// Test a single package at a time. CI builders are slow
 	// and some tests run into timeouts under load.
 	gotest := goTool("test", buildFlags(env)...)
-	gotest.Args = append(gotest.Args, "-p", "1", "-timeout", "5m")
+	gotest.Args = append(gotest.Args, "-p", "1")
+	if *timeout != "" {
+		gotest.Args = append(gotest.Args, "-timeout", *timeout)
+	} else {
+		gotest.Args = append(gotest.Args, "-timeout", "5m")
+	}
 	if *coverage {
 		gotest.Args = append(gotest.Args, "-covermode=atomic", "-cover")
 	}
@@ -407,7 +415,7 @@ func doLint(cmdline []string) {
 
 // downloadLinter downloads and unpacks golangci-lint.
 func downloadLinter(cachedir string) string {
-	const version = "1.21.0"
+	const version = "1.22.2"
 
 	csdb := build.MustLoadChecksums("src/blockchain/smilobft/build/checksums.txt")
 	base := fmt.Sprintf("golangci-lint-%s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
@@ -522,7 +530,7 @@ func maybeSkipArchive(env build.Environment) {
 // Debian Packaging
 func doDebianSource(cmdline []string) {
 	var (
-		goversion = flag.String("goversion", "1.13.5", `Go version to build with (will be included in the source package)`)
+		goversion = flag.String("goversion", "1.13.8", `Go version to build with (will be included in the source package)`)
 		cachedir  = flag.String("cachedir", "./build/cache", `Filesystem path to cache the downloaded Go bundles at`)
 		signer    = flag.String("signer", "", `Signing key name, also used as package author`)
 		upload    = flag.String("upload", "", `Where to upload the source package (usually "ethereum/ethereum")`)
