@@ -6,6 +6,8 @@ jobs:
     - stage: build
       env:
         - TENDERMINT_SLOW
+    - stage: build
+      os: osx
 
   include:
     - stage: build
