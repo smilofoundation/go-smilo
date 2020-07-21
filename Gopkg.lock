@@ -648,6 +648,14 @@
   revision = "48726bab92085232373de4ec5c51ce7b441c63a0"
 
 [[projects]]
+  digest = "1:3fbd5d41147690dac747ed50f052356d48cf5a8ee3266edbb06343bfc3d55fd3"
+  name = "github.com/xsleonard/go-merkle"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "23e1a261f2295c894d06e222901d4826ea88902e"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:00510be0e55c92b0e24a808f480559b7dba5c12d352832e0b78f46c369fcee76"
   name = "github.com/zfjagann/golang-ring"
@@ -888,6 +896,7 @@
     "github.com/tv42/httpunix",
     "github.com/tyler-smith/go-bip39",
     "github.com/wsddn/go-ecdh",
+    "github.com/xsleonard/go-merkle",
     "github.com/zfjagann/golang-ring",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/pbkdf2",

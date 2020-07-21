@@ -42,6 +42,7 @@ const (
 	MimetypeTypedData         = "data/typed"
 	MimetypeClique            = "application/x-clique-header"
 	MimetypeTextPlain         = "text/plain"
+	MimetypeBor               = "application/x-bor-header"
 )
 
 // Wallet represents a software or hardware wallet that might contain one or more
