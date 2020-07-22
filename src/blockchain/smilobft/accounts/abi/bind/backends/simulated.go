@@ -81,7 +81,21 @@ func NewSimulatedBackendWithDatabase(database ethdb.Database, alloc core.Genesis
 		database:   database,
 		blockchain: blockchain,
 		config:     genesis.Config,
-		events:     filters.NewEventSystem(new(cmn.TypeMux), &filterBackend{database, blockchain}, false),
+		events:     filters.NewEventSystem(new(event.TypeMux), &filterBackend{database, blockchain}, false),
+	}
+	backend.rollback()
+	return backend
+}
+
+// Quorum
+//
+// Create a simulated backend based on existing Ethereum service
+func NewSimulatedBackendFrom(ethereum *eth.Ethereum) *SimulatedBackend {
+	backend := &SimulatedBackend{
+		database:   ethereum.ChainDb(),
+		blockchain: ethereum.BlockChain(),
+		config:     ethereum.BlockChain().Config(),
+		events:     filters.NewEventSystem(new(event.TypeMux), &filterBackend{ethereum.ChainDb(), ethereum.BlockChain()}, false),
 	}
 	backend.rollback()
 	return backend
@@ -331,7 +345,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call smilobft.CallM
 
 // SendTransaction updates the pending block to include the given transaction.
 // It panics if the transaction is invalid.
-func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction, args bind.PrivateTxArgs) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -355,6 +369,11 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	b.pendingBlock = blocks[0]
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
 	return nil
+}
+
+// PreparePrivateTransaction dummy implementation
+func (b *SimulatedBackend) PreparePrivateTransaction(data []byte, privateFrom string) ([]byte, error) {
+	return data, nil
 }
 
 // FilterLogs executes a log filter operation, blocking during execution and

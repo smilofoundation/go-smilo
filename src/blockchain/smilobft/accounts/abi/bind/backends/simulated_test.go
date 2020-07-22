@@ -39,6 +39,7 @@ func TestSimulatedBackend(t *testing.T) {
 	genAlloc[auth.From] = core.GenesisAccount{Balance: big.NewInt(9223372036854775807)}
 
 	sim := backends.NewSimulatedBackend(genAlloc, gasLimit)
+	defer sim.Close()
 
 	// should return an error if the tx is not found
 	txHash := common.HexToHash("2")
@@ -57,7 +58,7 @@ func TestSimulatedBackend(t *testing.T) {
 	tx := types.NewContractCreation(0, big.NewInt(0), gas, big.NewInt(1), common.FromHex(code))
 	tx, _ = types.SignTx(tx, types.HomesteadSigner{}, key)
 
-	err = sim.SendTransaction(context.Background(), tx)
+	err = sim.SendTransaction(context.Background(), tx, bind.PrivateTxArgs{})
 	if err != nil {
 		t.Fatal("error sending transaction")
 	}

@@ -71,6 +71,8 @@ var (
 	blockValidationTimer = metrics.NewRegisteredTimer("chain/validation", nil)
 	blockExecutionTimer  = metrics.NewRegisteredTimer("chain/execution", nil)
 	blockWriteTimer      = metrics.NewRegisteredTimer("chain/write", nil)
+	blockReorgAddMeter   = metrics.NewRegisteredMeter("chain/reorg/drop", nil)
+	blockReorgDropMeter  = metrics.NewRegisteredMeter("chain/reorg/add", nil)
 
 	blockPrefetchExecuteTimer   = metrics.NewRegisteredTimer("chain/prefetch/executes", nil)
 	blockPrefetchInterruptMeter = metrics.NewRegisteredMeter("chain/prefetch/interrupts", nil)
@@ -82,6 +84,7 @@ const (
 	bodyCacheLimit      = 256
 	blockCacheLimit     = 256
 	receiptsCacheLimit  = 32
+	txLookupCacheLimit  = 1024
 	maxFutureBlocks     = 256
 	maxTimeFutureBlocks = 30
 	badBlockLimit       = 10
@@ -185,8 +188,21 @@ type BlockChain struct {
 	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
 	vaultStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
+	setPrivateState func([]*types.Log, *state.StateDB) // Function to check extension and set private state
 
 	autonityContract *autonity.Contract
+}
+
+// function pointer for updating private state
+func (bc *BlockChain) PopulateSetPrivateState(ps func([]*types.Log, *state.StateDB)) {
+	bc.setPrivateState = ps
+}
+
+// function to update the private state as a part contract state extension
+func (bc *BlockChain) CheckAndSetPrivateState(txLogs []*types.Log, privateState *state.StateDB) {
+	if bc.setPrivateState != nil {
+		bc.setPrivateState(txLogs, privateState)
+	}
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -238,6 +254,11 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if bc.genesisBlock == nil {
 		return nil, ErrNoGenesis
 	}
+
+	var nilBlock *types.Block
+	bc.currentBlock.Store(nilBlock)
+	bc.currentFastBlock.Store(nilBlock)
+
 	// Initialize the chain with ancient data if it isn't empty.
 	if bc.empty() {
 		rawdb.InitDatabaseFromFreezer(bc.db)
@@ -367,10 +388,7 @@ func (bc *BlockChain) loadLastState() error {
 	// Smilo VAULT
 	if _, err := state.New(GetVaultStateRoot(bc.db, currentBlock.Root()), bc.vaultStateCache); err != nil {
 		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
-		if err := bc.repair(&currentBlock); err != nil {
-			log.Warn("Could not repar vault state missing with repair method, will reset")
-			return bc.Reset()
-		}
+		return bc.Reset()
 	}
 	// Smilo VAULT
 
@@ -587,8 +605,8 @@ func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, *state.StateDB,
 }
 
 // StateCache returns the caching database underpinning the blockchain instance.
-func (bc *BlockChain) StateCache() state.Database {
-	return bc.stateCache
+func (bc *BlockChain) StateCache() (state.Database, state.Database) {
+	return bc.stateCache, bc.vaultStateCache
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -1004,6 +1022,7 @@ func (bc *BlockChain) truncateAncient(head uint64) error {
 	bc.bodyRLPCache.Purge()
 	bc.receiptsCache.Purge()
 	bc.blockCache.Purge()
+	bc.txLookupCache.Purge()
 	bc.futureBlocks.Purge()
 
 	log.Info("Rewind ancient data", "number", head)

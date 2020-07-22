@@ -181,9 +181,29 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
 	utils.RegisterEthService(stack, &cfg.Eth)
 
+	// plugin service must be after eth service so that eth service will be stopped gradually if any of the plugin
+	// fails to start
+	if cfg.Node.Plugins != nil {
+		utils.RegisterPluginService(stack, &cfg.Node, ctx.Bool(utils.PluginSkipVerifyFlag.Name), ctx.Bool(utils.PluginLocalVerifyFlag.Name), ctx.String(utils.PluginPublicKeyFlag.Name))
+	}
+
+	if cfg.Node.IsPermissionEnabled() {
+		utils.RegisterPermissionService(stack)
+	}
+
+	if ctx.GlobalBool(utils.RaftModeFlag.Name) {
+		utils.RegisterRaftService(stack, ctx, &cfg.Node, ethChan)
+	}
+
 	if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
 		utils.RegisterDashboardService(stack, &cfg.Dashboard, gitCommit)
 	}
+
+	ipcPath := quorumGetPrivateTransactionManager()
+	if ipcPath != "" {
+		utils.RegisterExtensionService(stack, ethChan)
+	}
+
 	// Whisper must be explicitly enabled by specifying at least 1 whisper flag or in dev mode
 	shhEnabled := enableWhisper(ctx)
 	shhAutoEnabled := !ctx.GlobalIsSet(utils.WhisperEnabledFlag.Name) && ctx.GlobalIsSet(utils.DeveloperFlag.Name)
@@ -251,4 +271,19 @@ func smiloValidateConsensus(stack *node.Node) {
 	if smilo == nil || smilo.ChainConfig() == nil || smilo.ChainConfig().Sport == nil && smilo.ChainConfig().Istanbul == nil && smilo.ChainConfig().SportDAO == nil && smilo.ChainConfig().Tendermint == nil && smilo.ChainConfig().Clique == nil {
 		log.Warn("Consensus not specified")
 	}
+}
+
+// quorumValidatePrivateTransactionManager returns whether the "PRIVATE_CONFIG"
+// environment variable is set
+func smiloValidatePrivateTransactionManager() bool {
+	return os.Getenv("PRIVATE_CONFIG") != ""
+}
+
+//
+func quorumGetPrivateTransactionManager() string {
+	cfgPath := os.Getenv("PRIVATE_CONFIG")
+	if cfgPath != "" && cfgPath != "ignore" {
+		return cfgPath
+	}
+	return ""
 }

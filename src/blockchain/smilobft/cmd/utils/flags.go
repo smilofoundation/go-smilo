@@ -19,14 +19,23 @@ package utils
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+	"go-smilo/src/blockchain/smilobft/permission"
+	"go-smilo/src/blockchain/smilobft/plugin"
+	"io"
 	"io/ioutil"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	pcsclite "github.com/gballet/go-libpcsclite"
 
@@ -97,6 +106,7 @@ GLOBAL OPTIONS:
 `
 
 	cli.CommandHelpTemplate = CommandHelpTemplate
+	cli.HelpPrinter = printHelp
 }
 
 // NewApp creates an app with sane defaults.
@@ -108,6 +118,17 @@ func NewApp(gitCommit, gitDate, usage string) *cli.App {
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.Usage = usage
 	return app
+}
+
+func printHelp(out io.Writer, templ string, data interface{}) {
+	funcMap := template.FuncMap{"join": strings.Join}
+	t := template.Must(template.New("help").Funcs(funcMap).Parse(templ))
+	w := tabwriter.NewWriter(out, 38, 8, 2, ' ', 0)
+	err := t.Execute(w, data)
+	if err != nil {
+		panic(err)
+	}
+	w.Flush()
 }
 
 // These are all the command line flags we support.
@@ -122,7 +143,7 @@ var (
 	DataDirFlag = DirectoryFlag{
 		Name:  "datadir",
 		Usage: "Data directory for the databases and keystore",
-		Value: DirectoryString{node.DefaultDataDir()},
+		Value: DirectoryString(node.DefaultDataDir()),
 	}
 	AncientFlag = DirectoryFlag{
 		Name:  "datadir.ancient",
@@ -177,7 +198,7 @@ var (
 	DocRootFlag = DirectoryFlag{
 		Name:  "docroot",
 		Usage: "Document Root for HTTPClient file scheme",
-		Value: DirectoryString{homeDir()},
+		Value: DirectoryString(homeDir()),
 	}
 	ExitWhenSyncedFlag = cli.BoolFlag{
 		Name:  "exitwhensynced",
@@ -217,6 +238,10 @@ var (
 	WhitelistFlag = cli.StringFlag{
 		Name:  "whitelist",
 		Usage: "Comma separated block number-to-hash mappings to enforce (<number>=<hash>)",
+	}
+	OverrideIstanbulFlag = cli.Uint64Flag{
+		Name:  "override.istanbul",
+		Usage: "Manually specify Istanbul fork-block, overriding the bundled setting",
 	}
 	// Light server and client settings
 	LightLegacyServFlag = cli.IntFlag{ // Deprecated in favor of light.serve, remove in 2021
@@ -300,8 +325,8 @@ var (
 	}
 	EthashDatasetDirFlag = DirectoryFlag{
 		Name:  "ethash.dagdir",
-		Usage: "Directory to store the ethash mining DAGs (default = inside home folder)",
-		Value: DirectoryString{eth.DefaultConfig.Ethash.DatasetDir},
+		Usage: "Directory to store the ethash mining DAGs",
+		Value: DirectoryString(eth.DefaultConfig.Ethash.DatasetDir),
 	}
 	EthashDatasetsInMemoryFlag = cli.IntFlag{
 		Name:  "ethash.dagsinmem",
@@ -507,6 +532,27 @@ var (
 	NoCompactionFlag = cli.BoolFlag{
 		Name:  "nocompaction",
 		Usage: "Disables db compaction after import",
+	}
+	// RPC Client Settings
+	RPCClientToken = cli.StringFlag{
+		Name:  "rpcclitoken",
+		Usage: "RPC Client access token",
+	}
+	RPCClientTLSCert = cli.StringFlag{
+		Name:  "rpcclitls.cert",
+		Usage: "Server's TLS certificate PEM file on connection by client",
+	}
+	RPCClientTLSCaCert = cli.StringFlag{
+		Name:  "rpcclitls.cacert",
+		Usage: "CA certificate PEM file for provided server's TLS certificate on connection by client",
+	}
+	RPCClientTLSCipherSuites = cli.StringFlag{
+		Name:  "rpcclitls.ciphersuites",
+		Usage: "Customize supported cipher suites when using TLS connection. Value is a comma-separated cipher suite string",
+	}
+	RPCClientTLSInsecureSkipVerify = cli.BoolFlag{
+		Name:  "rpcclitls.insecureskipverify",
+		Usage: "Disable verification of server's TLS certificate on connection by client",
 	}
 	// RPC settings
 	IPCDisabledFlag = cli.BoolFlag{
@@ -756,6 +802,13 @@ var (
 		Usage: "If enabled, emit specially formatted logging checkpoints",
 	}
 
+	// immutability threshold which can be passed as a parameter at geth start
+	SmiloImmutabilityThreshold = cli.IntFlag{
+		Name:  "immutabilitythreshold",
+		Usage: "overrides the default immutability threshold for Quorum nodes. Its the threshold beyond which block data will be moved to ancient db",
+		Value: 3162240,
+	}
+
 	// Istanbul settings
 	IstanbulRequestTimeoutFlag = cli.Uint64Flag{
 		Name:  "istanbul.requesttimeout",
@@ -766,6 +819,38 @@ var (
 		Name:  "istanbul.blockperiod",
 		Usage: "Default minimum difference between two consecutive block's timestamps in seconds",
 		Value: eth.DefaultConfig.Istanbul.BlockPeriod,
+	}
+	// Permission
+	EnableNodePermissionFlag = cli.BoolFlag{
+		Name:  "permissioned",
+		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
+	}
+	AllowedFutureBlockTimeFlag = cli.Uint64Flag{
+		Name:  "allowedfutureblocktime",
+		Usage: "Max time (in seconds) from current time allowed for blocks, before they're considered future blocks",
+		Value: 0,
+	}
+	// Plugins settings
+	PluginSettingsFlag = cli.StringFlag{
+		Name:  "plugins",
+		Usage: "The URI of configuration which describes plugins being used. E.g.: file:///opt/geth/plugins.json",
+	}
+	PluginLocalVerifyFlag = cli.BoolFlag{
+		Name:  "plugins.localverify",
+		Usage: "If enabled, verify plugin integrity from local file system. This requires plugin signature file and PGP public key file to be available",
+	}
+	PluginPublicKeyFlag = cli.StringFlag{
+		Name:  "plugins.publickey",
+		Usage: fmt.Sprintf("The URI of PGP public key for local plugin verification. E.g.: file:///opt/geth/pubkey.pgp.asc. This flag is only valid if --%s is set (default = file:///<pluginBaseDir>/%s)", PluginLocalVerifyFlag.Name, plugin.DefaultPublicKeyFile),
+	}
+	PluginSkipVerifyFlag = cli.BoolFlag{
+		Name:  "plugins.skipverify",
+		Usage: "If enabled, plugin integrity is NOT verified",
+	}
+	// account plugin flags
+	AccountPluginNewAccountConfigFlag = cli.StringFlag{
+		Name:  "plugins.account.config",
+		Usage: "Value will be passed to an account plugin if being used.  See the account plugin implementation's documentation for further details",
 	}
 
 	// SportDAO settings
@@ -809,10 +894,6 @@ var (
 		Name:  "minblocksemptymining",
 		Usage: " Min Blocks to mine before Stop Mining Empty Blocks",
 		Value: big.NewInt(20000000),
-	}
-	EnableNodePermissionFlag = cli.BoolFlag{
-		Name:  "permissioned",
-		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
 	}
 )
 
@@ -1178,17 +1259,15 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	lightClient := ctx.GlobalString(SyncModeFlag.Name) == "light"
 	lightServer := (ctx.GlobalInt(LightLegacyServFlag.Name) != 0 || ctx.GlobalInt(LightServeFlag.Name) != 0)
 
-	if lightServer {
-		log.Debug("flags.SetP2PConfig lightServer, ", "cfg", cfg)
-	}
-	if lightClient {
-		log.Debug("flags.SetP2PConfig lightClient, ", "cfg", cfg)
-	}
-
 	lightPeers := ctx.GlobalInt(LightLegacyPeersFlag.Name)
 	if ctx.GlobalIsSet(LightMaxPeersFlag.Name) {
 		lightPeers = ctx.GlobalInt(LightMaxPeersFlag.Name)
 	}
+	if lightClient && !ctx.GlobalIsSet(LightLegacyPeersFlag.Name) && !ctx.GlobalIsSet(LightMaxPeersFlag.Name) {
+		// dynamic default - for clients we use 1/10th of the default for servers
+		lightPeers /= 10
+	}
+
 	if ctx.GlobalIsSet(MaxPeersFlag.Name) {
 		cfg.MaxPeers = ctx.GlobalInt(MaxPeersFlag.Name)
 		if lightServer && !ctx.GlobalIsSet(LightLegacyPeersFlag.Name) && !ctx.GlobalIsSet(LightMaxPeersFlag.Name) {
@@ -1264,8 +1343,6 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		cfg.ExternalSigner = ctx.GlobalString(ExternalSignerFlag.Name)
 	}
 
-	cfg.EnableNodePermissionFlag = ctx.GlobalBool(EnableNodePermissionFlag.Name)
-
 	if ctx.GlobalIsSet(KeyStoreDirFlag.Name) {
 		cfg.KeyStoreDir = ctx.GlobalString(KeyStoreDirFlag.Name)
 	}
@@ -1278,6 +1355,12 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	if ctx.GlobalIsSet(InsecureUnlockAllowedFlag.Name) {
 		cfg.InsecureUnlockAllowed = ctx.GlobalBool(InsecureUnlockAllowedFlag.Name)
 	}
+
+	// Smilo
+	if ctx.GlobalIsSet(EnableNodePermissionFlag.Name) {
+		cfg.EnableNodePermission = ctx.GlobalBool(EnableNodePermissionFlag.Name)
+	}
+
 }
 
 func setSmartCard(ctx *cli.Context, cfg *node.Config) {
@@ -1311,6 +1394,51 @@ func setDataDir(ctx *cli.Context, cfg *node.Config) {
 	case ctx.GlobalBool(SportFlag.Name) && cfg.DataDir == node.DefaultDataDir():
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "sport")
 	}
+	if err := SetPlugins(ctx, cfg); err != nil {
+		Fatalf(err.Error())
+	}
+}
+
+// Quorum
+//
+// Read plugin settings from --plugins flag. Overwrite settings defined in --config if any
+func SetPlugins(ctx *cli.Context, cfg *node.Config) error {
+	if ctx.GlobalIsSet(PluginSettingsFlag.Name) {
+		// validate flag combination
+		if ctx.GlobalBool(PluginSkipVerifyFlag.Name) && ctx.GlobalBool(PluginLocalVerifyFlag.Name) {
+			return fmt.Errorf("only --%s or --%s must be set", PluginSkipVerifyFlag.Name, PluginLocalVerifyFlag.Name)
+		}
+		if !ctx.GlobalBool(PluginLocalVerifyFlag.Name) && ctx.GlobalIsSet(PluginPublicKeyFlag.Name) {
+			return fmt.Errorf("--%s is required for setting --%s", PluginLocalVerifyFlag.Name, PluginPublicKeyFlag.Name)
+		}
+		pluginSettingsURL, err := url.Parse(ctx.GlobalString(PluginSettingsFlag.Name))
+		if err != nil {
+			return fmt.Errorf("plugins: Invalid URL for --%s due to %s", PluginSettingsFlag.Name, err)
+		}
+		var pluginSettings plugin.Settings
+		r, err := urlReader(pluginSettingsURL)
+		if err != nil {
+			return fmt.Errorf("plugins: unable to create reader due to %s", err)
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		if err := json.NewDecoder(r).Decode(&pluginSettings); err != nil {
+			return fmt.Errorf("plugins: unable to parse settings due to %s", err)
+		}
+		pluginSettings.SetDefaults()
+		cfg.Plugins = &pluginSettings
+	}
+	return nil
+}
+
+func urlReader(u *url.URL) (io.ReadCloser, error) {
+	s := u.Scheme
+	switch s {
+	case "file":
+		return os.Open(filepath.Join(u.Host, u.Path))
+	}
+	return nil, fmt.Errorf("unsupported scheme %s", s)
 }
 
 func setGPO(ctx *cli.Context, cfg *gasprice.Config) {
@@ -1479,6 +1607,7 @@ func setBFT(ctx *cli.Context, cfg *eth.Config) {
 	}
 }
 
+
 func setSport(ctx *cli.Context, cfg *eth.Config) {
 	if ctx.GlobalIsSet(SportRequestTimeoutFlag.Name) {
 		cfg.Sport.RequestTimeout = ctx.GlobalUint64(SportRequestTimeoutFlag.Name)
@@ -1602,9 +1731,12 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}
-	cfg.NoPruning = ctx.GlobalString(GCModeFlag.Name) == "archive"
-	cfg.NoPrefetch = ctx.GlobalBool(CacheNoPrefetchFlag.Name)
-
+	if ctx.GlobalIsSet(GCModeFlag.Name) {
+		cfg.NoPruning = ctx.GlobalString(GCModeFlag.Name) == "archive"
+	}
+	if ctx.GlobalIsSet(CacheNoPrefetchFlag.Name) {
+		cfg.NoPrefetch = ctx.GlobalBool(CacheNoPrefetchFlag.Name)
+	}
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheTrieFlag.Name) {
 		cfg.TrieCleanCache = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheTrieFlag.Name) / 100
 	}
@@ -1629,6 +1761,9 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	if ctx.GlobalIsSet(RPCGlobalGasCap.Name) {
 		cfg.RPCGasCap = new(big.Int).SetUint64(ctx.GlobalUint64(RPCGlobalGasCap.Name))
 	}
+
+	// set immutability threshold in config
+	params.SetSmiloImmutabilityThreshold(ctx.GlobalInt(SmiloImmutabilityThreshold.Name))
 
 	// Override any default configs for hard coded networks.
 	switch {
@@ -1769,6 +1904,52 @@ func RegisterGraphQLService(stack *node.Node, endpoint string, cors, vhosts []st
 	}
 }
 
+// Smilo
+//
+// Register plugin manager as a service in geth
+func RegisterPluginService(stack *node.Node, cfg *node.Config, skipVerify bool, localVerify bool, publicKey string) {
+	if err := cfg.ResolvePluginBaseDir(); err != nil {
+		Fatalf("plugins: unable to resolve plugin base dir due to %s", err)
+	}
+	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
+		return plugin.NewPluginManager(cfg.UserIdent, cfg.Plugins, skipVerify, localVerify, publicKey)
+	}); err != nil {
+		Fatalf("plugins: Failed to register the Plugins service: %v", err)
+	}
+}
+
+// Configure smart-contract-based permissioning service
+func RegisterPermissionService(stack *node.Node) {
+	if err := stack.Register(func(sctx *node.ServiceContext) (node.Service, error) {
+		permissionConfig, err := permission.ParsePermissionConfig(stack.DataDir())
+		if err != nil {
+			return nil, fmt.Errorf("loading of %s failed due to %v", params.PERMISSION_MODEL_CONFIG, err)
+		}
+		// start the permissions management service
+		pc, err := permission.NewQuorumPermissionCtrl(stack, &permissionConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load the permission contracts as given in %s due to %v", params.PERMISSION_MODEL_CONFIG, err)
+		}
+		return pc, nil
+	}); err != nil {
+		Fatalf("Failed to register the permission service: %v", err)
+	}
+	log.Info("permission service registered")
+}
+
+func RegisterExtensionService(stack *node.Node, ethChan chan *eth.Ethereum) {
+	registerFunc := func(ctx *node.ServiceContext) (node.Service, error) {
+		factory, err := extension.NewServicesFactory(stack, private.P, <-ethChan)
+		if err != nil {
+			return nil, err
+		}
+		return factory.BackendService(), nil
+	}
+	if err := stack.Register(registerFunc); err != nil {
+		Fatalf("Failed to register the Extension service: %v", err)
+	}
+}
+
 func SetupMetrics(ctx *cli.Context) {
 	if metrics.Enabled {
 		log.Info("Enabling metrics collection")
@@ -1843,16 +2024,41 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 }
 
 // MakeChain creates a chain manager from set command line flags.
-func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chainDb ethdb.Database) {
-	var err error
+func MakeChain(ctx *cli.Context, stack *node.Node, useExist bool) (chain *core.BlockChain, chainDb ethdb.Database) {
+	var (
+		config *params.ChainConfig
+		err    error
+	)
 	chainDb = MakeChainDatabase(ctx, stack)
-	config, _, err := core.SetupGenesisBlock(chainDb, MakeGenesis(ctx))
-	if err != nil {
-		Fatalf("%v", err)
+
+	if useExist {
+		stored := rawdb.ReadCanonicalHash(chainDb, 0)
+		if (stored == common.Hash{}) {
+			Fatalf("No existing genesis")
+		}
+		config = rawdb.ReadChainConfig(chainDb, stored)
+	} else {
+		config, _, err = core.SetupGenesisBlock(chainDb, MakeGenesis(ctx))
+		if err != nil {
+			Fatalf("%v", err)
+		}
 	}
+
 	var engine consensus.Engine
 	if config.Clique != nil {
 		engine = clique.New(config.Clique, chainDb)
+	} else if config.Istanbul != nil {
+		// for IBFT
+		istanbulConfig := istanbul.DefaultConfig
+		if config.Istanbul.Epoch != 0 {
+			istanbulConfig.Epoch = config.Istanbul.Epoch
+		}
+		istanbulConfig.ProposerPolicy = istanbul.ProposerPolicy(config.Istanbul.ProposerPolicy)
+		istanbulConfig.Ceil2Nby3Block = config.Istanbul.Ceil2Nby3Block
+		engine = istanbulBackend.New(istanbulConfig, stack.GetNodeKey(), chainDb)
+	} else if config.IsQuorum {
+		// for Raft
+		engine = ethash.NewFullFaker()
 	} else {
 		engine = ethash.NewFaker()
 		if !ctx.GlobalBool(FakePoWFlag.Name) {
@@ -1863,7 +2069,7 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 				DatasetDir:     stack.ResolvePath(eth.DefaultConfig.Ethash.DatasetDir),
 				DatasetsInMem:  eth.DefaultConfig.Ethash.DatasetsInMem,
 				DatasetsOnDisk: eth.DefaultConfig.Ethash.DatasetsOnDisk,
-			})
+			}, nil, false)
 		}
 	}
 	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {

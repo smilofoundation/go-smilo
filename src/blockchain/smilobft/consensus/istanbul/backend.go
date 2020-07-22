@@ -66,6 +66,9 @@ type Backend interface {
 	// GetProposer returns the proposer of the given block height
 	GetProposer(number uint64) common.Address
 
+	// ParentValidators returns the validator set of the given proposal's parent block
+	ParentValidators(proposal Proposal) ValidatorSet
+
 	// HasBadBlock returns whether the block with the hash is a bad block
 	HasBadProposal(hash common.Hash) bool
 

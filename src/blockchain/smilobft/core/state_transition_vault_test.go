@@ -116,7 +116,7 @@ type vaultMessage struct {
 	callmsg
 }
 
-func (pm vaultMessage) IsPrivate() bool { return true }
+func (pm vaultMessage) IsVault() bool { return true }
 
 type FakeBlackboxVault struct {
 	responses map[string][]interface{}

@@ -65,7 +65,7 @@ type tmplField struct {
 // tmplStruct is a wrapper around an abi.tuple contains a auto-generated
 // struct name.
 type tmplStruct struct {
-	Name   string       // Auto-generated struct name(We can't obtain the raw struct name through abi)
+	Name   string       // Auto-generated struct name(before solidity v0.5.11) or raw name.
 	Fields []*tmplField // Struct fields definition depends on the binding language.
 }
 
@@ -112,6 +112,8 @@ var (
 	{{$structs := $contract.Structs}}
 	// {{.Type}}ABI is the input ABI used to generate the binding from.
 	const {{.Type}}ABI = "{{.InputABI}}"
+
+	var {{.Type}}ParsedABI, _ = abi.JSON(strings.NewReader({{.Type}}ABI))
 
 	{{if $contract.FuncSigs}}
 		// {{.Type}}FuncSigs maps the 4-byte function signature to its string representation.
@@ -439,6 +441,7 @@ var (
 			return &{{$contract.Type}}{{.Normalized.Name}}Iterator{contract: _{{$contract.Type}}.contract, event: "{{.Original.Name}}", logs: logs, sub: sub}, nil
  		}
 
+		var {{.Normalized.Name}}TopicHash = "0x{{printf "%x" .Original.ID}}"
 		// Watch{{.Normalized.Name}} is a free log subscription operation binding the contract event 0x{{printf "%x" .Original.ID}}.
 		//
 		// Solidity: {{formatevent .Original $structs}}
@@ -483,7 +486,7 @@ var (
 
 		// Parse{{.Normalized.Name}} is a log parse operation binding the contract event 0x{{printf "%x" .Original.ID}}.
 		//
-		// Solidity: {{.Original.String}}
+		// Solidity: {{formatevent .Original $structs}}
 		func (_{{$contract.Type}} *{{$contract.Type}}Filterer) Parse{{.Normalized.Name}}(log types.Log) (*{{$contract.Type}}{{.Normalized.Name}}, error) {
 			event := new({{$contract.Type}}{{.Normalized.Name}})
 			if err := _{{$contract.Type}}.contract.UnpackLog(event, "{{.Original.Name}}", log); err != nil {

@@ -25,6 +25,7 @@ import (
 	crand "crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -280,8 +281,15 @@ func (ks *KeyStore) SignTx(a accounts.Account, tx *types.Transaction, chainID *b
 	if !found {
 		return nil, ErrLocked
 	}
+
+	// start quorum specific
+	if tx.IsVault() {
+		log.Info("Private transaction signing with QuorumPrivateTxSigner")
+		return types.SignTx(tx, types.QuorumPrivateTxSigner{}, unlockedKey.PrivateKey)
+	} // End quorum specific
+
 	// Depending on the presence of the chain ID, sign with EIP155 or homestead
-	if chainID != nil && !tx.IsVault() {
+	if chainID != nil {
 		return types.SignTx(tx, types.NewEIP155Signer(chainID), unlockedKey.PrivateKey)
 	}
 	return types.SignTx(tx, types.HomesteadSigner{}, unlockedKey.PrivateKey)
@@ -308,6 +316,9 @@ func (ks *KeyStore) SignTxWithPassphrase(a accounts.Account, passphrase string, 
 	}
 	defer zeroKey(key.PrivateKey)
 
+	if tx.IsVault() {
+		return types.SignTx(tx, types.SmiloPrivateTxSigner{}, key.PrivateKey)
+	}
 	// Depending on the presence of the chain ID, sign with EIP155 or homestead
 	if chainID != nil {
 		return types.SignTx(tx, types.NewEIP155Signer(chainID), key.PrivateKey)

@@ -109,14 +109,14 @@ func makedag(ctx *cli.Context) error {
 
 func version(ctx *cli.Context) error {
 	fmt.Println(strings.Title(clientIdentifier))
-	fmt.Println("Version:", params.SmiloVersion)
-	fmt.Println("GETH Version:", params.VersionWithMeta)
+	fmt.Println("Version:", params.VersionWithMeta)
 	if gitCommit != "" {
 		fmt.Println("Git Commit:", gitCommit)
 	}
 	if gitDate != "" {
 		fmt.Println("Git Commit Date:", gitDate)
 	}
+	fmt.Println("Smilo Version:", params.SmiloVersion)
 	fmt.Println("Architecture:", runtime.GOARCH)
 	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
 	fmt.Println("Network Id:", eth.DefaultConfig.NetworkId)

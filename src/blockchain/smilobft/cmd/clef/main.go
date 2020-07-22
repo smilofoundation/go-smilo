@@ -24,6 +24,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts/pluggable"
+	"go-smilo/src/blockchain/smilobft/internal/debug"
+	"go-smilo/src/blockchain/smilobft/plugin/account"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -31,8 +34,10 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"plugin"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/mattn/go-colorable"
@@ -199,6 +204,11 @@ The gendoc generates example structures of the json-rpc communication types.
 `}
 )
 
+// <Smilo>
+var supportedPlugins = []plugin.PluginInterfaceName{plugin.AccountPluginInterfaceName}
+
+// </Smilo>
+
 func init() {
 	app.Name = "Clef"
 	app.Usage = "Manage Ethereum account operations"
@@ -223,6 +233,12 @@ func init() {
 		stdiouiFlag,
 		testFlag,
 		advancedMode,
+		// <Smilo>
+		utils.PluginSettingsFlag,
+		utils.PluginLocalVerifyFlag,
+		utils.PluginPublicKeyFlag,
+		utils.PluginSkipVerifyFlag,
+		// </Smilo>
 	}
 	app.Action = signer
 	app.Commands = []cli.Command{initCommand, attestCommand, setCredentialCommand, delCredentialCommand, gendocCommand}
@@ -407,6 +423,27 @@ func initialize(c *cli.Context) error {
 	return nil
 }
 
+// ipcEndpoint resolves an IPC endpoint based on a configured value, taking into
+// account the set data folders as well as the designated platform we're currently
+// running on.
+func ipcEndpoint(ipcPath, datadir string) string {
+	// On windows we can only use plain top-level pipes
+	if runtime.GOOS == "windows" {
+		if strings.HasPrefix(ipcPath, `\\.\pipe\`) {
+			return ipcPath
+		}
+		return `\\.\pipe\` + ipcPath
+	}
+	// Resolve names into the data directory full paths otherwise
+	if filepath.Base(ipcPath) == ipcPath {
+		if datadir == "" {
+			return filepath.Join(os.TempDir(), ipcPath)
+		}
+		return filepath.Join(datadir, ipcPath)
+	}
+	return ipcPath
+}
+
 func signer(c *cli.Context) error {
 	// If we have some unrecognized command, bail out
 	if args := c.Args(); len(args) > 0 {
@@ -489,7 +526,50 @@ func signer(c *cli.Context) error {
 	)
 	log.Info("Starting signer", "chainid", chainId, "keystore", ksLoc,
 		"light-kdf", lightKdf, "advanced", advanced)
-	am := core.StartClefAccountManager(ksLoc, nousb, lightKdf, scpath)
+
+	// <Smilo> start the plugin manager
+	var (
+		pm         *plugin.PluginManager
+		pluginConf *plugin.Settings
+	)
+	if c.IsSet(utils.PluginSettingsFlag.Name) {
+		log.Info("Using plugins")
+		pm, pluginConf, err = startPluginManager(c)
+		if err != nil {
+			utils.Fatalf(err.Error())
+		}
+
+		// setup goroutine to stop plugin manager when clef stops
+		go func() {
+			sigc := make(chan os.Signal, 1)
+			signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+			defer signal.Stop(sigc)
+			<-sigc
+			log.Info("Got interrupt, shutting down...")
+			go pm.Stop()
+			for i := 10; i > 0; i-- {
+				<-sigc
+				if i > 1 {
+					log.Warn("Already shutting down, interrupt more to panic.", "times", i-1)
+				}
+			}
+			debug.Exit() // ensure trace and CPU profile data is flushed.
+			debug.LoudPanic("boom")
+		}()
+	}
+	// </Smilo>
+
+	am := core.StartClefAccountManager(ksLoc, nousb, lightKdf, pluginConf, scpath)
+
+	// <Quorum> setup the pluggable accounts backend with the plugin
+	if pm != nil && pm.IsEnabled(plugin.AccountPluginInterfaceName) {
+		b := am.Backends(pluggable.BackendType)[0].(*pluggable.Backend)
+		if err := pm.AddAccountPluginToBackend(b); err != nil {
+			return err
+		}
+	}
+	// </Quorum>
+
 	apiImpl := core.NewSignerAPI(am, chainId, nousb, ui, db, advanced, pwStorage)
 
 	// Establish the bidirectional communication, by creating a new UI backend and registering
@@ -516,13 +596,20 @@ func signer(c *cli.Context) error {
 			Service:   api,
 			Version:   "1.0"},
 	}
+
+	// <Smilo>
+	if pm != nil {
+		rpcAPI = addPluginAPIs(pm, rpcAPI, ui)
+	}
+	// </Smilo>
+
 	if c.GlobalBool(utils.RPCEnabledFlag.Name) {
 		vhosts := splitAndTrim(c.GlobalString(utils.RPCVirtualHostsFlag.Name))
 		cors := splitAndTrim(c.GlobalString(utils.RPCCORSDomainFlag.Name))
 
 		// start http server
 		httpEndpoint := fmt.Sprintf("%s:%d", c.GlobalString(utils.RPCListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
-		listener, _, err := rpc.StartHTTPEndpoint(httpEndpoint, rpcAPI, []string{"account"}, cors, vhosts, rpc.DefaultHTTPTimeouts)
+		listener, _, _, err := rpc.StartHTTPEndpoint(httpEndpoint, rpcAPI, []string{"account"}, cors, vhosts, rpc.DefaultHTTPTimeouts, nil, nil)
 		if err != nil {
 			utils.Fatalf("Could not start RPC api: %v", err)
 		}
@@ -535,12 +622,8 @@ func signer(c *cli.Context) error {
 		}()
 	}
 	if !c.GlobalBool(utils.IPCDisabledFlag.Name) {
-		if c.IsSet(utils.IPCPathFlag.Name) {
-			ipcapiURL = c.GlobalString(utils.IPCPathFlag.Name)
-		} else {
-			ipcapiURL = filepath.Join(configDir, "clef.ipc")
-		}
-
+		givenPath := c.GlobalString(utils.IPCPathFlag.Name)
+		ipcapiURL = ipcEndpoint(filepath.Join(givenPath, "clef.ipc"), configDir)
 		listener, _, err := rpc.StartIPCEndpoint(ipcapiURL, rpcAPI)
 		if err != nil {
 			utils.Fatalf("Could not start IPC api: %v", err)
@@ -550,7 +633,6 @@ func signer(c *cli.Context) error {
 			listener.Close()
 			log.Info("IPC endpoint closed", "url", ipcapiURL)
 		}()
-
 	}
 
 	if c.GlobalBool(testFlag.Name) {
@@ -573,6 +655,48 @@ func signer(c *cli.Context) error {
 	log.Info("Exiting...", "signal", sig)
 
 	return nil
+}
+
+// <Smilo/>
+// startPluginManager gets plugin config and starts a new PluginManager
+func startPluginManager(c *cli.Context) (*plugin.PluginManager, *plugin.Settings, error) {
+	nodeConf := new(node.Config)
+	if err := utils.SetPlugins(c, nodeConf); err != nil {
+		return nil, nil, err
+	}
+	pluginConf := nodeConf.Plugins
+
+	if err := pluginConf.CheckSettingsAreSupported(supportedPlugins); err != nil {
+		return nil, nil, err
+	}
+
+	pm, err := plugin.NewPluginManager("clef", pluginConf, c.Bool(utils.PluginSkipVerifyFlag.Name), c.Bool(utils.PluginLocalVerifyFlag.Name), c.String(utils.PluginPublicKeyFlag.Name))
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := pm.Start(nil); err != nil {
+		return nil, nil, err
+	}
+	return pm, pluginConf, nil
+}
+
+// addPluginAPIs adds the exposed plugin APIs to Clef's API.
+// It alters some of the plugin APIs so that calls to them will require UI approval.
+func addPluginAPIs(pm *plugin.PluginManager, rpcAPI []rpc.API, ui core.UIClientAPI) []rpc.API {
+	// pm.APIs() returns a slice of values hence the following approach that may look clumsy
+	var (
+		stdPluginAPIs      = pm.APIs()
+		approvalPluginAPIs = make([]rpc.API, len(stdPluginAPIs))
+	)
+
+	for i, api := range stdPluginAPIs {
+		switch s := api.Service.(type) {
+		case account.CreatorService:
+			api.Service = core.NewApprovalCreatorService(s, ui)
+		}
+		approvalPluginAPIs[i] = api
+	}
+	return append(rpcAPI, approvalPluginAPIs...)
 }
 
 // splitAndTrim splits input separated by a comma
@@ -747,19 +871,21 @@ func testExternalUI(api *core.SignerAPI) {
 		api.UI.ShowInfo("Please approve the next request for signing a clique header")
 		time.Sleep(delay)
 		cliqueHeader := types.Header{
-			ParentHash:  common.HexToHash("0000H45H"),
-			UncleHash:   common.HexToHash("0000H45H"),
-			Coinbase:    common.HexToAddress("0000H45H"),
-			Root:        common.HexToHash("0000H00H"),
-			TxHash:      common.HexToHash("0000H45H"),
-			ReceiptHash: common.HexToHash("0000H45H"),
-			Difficulty:  big.NewInt(1337),
-			Number:      big.NewInt(1337),
-			GasLimit:    1338,
-			GasUsed:     1338,
-			Time:        1338,
-			Extra:       []byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
-			MixDigest:   common.HexToHash("0x0000H45H"),
+			common.HexToHash("0000H45H"),
+			common.HexToHash("0000H45H"),
+			common.HexToAddress("0000H45H"),
+			common.HexToHash("0000H00H"),
+			common.HexToHash("0000H45H"),
+			common.HexToHash("0000H45H"),
+			types.Bloom{},
+			big.NewInt(1337),
+			big.NewInt(1337),
+			1338,
+			1338,
+			1338,
+			[]byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
+			common.HexToHash("0x0000H45H"),
+			types.BlockNonce{},
 		}
 		cliqueRlp, err := rlp.EncodeToBytes(cliqueHeader)
 		if err != nil {
@@ -912,7 +1038,7 @@ func GenDoc(ctx *cli.Context) {
 			if data, err := json.MarshalIndent(v, "", "  "); err == nil {
 				output = append(output, fmt.Sprintf("### %s\n\n%s\n\nExample:\n```json\n%s\n```", name, desc, data))
 			} else {
-				log.Error("Error generating output", err)
+				log.Error("Error generating output", "err", err)
 			}
 		}
 	)
@@ -923,7 +1049,7 @@ func GenDoc(ctx *cli.Context) {
 			"of the work in canonicalizing and making sense of the data, and it's up to the UI to present" +
 			"the user with the contents of the `message`"
 		sighash, msg := accounts.TextAndHash([]byte("hello world"))
-		messages := []*core.NameValueType{{Name: "message", Value: msg, Typ: accounts.MimetypeTextPlain}}
+		messages := []*core.NameValueType{{"message", msg, accounts.MimetypeTextPlain}}
 
 		add("SignDataRequest", desc, &core.SignDataRequest{
 			Address:     common.NewMixedcaseAddress(a),
@@ -954,8 +1080,8 @@ func GenDoc(ctx *cli.Context) {
 		add("SignTxRequest", desc, &core.SignTxRequest{
 			Meta: meta,
 			Callinfo: []core.ValidationInfo{
-				{Typ: "Warning", Message: "Something looks odd, show this message as a warning"},
-				{Typ: "Info", Message: "User should see this as well"},
+				{"Warning", "Something looks odd, show this message as a warning"},
+				{"Info", "User should see this aswell"},
 			},
 			Transaction: core.SendTxArgs{
 				Data:     &data,
@@ -1021,21 +1147,16 @@ func GenDoc(ctx *cli.Context) {
 			&core.ListRequest{
 				Meta: meta,
 				Accounts: []accounts.Account{
-					{Address: a, URL: accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/a"}},
-					{Address: b, URL: accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/b"}}},
+					{a, accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/a"}},
+					{b, accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/b"}}},
 			})
 
 		add("ListResponse", "Response to list request. The response contains a list of all addresses to show to the caller. "+
 			"Note: the UI is free to respond with any address the caller, regardless of whether it exists or not",
 			&core.ListResponse{
 				Accounts: []accounts.Account{
-					{
-						Address: common.HexToAddress("0xcowbeef000000cowbeef00000000000000000c0w"),
-						URL:     accounts.URL{Path: ".. ignored .."},
-					},
-					{
-						Address: common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff"),
-					},
+					{common.HexToAddress("0xcowbeef000000cowbeef00000000000000000c0w"), accounts.URL{Path: ".. ignored .."}},
+					{common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff"), accounts.URL{}},
 				}})
 	}
 
