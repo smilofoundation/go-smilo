@@ -169,6 +169,10 @@ var (
 		utils.SportDAORequestTimeoutFlag,
 		utils.SportDAOBlockPeriodFlag,
 		utils.EnableNodePermissionFlag,
+		utils.PluginSettingsFlag,
+		utils.PluginSkipVerifyFlag,
+		utils.PluginLocalVerifyFlag,
+		utils.PluginPublicKeyFlag,
 	}
 
 	rpcFlags = []cli.Flag{

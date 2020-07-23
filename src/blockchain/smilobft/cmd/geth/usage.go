@@ -159,8 +159,12 @@ var AppHelpFlagGroups = []flagGroup{
 	{
 		Name: "SMILO",
 		Flags: []cli.Flag{
-			utils.EnableNodePermissionFlag,
 			utils.MinBlocksEmptyMiningFlag,
+			utils.EnableNodePermissionFlag,
+			utils.PluginSettingsFlag,
+			utils.PluginSkipVerifyFlag,
+			utils.PluginLocalVerifyFlag,
+			utils.PluginPublicKeyFlag,
 		},
 	},
 	{

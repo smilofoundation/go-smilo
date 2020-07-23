@@ -364,7 +364,7 @@ func (bc *BlockChain) loadLastState() error {
 		rawdb.WriteHeadBlockHash(bc.db, currentBlock.Hash())
 	}
 
-	// Smilo VAULT
+	// Quorum
 	if _, err := state.New(GetVaultStateRoot(bc.db, currentBlock.Root()), bc.vaultStateCache); err != nil {
 		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
 		if err := bc.repair(&currentBlock); err != nil {
@@ -372,7 +372,7 @@ func (bc *BlockChain) loadLastState() error {
 			return bc.Reset()
 		}
 	}
-	// Smilo VAULT
+	// /Quorum
 
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
@@ -1378,6 +1378,23 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
+	// Quorum
+	// Write private state changes to database
+	privateRoot, err := vaultState.Commit(bc.chainConfig.IsEIP158(block.Number()))
+	if err != nil {
+		return NonStatTy, err
+	}
+	if err := WriteVaultStateRoot(bc.db, block.Root(), privateRoot); err != nil {
+		log.Error("Failed writing private state root", "err", err)
+		return NonStatTy, err
+	}
+	// Explicit commit for privateStateTriedb
+	privateTriedb := bc.vaultStateCache.TrieDB()
+	if err := privateTriedb.Commit(privateRoot, false); err != nil {
+		return NonStatTy, err
+	}
+	// /Quorum
+
 	currentBlock := bc.CurrentBlock()
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
@@ -1413,17 +1430,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
-	// Explicit commit for vault state
-	if vaultState != nil {
-		vaultRoot, err := vaultState.Commit(bc.chainConfig.IsEIP158(block.Number()))
-		if err != nil {
-			return NonStatTy, err
-		}
-		vaultTriedb := bc.vaultStateCache.TrieDB()
-		if err := vaultTriedb.Commit(vaultRoot, false); err != nil {
-			return NonStatTy, err
-		}
-	}
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.TrieDirtyDisabled {
