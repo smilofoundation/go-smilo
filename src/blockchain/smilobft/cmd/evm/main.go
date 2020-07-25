@@ -118,8 +118,8 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
-	IsVaultFlag = cli.BoolFlag{
-		Name:  "isvault",
+	IsPrivateFlag = cli.BoolFlag{
+		Name:  "IsPrivate",
 		Usage: "enable / disable vault",
 	}
 )
@@ -146,7 +146,7 @@ func init() {
 		DisableMemoryFlag,
 		DisableStackFlag,
 		EVMInterpreterFlag,
-		IsVaultFlag,
+		IsPrivateFlag,
 	}
 	app.Commands = []cli.Command{
 		compileCommand,

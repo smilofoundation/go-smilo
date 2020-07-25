@@ -30,5 +30,5 @@ var (
 
 	ErrReadOnlyValueTransfer      = errors.New("vm in read-only mode. Value transfer prohibited")
 	ErrReadOnlyMutateOpcode       = errors.New("vm in read-only mode. Mutating opcode prohibited")
-	ErrIsVaultDiffThenIsVaultOnDB = errors.New("isVault method input is different than isVault on the DB")
+	ErrIsPrivateDiffThenIsPrivateOnDB = errors.New("IsPrivate method input is different than IsPrivate on the DB")
 )

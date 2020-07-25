@@ -33,12 +33,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func verifyGasPoolCalculation(t *testing.T, pm vault.BlackboxVault) {
-	saved := vault.VaultInstance
+func verifyGasPoolCalculation(t *testing.T, pm private.BlackboxVault) {
+	saved := private.VaultInstance
 	defer func() {
-		vault.VaultInstance = saved
+		private.VaultInstance = saved
 	}()
-	vault.VaultInstance = pm
+	private.VaultInstance = pm
 
 	txGasLimit := uint64(100000)
 	gasPool := new(GasPool).AddGas(200000)

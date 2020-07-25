@@ -650,7 +650,7 @@ func (env *Work) commitTransactions(mux *cmn.TypeMux, txs *types.TransactionsByP
 		from, _ := types.Sender(env.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !env.chainConfig.IsEIP155(env.header.Number) && !tx.IsVault() {
+		if tx.Protected() && !env.chainConfig.IsEIP155(env.header.Number) && !tx.IsPrivate() {
 			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", env.chainConfig.EIP155Block)
 
 			txs.Pop()

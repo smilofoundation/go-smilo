@@ -14,7 +14,7 @@ import (
 func createVaultTx(value, gasPrice *big.Int, data []byte, key *ecdsa.PrivateKey) (*types.Transaction, *big.Int, common.Address) {
 	defaultTxPoolGasLimit := uint64(1000000)
 	newTx, _ := types.SignTx(types.NewTransaction(0, common.Address{}, value, defaultTxPoolGasLimit, gasPrice, data), types.HomesteadSigner{}, key)
-	newTx.SetVault()
+	newTx.SetPrivate()
 	balance := new(big.Int).Add(newTx.Value(), new(big.Int).Mul(new(big.Int).SetUint64(newTx.Gas()), newTx.GasPrice()))
 	from, _ := deriveSender(newTx)
 	return newTx, balance, from
@@ -24,7 +24,7 @@ func TestVaultTransactions(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		isVault       bool
+		IsPrivate       bool
 		value         *big.Int
 		gasPrice      *big.Int
 		data          []byte
@@ -33,7 +33,7 @@ func TestVaultTransactions(t *testing.T) {
 	}{
 		{
 			name:          "vault signed transfer of value 0 is not allowed due to double spending issues",
-			isVault:       true,
+			IsPrivate:       true,
 			value:         common.Big0,
 			gasPrice:      common.Big0,
 			data:          nil,
@@ -42,7 +42,7 @@ func TestVaultTransactions(t *testing.T) {
 		},
 		{
 			name:          "vault signed transfer of value 3 is not allowed due to double spending issues",
-			isVault:       true,
+			IsPrivate:       true,
 			value:         common.Big3,
 			gasPrice:      common.Big0,
 			data:          nil,
@@ -59,8 +59,8 @@ func TestVaultTransactions(t *testing.T) {
 			defer pool.Stop()
 
 			newTX, balance, from := createVaultTx(test.value, test.gasPrice, test.data, key)
-			if test.isVault {
-				newTX.SetVault()
+			if test.IsPrivate {
+				newTX.SetPrivate()
 			}
 
 			if test.addBalance != nil {

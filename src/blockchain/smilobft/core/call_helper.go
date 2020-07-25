@@ -63,7 +63,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	if !vault {
 		vaultState = publicState
 	} else {
-		tx.SetVault()
+		tx.SetPrivate()
 	}
 
 	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)

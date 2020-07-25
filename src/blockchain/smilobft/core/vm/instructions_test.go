@@ -263,7 +263,7 @@ func TestJsonTestcases(t *testing.T) {
 	}
 }
 
-func opBenchmark(bench *testing.B, op func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error), args ...string) {
+func opBenchmark(bench *testing.B, op func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error), args ...string) {
 	var (
 		env            = NewEVM(Context{}, nil, nil, params.TestChainConfig, Config{})
 		stack          = newstack()

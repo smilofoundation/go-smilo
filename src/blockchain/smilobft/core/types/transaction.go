@@ -238,7 +238,7 @@ func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 		amount:     tx.data.Amount,
 		data:       tx.data.Payload,
 		checkNonce: true,
-		isVault:    tx.IsVault(),
+		isPrivate:    tx.IsPrivate(),
 	}
 
 	var err error
@@ -479,7 +479,7 @@ type Message struct {
 	gasPrice   *big.Int
 	data       []byte
 	checkNonce bool
-	isVault    bool
+	isPrivate    bool
 }
 
 func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte, checkNonce bool) Message {
@@ -504,19 +504,19 @@ func (m Message) Nonce() uint64        { return m.nonce }
 func (m Message) Data() []byte         { return m.data }
 func (m Message) CheckNonce() bool     { return m.checkNonce }
 
-func (m Message) IsVault() bool {
-	return m.isVault
+func (m Message) IsPrivate() bool {
+	return m.isPrivate
 }
 
-func (tx *Transaction) IsVault() bool {
+func (tx *Transaction) IsPrivate() bool {
 	if tx.data.V == nil {
 		return false
 	}
 	return tx.data.V.Uint64() == 37 || tx.data.V.Uint64() == 38
 }
 
-func (tx *Transaction) SetVault() {
-	if tx.IsVault() {
+func (tx *Transaction) SetPrivate() {
+	if tx.IsPrivate() {
 		return
 	}
 	if tx.data.V.Int64() == 28 {

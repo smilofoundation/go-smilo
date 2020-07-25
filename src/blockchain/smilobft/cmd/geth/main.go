@@ -158,7 +158,6 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
-		utils.SportEnableNodePermissionFlag,
 		utils.SportRequestTimeoutFlag,
 		utils.SportBlockPeriodFlag,
 		utils.SolcPathFlag,

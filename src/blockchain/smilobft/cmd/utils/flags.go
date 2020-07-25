@@ -1801,6 +1801,20 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 	}
 }
 
+// Quorum
+//
+// Register plugin manager as a service in geth
+func RegisterPluginService(stack *node.Node, cfg *node.Config, skipVerify bool, localVerify bool, publicKey string) {
+	if err := cfg.ResolvePluginBaseDir(); err != nil {
+		Fatalf("plugins: unable to resolve plugin base dir due to %s", err)
+	}
+	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
+		return plugin.NewPluginManager(cfg.UserIdent, cfg.Plugins, skipVerify, localVerify, publicKey)
+	}); err != nil {
+		Fatalf("plugins: Failed to register the Plugins service: %v", err)
+	}
+}
+
 // RegisterGraphQLService is a utility function to construct a new service and register it against a node.
 func RegisterGraphQLService(stack *node.Node, endpoint string, cors, vhosts []string, timeouts rpc.HTTPTimeouts) {
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {

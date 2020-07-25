@@ -535,7 +535,7 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	isGas := pool.chainconfig.IsGas
-	isVault := tx.IsVault()
+	IsPrivate := tx.IsPrivate()
 	gasPrice := tx.GasPrice()
 	gas := tx.Gas()
 
@@ -544,8 +544,8 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		customSizeLimit = DefaultTxPoolConfig.CustomTransactionSizeLimit
 	}
 
-	if isVault && tx.GasPrice().Cmp(common.Big0) != 0 {
-		log.Debug("############### validateTx, Gas is not in use but transaction has GasPrice ", "isGas", isGas, "TX-Hash", tx.Hash().Hex(), "GasPrice", tx.GasPrice(), "isVault", isVault)
+	if IsPrivate && tx.GasPrice().Cmp(common.Big0) != 0 {
+		log.Debug("############### validateTx, Gas is not in use but transaction has GasPrice ", "isGas", isGas, "TX-Hash", tx.Hash().Hex(), "GasPrice", tx.GasPrice(), "IsPrivate", IsPrivate)
 		return ErrInvalidGasPrice
 	}
 	// Heuristic limit, reject transactions over 32KB (or custom limit) to prevent DOS attacks
@@ -579,9 +579,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 			return ErrInvalidSender
 		}
 	}
-	// Drop non-local transactions (when isGas=true and tx isVault=false) under our own minimal accepted gas price
+	// Drop non-local transactions (when isGas=true and tx IsPrivate=false) under our own minimal accepted gas price
 	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
-	if !isGas || !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 && !isVault {
+	if !isGas || !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 && !IsPrivate {
 		return ErrUnderpriced
 	}
 	// Ensure the transaction adheres to nonce ordering
@@ -589,7 +589,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrNonceTooLow
 	}
 	// Ether value is not supported for vault transactions
-	if tx.IsVault() && (len(tx.Data()) == 0 || tx.Value().Sign() != 0) {
+	if tx.IsPrivate() && (len(tx.Data()) == 0 || tx.Value().Sign() != 0) {
 		return ErrEtherValueUnsupported
 	}
 	// Transactor should have enough funds to cover the costs

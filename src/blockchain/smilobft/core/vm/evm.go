@@ -59,7 +59,7 @@ type (
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
-func run(evm *EVM, contract *Contract, input []byte, readOnly, isVault bool) ([]byte, error) {
+func run(evm *EVM, contract *Contract, input []byte, readOnly, IsPrivate bool) ([]byte, error) {
 	if contract.CodeAddr != nil {
 		precompiles := PrecompiledContractsHomestead
 		if evm.chainRules.IsByzantium {
@@ -82,7 +82,7 @@ func run(evm *EVM, contract *Contract, input []byte, readOnly, isVault bool) ([]
 				}(evm.interpreter)
 				evm.interpreter = interpreter
 			}
-			return interpreter.Run(contract, input, readOnly, isVault)
+			return interpreter.Run(contract, input, readOnly, IsPrivate)
 		}
 	}
 	return nil, ErrNoCompatibleInterpreter
@@ -221,17 +221,17 @@ func (evm *EVM) Interpreter() Interpreter {
 // parameters. It also handles any necessary value transfer required and takes
 // the necessary steps to create accounts and reverses the state in case of an
 // execution error or failed value transfer.
-func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int, isVault bool) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int, IsPrivate bool) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}
 
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
 	evm.Push(thisstate)
 	defer func() { evm.Pop() }()
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& evm.Call, ErrIsVaultDiffThenIsVaultOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault, "isVaultOnDB", isVaultOnDB)
-		isVault = isVaultOnDB
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& evm.Call, ErrIsPrivateDiffThenIsPrivateOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
+		IsPrivate = IsPrivateOnDB
 	}
 
 	// Fail if we're trying to execute above the call depth limit
@@ -242,7 +242,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 	// Fail if we're trying to transfer more than the available balance
 	// transfer is only allowed on publicState, update it here to allow estimateGas to work
 	if !evm.Context.CanTransfer(evm.publicState, caller.Address(), value) {
-		log.Debug("EVM.Call, CanTransfer, ErrInsufficientBalance, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault)
+		log.Debug("EVM.Call, CanTransfer, ErrInsufficientBalance, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate)
 		return nil, gas, ErrInsufficientBalance
 	}
 
@@ -271,21 +271,21 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 	if evm.ChainConfig().IsSmilo {
 		if value.Sign() != 0 {
-			if evm.smiloReadOnly && isVault {
-				log.Debug("***************** EVM.Call, Transfer, ", "error", ErrReadOnlyValueTransfer, "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			if evm.smiloReadOnly && IsPrivate {
+				log.Debug("***************** EVM.Call, Transfer, ", "error", ErrReadOnlyValueTransfer, "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 				return nil, gas, ErrReadOnlyValueTransfer
 			}
 			// zero and (not read only or not vault), can transfer
 			// transfer is only allowed on publicState, update it here to allow estimateGas to work
 			evm.Transfer(evm.publicState, caller.Address(), to.Address(), value, evm.BlockNumber)
-			log.Trace("EVM.Call, Transfer, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			log.Trace("EVM.Call, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		} else {
-			log.Trace("EVM.Call, Transfer, IGNORE, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			log.Trace("EVM.Call, Transfer, IGNORE, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		}
 	} else {
 		// transfer is only allowed on publicState, update it here to allow estimateGas to work
 		evm.Transfer(evm.publicState, caller.Address(), to.Address(), value, evm.BlockNumber)
-		log.Trace("EVM.Call, Transfer, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+		log.Trace("EVM.Call, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 	}
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
@@ -304,7 +304,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			evm.vmConfig.Tracer.CaptureEnd(ret, gas-contract.Gas, time.Since(start), err)
 		}()
 	}
-	ret, err = run(evm, contract, input, false, isVault)
+	ret, err = run(evm, contract, input, false, IsPrivate)
 
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
@@ -325,17 +325,17 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 //
 // CallCode differs from Call in the sense that it executes the given address'
 // code with the caller as context.
-func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int, isVault bool) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, gas uint64, value *big.Int, IsPrivate bool) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}
 
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
 	evm.Push(thisstate)
 	defer func() { evm.Pop() }()
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& evm.CallCode, ErrIsVaultDiffThenIsVaultOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault, "isVaultOnDB", isVaultOnDB)
-		isVault = isVaultOnDB
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& evm.CallCode, ErrIsPrivateDiffThenIsPrivateOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
+		IsPrivate = IsPrivateOnDB
 	}
 
 	// Fail if we're trying to execute above the call depth limit
@@ -356,7 +356,7 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 	contract := NewContract(caller, to, value, gas)
 	contract.SetCallCode(&addr, evm.StateDB.GetCodeHash(addr), evm.StateDB.GetCode(addr))
 
-	ret, err = run(evm, contract, input, false, isVault)
+	ret, err = run(evm, contract, input, false, IsPrivate)
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != errExecutionReverted {
@@ -371,17 +371,17 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 //
 // DelegateCall differs from CallCode in the sense that it executes the given address'
 // code with the caller as context and the caller is set to the caller of the caller.
-func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []byte, gas uint64, isVault bool) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []byte, gas uint64, IsPrivate bool) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}
 
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(evm, addr)
 	evm.Push(thisstate)
 	defer func() { evm.Pop() }()
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& evm.DelegateCall, ErrIsVaultDiffThenIsVaultOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault, "isVaultOnDB", isVaultOnDB)
-		isVault = isVaultOnDB
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& evm.DelegateCall, ErrIsPrivateDiffThenIsPrivateOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
+		IsPrivate = IsPrivateOnDB
 	}
 
 	// Fail if we're trying to execute above the call depth limit
@@ -398,7 +398,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 	contract := NewContract(caller, to, nil, gas).AsDelegate()
 	contract.SetCallCode(&addr, evm.StateDB.GetCodeHash(addr), evm.StateDB.GetCode(addr))
 
-	ret, err = run(evm, contract, input, false, isVault)
+	ret, err = run(evm, contract, input, false, IsPrivate)
 	if err != nil {
 		evm.StateDB.RevertToSnapshot(snapshot)
 		if err != errExecutionReverted {
@@ -412,7 +412,7 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 // as parameters while disallowing any modifications to the state during the call.
 // Opcodes that attempt to perform such modifications will result in exceptions
 // instead of performing the modifications.
-func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte, gas uint64, isVault bool) (ret []byte, leftOverGas uint64, err error) {
+func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte, gas uint64, IsPrivate bool) (ret []byte, leftOverGas uint64, err error) {
 	if evm.vmConfig.NoRecursion && evm.depth > 0 {
 		return nil, gas, nil
 	}
@@ -421,10 +421,10 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		return nil, gas, ErrDepth
 	}
 
-	isVaultOnDB, stateDB := getPrivateOrPublicStateDB(evm, addr)
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& evm.StaticCall, ErrIsVaultDiffThenIsVaultOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault, "isVaultOnDB", isVaultOnDB)
-		isVault = isVaultOnDB
+	IsPrivateOnDB, stateDB := getPrivateOrPublicStateDB(evm, addr)
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& evm.StaticCall, ErrIsPrivateDiffThenIsPrivateOnDB, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
+		IsPrivate = IsPrivateOnDB
 	}
 
 	var (
@@ -445,7 +445,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// When an error was returned by the EVM or when setting the creation code
 	// above we revert to the snapshot and consume any gas remaining. Additionally
 	// when we're in Homestead this also counts for code storage gas errors.
-	ret, err = run(evm, contract, input, true, isVault)
+	ret, err = run(evm, contract, input, true, IsPrivate)
 	if err != nil {
 		stateDB.RevertToSnapshot(snapshot)
 		if err != errExecutionReverted {
@@ -468,7 +468,7 @@ func (c *codeAndHash) Hash() common.Hash {
 }
 
 // create creates a new contract using code as deployment code.
-func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64, value *big.Int, address common.Address, isVault bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64, value *big.Int, address common.Address, IsPrivate bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 
 	// Depth check execution. Fail if we're trying to execute above the
 	// limit.
@@ -487,18 +487,18 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	//
 	// If the transaction went to a public contract the vault and public state
 	// are the same.
-	var isVaultOnDB bool
+	var IsPrivateOnDB bool
 	var creatorStateDb StateDB
 	if evm.Depth() > 0 {
 		creatorStateDb = evm.vaultState
-		isVaultOnDB = true
+		IsPrivateOnDB = true
 	} else {
 		creatorStateDb = evm.publicState
 	}
 
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& evm.create, ErrIsVaultDiffThenIsVaultOnDB, ", "from", caller.Address().Hex(), "to", address.Hex(), "gas", gas, "value", value, "evm.smiloReadOnly", evm.smiloReadOnly, "isVault", isVault, "isVaultOnDB", isVaultOnDB)
-		isVault = isVaultOnDB
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& evm.create, ErrIsPrivateDiffThenIsPrivateOnDB, ", "from", caller.Address().Hex(), "to", address.Hex(), "gas", gas, "value", value, "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
+		IsPrivate = IsPrivateOnDB
 	}
 
 	nonce := creatorStateDb.GetNonce(caller.Address())
@@ -518,19 +518,19 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 
 	if evm.ChainConfig().IsSmilo {
 		if value.Sign() != 0 {
-			if evm.smiloReadOnly && isVault {
-				log.Debug("***************** EVM.Create, Transfer, ", "error", ErrReadOnlyValueTransfer, "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			if evm.smiloReadOnly && IsPrivate {
+				log.Debug("***************** EVM.Create, Transfer, ", "error", ErrReadOnlyValueTransfer, "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 				return nil, common.Address{}, gas, ErrReadOnlyValueTransfer
 			}
 			//zero and (not read only or not vault) , can transfer
 			evm.Transfer(evm.StateDB, caller.Address(), address, value, evm.BlockNumber)
-			log.Trace("EVM.Create, Transfer, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			log.Trace("EVM.Create, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		} else {
-			log.Trace("EVM.Create, Transfer, IGNORE, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+			log.Trace("EVM.Create, Transfer, IGNORE, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		}
 	} else {
 		evm.Transfer(evm.StateDB, caller.Address(), contractAddr, value, evm.BlockNumber)
-		log.Trace("EVM.Create, Transfer, ", "isVault", isVault, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
+		log.Trace("EVM.Create, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 	}
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
@@ -547,14 +547,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	}
 	start := time.Now()
 
-	ret, err = run(evm, contract, nil, false, isVault)
-
-	var maxCodeSize int
-	if evm.chainConfig.IsMaxCodeSizeChangeBlock(evm.BlockNumber) && evm.ChainConfig().MaxCodeSize > 0 {
-		maxCodeSize = int(evm.ChainConfig().MaxCodeSize * 1024)
-	} else {
-		maxCodeSize = params.MaxCodeSize
-	}
+	ret, err = run(evm, contract, nil, false, IsPrivate)
 
 	// check whether the max code size has been exceeded
 	maxCodeSizeExceeded := evm.chainRules.IsEIP158 && len(ret) > params.MaxCodeSize
@@ -592,7 +585,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 }
 
 // Create creates a new contract using code as deployment code.
-func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.Int, isVault bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.Int, IsPrivate bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 	var creatorStateDb StateDB
 	if evm.depth > 0 {
 		creatorStateDb = evm.vaultState
@@ -600,36 +593,36 @@ func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.I
 		creatorStateDb = evm.publicState
 	}
 	contractAddr = crypto.CreateAddress(caller.Address(), creatorStateDb.GetNonce(caller.Address()))
-	return evm.create(caller, &codeAndHash{code: code}, gas, value, contractAddr, isVault)
+	return evm.create(caller, &codeAndHash{code: code}, gas, value, contractAddr, IsPrivate)
 }
 
 // Create2 creates a new contract using code as deployment code.
 //
 // The different between Create2 with Create is Create2 uses sha3(0xff ++ msg.sender ++ salt ++ sha3(init_code))[12:]
 // instead of the usual sender-and-nonce-hash as the address where the contract is initialized at.
-func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *big.Int, salt *big.Int, isVault bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
+func (evm *EVM) Create2(caller ContractRef, code []byte, gas uint64, endowment *big.Int, salt *big.Int, IsPrivate bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 	codeAndHash := &codeAndHash{code: code}
 	contractAddr = crypto.CreateAddress2(caller.Address(), common.BigToHash(salt), codeAndHash.Hash().Bytes())
-	return evm.create(caller, codeAndHash, gas, endowment, contractAddr, isVault)
+	return evm.create(caller, codeAndHash, gas, endowment, contractAddr, IsPrivate)
 }
 
 // ChainConfig returns the environment's chain configuration
 func (evm *EVM) ChainConfig() *params.ChainConfig { return evm.chainConfig }
 
-func getPrivateOrPublicStateDB(env *EVM, addr common.Address) (isVault bool, thisState StateDB) {
+func getPrivateOrPublicStateDB(env *EVM, addr common.Address) (IsPrivate bool, thisState StateDB) {
 	// priv: (a) -> (b)  (vault)
 	// pub:   a  -> [b]  (vault -> public)
 	// priv: (a) ->  b   (public)
 	thisState = env.StateDB
 
 	if env.VaultState().Exist(addr) {
-		isVault = true
+		IsPrivate = true
 		thisState = env.VaultState()
 	} else if env.PublicState().Exist(addr) {
 		thisState = env.PublicState()
 	}
 
-	return isVault, thisState
+	return IsPrivate, thisState
 }
 
 func (env *EVM) PublicState() PublicState { return env.publicState }

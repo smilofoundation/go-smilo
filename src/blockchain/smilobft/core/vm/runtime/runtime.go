@@ -95,7 +95,7 @@ func setDefaults(cfg *Config) {
 //
 // Executes sets up a in memory, temporarily, environment for the execution of
 // the given code. It makes sure that it's restored to it's original state afterwards.
-func Execute(code, input []byte, cfg *Config, isVault bool) ([]byte, *state.StateDB, error) {
+func Execute(code, input []byte, cfg *Config, IsPrivate bool) ([]byte, *state.StateDB, error) {
 	if cfg == nil {
 		cfg = new(Config)
 	}
@@ -119,14 +119,14 @@ func Execute(code, input []byte, cfg *Config, isVault bool) ([]byte, *state.Stat
 		input,
 		cfg.GasLimit,
 		cfg.Value,
-		isVault,
+		IsPrivate,
 	)
 
 	return ret, cfg.State, err
 }
 
 // Create executes the code using the EVM create method
-func Create(input []byte, cfg *Config, isVault bool) ([]byte, common.Address, uint64, error) {
+func Create(input []byte, cfg *Config, IsPrivate bool) ([]byte, common.Address, uint64, error) {
 	if cfg == nil {
 		cfg = new(Config)
 	}
@@ -146,7 +146,7 @@ func Create(input []byte, cfg *Config, isVault bool) ([]byte, common.Address, ui
 		input,
 		cfg.GasLimit,
 		cfg.Value,
-		isVault,
+		IsPrivate,
 	)
 	return code, address, leftOverGas, err
 }
@@ -156,7 +156,7 @@ func Create(input []byte, cfg *Config, isVault bool) ([]byte, common.Address, ui
 //
 // Call, unlike Execute, requires a config and also requires the State field to
 // be set.
-func Call(address common.Address, input []byte, cfg *Config, isVault bool) ([]byte, uint64, error) {
+func Call(address common.Address, input []byte, cfg *Config, IsPrivate bool) ([]byte, uint64, error) {
 	setDefaults(cfg)
 
 	vmenv := NewEnv(cfg)
@@ -169,7 +169,7 @@ func Call(address common.Address, input []byte, cfg *Config, isVault bool) ([]by
 		input,
 		cfg.GasLimit,
 		cfg.Value,
-		isVault,
+		IsPrivate,
 	)
 
 	return ret, leftOverGas, err

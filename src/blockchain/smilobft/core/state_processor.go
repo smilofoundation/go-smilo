@@ -148,7 +148,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 // indicating the block was invalid.
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb, vaultState *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, *types.Receipt, uint64, error) {
 	//if Smilo is enabled and transaction is Vault, set the VaultStateDB = StateDB
-	if !config.IsSmilo || !tx.IsVault() {
+	if !config.IsSmilo || !tx.IsPrivate() {
 		vaultState = statedb
 	}
 
@@ -181,7 +181,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	*usedGas += gas
 
 	// Vault transactions when Smilo is enable will ignore failures
-	publicFailed := !(config.IsSmilo && tx.IsVault()) && failed
+	publicFailed := !(config.IsSmilo && tx.IsPrivate()) && failed
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
 	// based on the eip phase, we're passing whether the root touch-delete accounts.
@@ -202,7 +202,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	var vaultReceipt *types.Receipt
 
 	// If Smilo is enabled and transaction is Vault, generate Vault Receipt data
-	if config.IsSmilo && tx.IsVault() {
+	if config.IsSmilo && tx.IsPrivate() {
 		var vaultRoot []byte
 		if config.IsByzantium(header.Number) {
 			vaultState.Finalise(true)

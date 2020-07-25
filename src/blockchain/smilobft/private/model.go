@@ -15,25 +15,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package vault
+package private
 
-import (
-	"os"
-
-	"github.com/ethereum/go-ethereum/log"
-
-	"go-smilo/src/blockchain/smilobft/vault/blackbox"
-)
-
-func GetBlackboxVault(targetIPC string) BlackboxVault {
-	log.Debug("################ GetBlackboxVault, ", "targetIPC", targetIPC)
-	config := os.Getenv(targetIPC)
-	if config != "" {
-		return blackbox.CreateNew(config)
-	} else {
-		log.Error("################ ERROR: GetBlackboxVault, targetIPC is blank ???, ", "targetIPC", targetIPC)
-	}
-	return nil
+type BlackboxVault interface {
+	Post(data []byte, from string, to []string) ([]byte, error)
+	PostRawTransaction(data []byte, to []string) ([]byte, error)
+	Get(data []byte) ([]byte, error)
 }
-
-var VaultInstance = GetBlackboxVault("VAULT_IPC")

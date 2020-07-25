@@ -89,7 +89,7 @@ func TestSignSmiloEIP155Public(t *testing.T) {
 
 	require.True(t, from == addr, fmt.Sprintf("Expected from and address to be equal. Got %x want %x", from, addr))
 
-	require.False(t, signedTx.IsVault(), fmt.Sprintf("Public transaction is set to a vault transaction v == [%v]", signedTx.data.V))
+	require.False(t, signedTx.IsPrivate(), fmt.Sprintf("Public transaction is set to a vault transaction v == [%v]", signedTx.data.V))
 
 	signedTx, addr, _ = signTx(k1, EIPsigner)
 
@@ -117,8 +117,8 @@ func TestSignSmiloEIP155FailPublicChain1(t *testing.T) {
 	require.True(t, signedTx.data.V.Cmp(big.NewInt(v0)) == 0, fmt.Sprintf("v wasn't [%v] it was "+
 		"[%v]\n", v0, signedTx.data.V))
 
-	require.True(t, signedTx.IsVault(), "A public transaction with EIP155 and chainID 1 is expected to be "+
-		"considered vault, as its v param conflict with a vault transaction. signedTx.IsVault() == [%v]", signedTx.IsVault())
+	require.True(t, signedTx.IsPrivate(), "A public transaction with EIP155 and chainID 1 is expected to be "+
+		"considered vault, as its v param conflict with a vault transaction. signedTx.IsPrivate() == [%v]", signedTx.IsPrivate())
 	from, _ := Sender(EIPsigner, signedTx)
 
 	require.False(t, from == addr, fmt.Sprintf("Expected the sender of a public TX from chainId 1, \n "+
@@ -129,9 +129,9 @@ func TestSignSmiloEIP155FailPublicChain1(t *testing.T) {
 	require.True(t, signedTx.data.V.Cmp(big.NewInt(v1)) == 0,
 		fmt.Sprintf("v wasn't [%v] it was [%v]", v1, signedTx.data.V))
 
-	require.True(t, signedTx.IsVault(), "A public transaction with EIP155 and chainID 1 is expected to "+
+	require.True(t, signedTx.IsPrivate(), "A public transaction with EIP155 and chainID 1 is expected to "+
 		"to be considered vault, as its v param conflict with a vault transaction. "+
-		"signedTx.IsVault() == [%v]", signedTx.IsVault())
+		"signedTx.IsPrivate() == [%v]", signedTx.IsPrivate())
 	from, _ = Sender(EIPsigner, signedTx)
 
 	require.False(t, from == addr, fmt.Sprintf("Expected the sender of a public TX from chainId 1, "+
@@ -152,9 +152,9 @@ func TestSignSmiloHomesteadEIP155SigningVaultSmilo(t *testing.T) {
 
 		require.Nil(t, err, err)
 
-		signedTx.SetVault()
+		signedTx.SetPrivate()
 
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
+		require.True(t, signedTx.IsPrivate(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsPrivate()))
 
 		from, err := Sender(recoverySigner, signedTx)
 
@@ -177,8 +177,8 @@ func TestSignSmiloHomesteadOnlyVaultSmilo(t *testing.T) {
 
 		require.Nil(t, err, err)
 
-		signedTx.SetVault()
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
+		signedTx.SetPrivate()
+		require.True(t, signedTx.IsPrivate(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsPrivate()))
 
 		from, err := Sender(recoverySigner, signedTx)
 
@@ -200,9 +200,9 @@ func TestSignSmiloEIP155OnlyVaultSmilo(t *testing.T) {
 
 		require.Nil(t, err, err)
 
-		signedTx.SetVault()
+		signedTx.SetPrivate()
 
-		require.True(t, signedTx.IsVault(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsVault()))
+		require.True(t, signedTx.IsPrivate(), fmt.Sprintf("Expected the transaction to be vault [%v]", signedTx.IsPrivate()))
 
 		from, err := Sender(EIP155Signer, signedTx)
 

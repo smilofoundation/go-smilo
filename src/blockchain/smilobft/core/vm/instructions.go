@@ -41,7 +41,7 @@ var (
 	errMaxCodeSizeExceeded   = errors.New("evm: max code size exceeded")
 )
 
-func opAdd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opAdd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	math.U256(y.Add(x, y))
 
@@ -49,7 +49,7 @@ func opAdd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSub(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSub(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	math.U256(y.Sub(x, y))
 
@@ -57,7 +57,7 @@ func opSub(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opMul(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMul(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.pop()
 	stack.push(math.U256(x.Mul(x, y)))
 
@@ -66,7 +66,7 @@ func opMul(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opDiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opDiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	if y.Sign() != 0 {
 		math.U256(y.Div(x, y))
@@ -77,7 +77,7 @@ func opDiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSdiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSdiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := math.S256(stack.pop()), math.S256(stack.pop())
 	res := interpreter.intPool.getZero()
 
@@ -96,7 +96,7 @@ func opSdiv(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return nil, nil
 }
 
-func opMod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.pop()
 	if y.Sign() == 0 {
 		stack.push(x.SetUint64(0))
@@ -107,7 +107,7 @@ func opMod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := math.S256(stack.pop()), math.S256(stack.pop())
 	res := interpreter.intPool.getZero()
 
@@ -126,7 +126,7 @@ func opSmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return nil, nil
 }
 
-func opExp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opExp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	base, exponent := stack.pop(), stack.pop()
 	// some shortcuts
 	cmpToOne := exponent.Cmp(big1)
@@ -147,7 +147,7 @@ func opExp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSignExtend(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSignExtend(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	back := stack.pop()
 	if back.Cmp(big.NewInt(31)) < 0 {
 		bit := uint(back.Uint64()*8 + 7)
@@ -167,13 +167,13 @@ func opSignExtend(pc *uint64, interpreter *EVMInterpreter, contract *Contract, m
 	return nil, nil
 }
 
-func opNot(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opNot(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x := stack.peek()
 	math.U256(x.Not(x))
 	return nil, nil
 }
 
-func opLt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opLt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	if x.Cmp(y) < 0 {
 		y.SetUint64(1)
@@ -184,7 +184,7 @@ func opLt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *M
 	return nil, nil
 }
 
-func opGt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opGt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	if x.Cmp(y) > 0 {
 		y.SetUint64(1)
@@ -195,7 +195,7 @@ func opGt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *M
 	return nil, nil
 }
 
-func opSlt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSlt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 
 	xSign := x.Cmp(tt255)
@@ -219,7 +219,7 @@ func opSlt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSgt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSgt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 
 	xSign := x.Cmp(tt255)
@@ -243,7 +243,7 @@ func opSgt(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opEq(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opEq(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	if x.Cmp(y) == 0 {
 		y.SetUint64(1)
@@ -254,7 +254,7 @@ func opEq(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *M
 	return nil, nil
 }
 
-func opIszero(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opIszero(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x := stack.peek()
 	if x.Sign() > 0 {
 		x.SetUint64(0)
@@ -264,7 +264,7 @@ func opIszero(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return nil, nil
 }
 
-func opAnd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opAnd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.pop()
 	stack.push(x.And(x, y))
 
@@ -272,7 +272,7 @@ func opAnd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opOr(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opOr(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	y.Or(x, y)
 
@@ -280,7 +280,7 @@ func opOr(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *M
 	return nil, nil
 }
 
-func opXor(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opXor(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
 	y.Xor(x, y)
 
@@ -288,7 +288,7 @@ func opXor(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opByte(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opByte(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	th, val := stack.pop(), stack.peek()
 	if th.Cmp(common.Big32) < 0 {
 		b := math.Byte(val, 32, int(th.Int64()))
@@ -300,7 +300,7 @@ func opByte(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return nil, nil
 }
 
-func opAddmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opAddmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
 	if z.Cmp(bigZero) > 0 {
 		x.Add(x, y)
@@ -313,7 +313,7 @@ func opAddmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return nil, nil
 }
 
-func opMulmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMulmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	x, y, z := stack.pop(), stack.pop(), stack.pop()
 	if z.Cmp(bigZero) > 0 {
 		x.Mul(x, y)
@@ -329,7 +329,7 @@ func opMulmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 // opSHL implements Shift Left
 // The SHL instruction (shift left) pops 2 values from the stack, first arg1 and then arg2,
 // and pushes on the stack arg2 shifted to the left by arg1 number of bits.
-func opSHL(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSHL(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Note, second operand is left in the stack; accumulate result into it, and no need to push it afterwards
 	shift, value := math.U256(stack.pop()), math.U256(stack.peek())
 	defer interpreter.intPool.put(shift) // First operand back into the pool
@@ -347,7 +347,7 @@ func opSHL(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 // opSHR implements Logical Shift Right
 // The SHR instruction (logical shift right) pops 2 values from the stack, first arg1 and then arg2,
 // and pushes on the stack arg2 shifted to the right by arg1 number of bits with zero fill.
-func opSHR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSHR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Note, second operand is left in the stack; accumulate result into it, and no need to push it afterwards
 	shift, value := math.U256(stack.pop()), math.U256(stack.peek())
 	defer interpreter.intPool.put(shift) // First operand back into the pool
@@ -365,7 +365,7 @@ func opSHR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 // opSAR implements Arithmetic Shift Right
 // The SAR instruction (arithmetic shift right) pops 2 values from the stack, first arg1 and then arg2,
 // and pushes on the stack arg2 shifted to the right by arg1 number of bits with sign extension.
-func opSAR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSAR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Note, S256 returns (potentially) a new bigint, so we're popping, not peeking this one
 	shift, value := math.U256(stack.pop()), math.S256(stack.pop())
 	defer interpreter.intPool.put(shift) // First operand back into the pool
@@ -386,7 +386,7 @@ func opSAR(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *
 	return nil, nil
 }
 
-func opSha3(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSha3(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	offset, size := stack.pop(), stack.pop()
 	data := memory.Get(offset.Int64(), size.Int64())
 
@@ -408,49 +408,49 @@ func opSha3(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return nil, nil
 }
 
-func opAddress(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opAddress(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetBytes(contract.Address().Bytes()))
 	return nil, nil
 }
 
-func opBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	slot := stack.peek()
 	addr := common.BigToAddress(slot)
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& instructions.opBalance, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opBalance, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 	balance := thisstate.GetBalance(addr)
 	slot.Set(balance)
 	return nil, nil
 }
 
-func opOrigin(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opOrigin(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetBytes(interpreter.evm.Origin.Bytes()))
 	return nil, nil
 }
 
-func opCaller(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCaller(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetBytes(contract.Caller().Bytes()))
 	return nil, nil
 }
 
-func opCallValue(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCallValue(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().Set(contract.value))
 	return nil, nil
 }
 
-func opCallDataLoad(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCallDataLoad(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetBytes(getDataBig(contract.Input, stack.pop(), big32)))
 	return nil, nil
 }
 
-func opCallDataSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCallDataSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetInt64(int64(len(contract.Input))))
 	return nil, nil
 }
 
-func opCallDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCallDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		memOffset  = stack.pop()
 		dataOffset = stack.pop()
@@ -462,12 +462,12 @@ func opCallDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract,
 	return nil, nil
 }
 
-func opReturnDataSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opReturnDataSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetUint64(uint64(len(interpreter.returnData))))
 	return nil, nil
 }
 
-func opReturnDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opReturnDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		memOffset  = stack.pop()
 		dataOffset = stack.pop()
@@ -485,26 +485,26 @@ func opReturnDataCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contrac
 	return nil, nil
 }
 
-func opExtCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opExtCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	slot := stack.peek()
 	addr := common.BigToAddress(slot)
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& instructions.opExtCodeSize, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opExtCodeSize, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 	slot.SetUint64(uint64(thisstate.GetCodeSize(addr)))
 
 	return nil, nil
 }
 
-func opCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCodeSize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	l := interpreter.intPool.get().SetInt64(int64(len(contract.Code)))
 	stack.push(l)
 
 	return nil, nil
 }
 
-func opCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		memOffset  = stack.pop()
 		codeOffset = stack.pop()
@@ -517,16 +517,16 @@ func opCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, mem
 	return nil, nil
 }
 
-func opExtCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opExtCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		addr       = common.BigToAddress(stack.pop())
 		memOffset  = stack.pop()
 		codeOffset = stack.pop()
 		length     = stack.pop()
 	)
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
-	if isVault != isVaultOnDB {
-		log.Error("ERROR: instructions.opExtCodeCopy, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, addr)
+	if IsPrivate != IsPrivateOnDB {
+		log.Error("ERROR: instructions.opExtCodeCopy, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 
 	codeCopy := getDataBig(thisstate.GetCode(addr), codeOffset, length)
@@ -562,7 +562,7 @@ func opExtCodeCopy(pc *uint64, interpreter *EVMInterpreter, contract *Contract, 
 //
 //   (6) Caller tries to get the code hash for an account which is marked as deleted,
 // this account should be regarded as a non-existent account and zero should be returned.
-func opExtCodeHash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opExtCodeHash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	slot := stack.peek()
 	address := common.BigToAddress(slot)
 	if interpreter.evm.StateDB.Empty(address) {
@@ -573,12 +573,12 @@ func opExtCodeHash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, 
 	return nil, nil
 }
 
-func opGasprice(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opGasprice(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().Set(interpreter.evm.GasPrice))
 	return nil, nil
 }
 
-func opBlockhash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opBlockhash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	num := stack.pop()
 
 	n := interpreter.intPool.get().Sub(interpreter.evm.BlockNumber, common.Big257)
@@ -591,37 +591,37 @@ func opBlockhash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, me
 	return nil, nil
 }
 
-func opCoinbase(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCoinbase(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetBytes(interpreter.evm.Coinbase.Bytes()))
 	return nil, nil
 }
 
-func opTimestamp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opTimestamp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(math.U256(interpreter.intPool.get().Set(interpreter.evm.Time)))
 	return nil, nil
 }
 
-func opNumber(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opNumber(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(math.U256(interpreter.intPool.get().Set(interpreter.evm.BlockNumber)))
 	return nil, nil
 }
 
-func opDifficulty(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opDifficulty(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(math.U256(interpreter.intPool.get().Set(interpreter.evm.Difficulty)))
 	return nil, nil
 }
 
-func opGasLimit(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opGasLimit(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(math.U256(interpreter.intPool.get().SetUint64(interpreter.evm.GasLimit)))
 	return nil, nil
 }
 
-func opPop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opPop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	interpreter.intPool.put(stack.pop())
 	return nil, nil
 }
 
-func opMload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	offset := stack.pop()
 	val := interpreter.intPool.get().SetBytes(memory.Get(offset.Int64(), 32))
 	stack.push(val)
@@ -630,7 +630,7 @@ func opMload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 	return nil, nil
 }
 
-func opMstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// pop value of the stack
 	mStart, val := stack.pop(), stack.pop()
 	memory.Set32(mStart.Uint64(), val)
@@ -639,18 +639,18 @@ func opMstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return nil, nil
 }
 
-func opMstore8(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMstore8(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	off, val := stack.pop().Int64(), stack.pop().Int64()
 	memory.store[off] = byte(val & 0xff)
 
 	return nil, nil
 }
 
-func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	loc := stack.peek()
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
-	if isVault != isVaultOnDB {
-		//log.Debug("&*&*&*&*&*& instructions.opSload, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if IsPrivate != IsPrivateOnDB {
+		//log.Debug("&*&*&*&*&*& instructions.opSload, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 
 	val := thisstate.GetState(contract.Address(), common.BigToHash(loc))
@@ -658,12 +658,12 @@ func opSload(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 	return nil, nil
 }
 
-func opSstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opSstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	loc := common.BigToHash(stack.pop())
 	val := stack.pop()
-	isVaultOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
-	if isVault != isVaultOnDB {
-		//log.Debug("&*&*&*&*&*& instructions.opSstore, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+	IsPrivateOnDB, thisstate := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if IsPrivate != IsPrivateOnDB {
+		//log.Debug("&*&*&*&*&*& instructions.opSstore, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 	thisstate.SetState(contract.Address(), loc, common.BigToHash(val))
 
@@ -671,7 +671,7 @@ func opSstore(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return nil, nil
 }
 
-func opJump(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opJump(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	pos := stack.pop()
 	if !contract.validJumpdest(pos) {
 		nop := contract.GetOp(pos.Uint64())
@@ -683,7 +683,7 @@ func opJump(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return nil, nil
 }
 
-func opJumpi(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opJumpi(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	pos, cond := stack.pop(), stack.pop()
 	if cond.Sign() != 0 {
 		if !contract.validJumpdest(pos) {
@@ -699,26 +699,26 @@ func opJumpi(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 	return nil, nil
 }
 
-func opJumpdest(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opJumpdest(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	return nil, nil
 }
 
-func opPc(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opPc(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetUint64(*pc))
 	return nil, nil
 }
 
-func opMsize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opMsize(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetInt64(int64(memory.Len())))
 	return nil, nil
 }
 
-func opGas(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opGas(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	stack.push(interpreter.intPool.get().SetUint64(contract.Gas))
 	return nil, nil
 }
 
-func opCreate(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCreate(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		value        = stack.pop()
 		offset, size = stack.pop(), stack.pop()
@@ -730,7 +730,7 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	}
 
 	contract.UseGas(gas)
-	res, addr, returnGas, suberr := interpreter.evm.Create(contract, input, gas, value, isVault)
+	res, addr, returnGas, suberr := interpreter.evm.Create(contract, input, gas, value, IsPrivate)
 	// Push item on the stack based on the returned error. If the ruleset is
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
@@ -751,7 +751,7 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return nil, nil
 }
 
-func opCreate2(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCreate2(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		endowment    = stack.pop()
 		offset, size = stack.pop(), stack.pop()
@@ -763,7 +763,7 @@ func opCreate2(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 	// Apply EIP150
 	gas -= gas / 64
 	contract.UseGas(gas)
-	res, addr, returnGas, suberr := interpreter.evm.Create2(contract, input, gas, endowment, salt, isVault)
+	res, addr, returnGas, suberr := interpreter.evm.Create2(contract, input, gas, endowment, salt, IsPrivate)
 	// Push item on the stack based on the returned error.
 	if suberr != nil {
 		stack.push(interpreter.intPool.getZero())
@@ -779,7 +779,7 @@ func opCreate2(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 	return nil, nil
 }
 
-func opCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Pop gas. The actual gas in interpreter.evm.callGasTemp.
 	interpreter.intPool.put(stack.pop())
 	gas := interpreter.evm.callGasTemp
@@ -793,7 +793,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	if value.Sign() != 0 {
 		gas += params.CallStipend
 	}
-	ret, returnGas, err := interpreter.evm.Call(contract, toAddr, args, gas, value, isVault)
+	ret, returnGas, err := interpreter.evm.Call(contract, toAddr, args, gas, value, IsPrivate)
 	if err != nil {
 		stack.push(interpreter.intPool.getZero())
 	} else {
@@ -808,7 +808,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	return ret, nil
 }
 
-func opCallCode(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opCallCode(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Pop gas. The actual gas is in interpreter.evm.callGasTemp.
 	interpreter.intPool.put(stack.pop())
 	gas := interpreter.evm.callGasTemp
@@ -822,7 +822,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, contract *Contract, mem
 	if value.Sign() != 0 {
 		gas += params.CallStipend
 	}
-	ret, returnGas, err := interpreter.evm.CallCode(contract, toAddr, args, gas, value, isVault)
+	ret, returnGas, err := interpreter.evm.CallCode(contract, toAddr, args, gas, value, IsPrivate)
 	if err != nil {
 		stack.push(interpreter.intPool.getZero())
 	} else {
@@ -837,7 +837,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, contract *Contract, mem
 	return ret, nil
 }
 
-func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Pop gas. The actual gas is in interpreter.evm.callGasTemp.
 	interpreter.intPool.put(stack.pop())
 	gas := interpreter.evm.callGasTemp
@@ -847,7 +847,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract,
 	// Get arguments from the memory.
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
 
-	ret, returnGas, err := interpreter.evm.DelegateCall(contract, toAddr, args, gas, isVault)
+	ret, returnGas, err := interpreter.evm.DelegateCall(contract, toAddr, args, gas, IsPrivate)
 	if err != nil {
 		stack.push(interpreter.intPool.getZero())
 	} else {
@@ -862,7 +862,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract,
 	return ret, nil
 }
 
-func opStaticCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opStaticCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	// Pop gas. The actual gas is in interpreter.evm.callGasTemp.
 	interpreter.intPool.put(stack.pop())
 	gas := interpreter.evm.callGasTemp
@@ -872,7 +872,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, m
 	// Get arguments from the memory.
 	args := memory.Get(inOffset.Int64(), inSize.Int64())
 
-	ret, returnGas, err := interpreter.evm.StaticCall(contract, toAddr, args, gas, isVault)
+	ret, returnGas, err := interpreter.evm.StaticCall(contract, toAddr, args, gas, IsPrivate)
 	if err != nil {
 		stack.push(interpreter.intPool.getZero())
 	} else {
@@ -887,7 +887,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, contract *Contract, m
 	return ret, nil
 }
 
-func opReturn(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opReturn(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	offset, size := stack.pop(), stack.pop()
 	ret := memory.GetPtr(offset.Int64(), size.Int64())
 
@@ -895,7 +895,7 @@ func opReturn(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return ret, nil
 }
 
-func opRevert(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opRevert(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	offset, size := stack.pop(), stack.pop()
 	ret := memory.GetPtr(offset.Int64(), size.Int64())
 
@@ -903,14 +903,14 @@ func opRevert(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memor
 	return ret, nil
 }
 
-func opStop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opStop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	return nil, nil
 }
 
-func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
-	isVaultOnDB, db := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
-	if isVault != isVaultOnDB {
-		log.Debug("&*&*&*&*&*& instructions.opSuicide, ErrIsVaultDiffThenIsVaultOnDB, ", "isVault", isVault, "isVaultOnDB", isVaultOnDB)
+func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
+	IsPrivateOnDB, db := getPrivateOrPublicStateDB(interpreter.evm, contract.Address())
+	if IsPrivate != IsPrivateOnDB {
+		log.Debug("&*&*&*&*&*& instructions.opSuicide, ErrIsPrivateDiffThenIsPrivateOnDB, ", "IsPrivate", IsPrivate, "IsPrivateOnDB", IsPrivateOnDB)
 	}
 	balance := db.GetBalance(contract.Address())
 	db.AddBalance(common.BigToAddress(stack.pop()), balance, interpreter.evm.BlockNumber)
@@ -923,7 +923,7 @@ func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 
 // make log instruction function
 func makeLog(size int) executionFunc {
-	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 		topics := make([]common.Hash, size)
 		mStart, mSize := stack.pop(), stack.pop()
 		for i := 0; i < size; i++ {
@@ -946,7 +946,7 @@ func makeLog(size int) executionFunc {
 }
 
 // opPush1 is a specialized version of pushN
-func opPush1(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+func opPush1(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 	var (
 		codeLen = uint64(len(contract.Code))
 		integer = interpreter.intPool.get()
@@ -962,7 +962,7 @@ func opPush1(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory
 
 // make push instruction function
 func makePush(size uint64, pushByteSize int) executionFunc {
-	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 		codeLen := len(contract.Code)
 
 		startMin := codeLen
@@ -985,7 +985,7 @@ func makePush(size uint64, pushByteSize int) executionFunc {
 
 // make dup instruction function
 func makeDup(size int64) executionFunc {
-	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 		stack.dup(interpreter.intPool, int(size))
 		return nil, nil
 	}
@@ -995,7 +995,7 @@ func makeDup(size int64) executionFunc {
 func makeSwap(size int64) executionFunc {
 	// switch n + 1 otherwise n would be swapped with n
 	size++
-	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, isVault bool) ([]byte, error) {
+	return func(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack, IsPrivate bool) ([]byte, error) {
 		stack.swap(int(size))
 		return nil, nil
 	}
