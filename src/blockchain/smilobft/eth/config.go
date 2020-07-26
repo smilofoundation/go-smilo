@@ -71,6 +71,8 @@ var DefaultConfig = Config{
 	},
 
 	Sport: *sport.DefaultConfig,
+	Istanbul: *istanbul.DefaultConfig,
+
 }
 
 func init() {

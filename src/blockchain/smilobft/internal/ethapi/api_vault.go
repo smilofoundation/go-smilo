@@ -31,14 +31,18 @@ import (
 	"go-smilo/src/blockchain/smilobft/private"
 )
 
-// SendRawTxArgs represents the arguments to submit a new signed private transaction into the transaction pool.
-type VaultSendRawTxArgs struct {
+
+// Quorum
+//
+// Additional arguments in order to support transaction privacy
+type PrivateTxArgs struct {
 	PrivateFor []string `json:"privateFor"`
 }
 
+
 // SendRawTransactionVault will add the signed transaction to the Vault and to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
-func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, encodedTx hexutil.Bytes, args VaultSendRawTxArgs) (common.Hash, error) {
+func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, encodedTx hexutil.Bytes, args PrivateTxArgs) (common.Hash, error) {
 	if private.VaultInstance == nil {
 		return common.Hash{}, fmt.Errorf("vault is not enabled")
 	}
@@ -53,9 +57,9 @@ func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, 
 
 	if IsPrivate {
 		if len(data) > 0 {
-			log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.PrivateFor, "sharedwith", args.PrivateFor)
+			log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFor)
 			data, err := private.VaultInstance.PostRawTransaction(data, args.PrivateFor)
-			log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.PrivateFor, "sharedwith", args.PrivateFor)
+			log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFor)
 
 			if err != nil {
 				return common.Hash{}, err

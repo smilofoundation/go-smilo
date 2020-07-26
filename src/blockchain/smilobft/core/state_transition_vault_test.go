@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/private"
 	"math/big"
 	"testing"
 
@@ -28,7 +29,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
-	"go-smilo/src/blockchain/smilobft/vault"
 
 	"github.com/ethereum/go-ethereum/common"
 )

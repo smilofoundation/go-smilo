@@ -35,9 +35,9 @@ func (cg *callHelper) TxNonce(addr common.Address) uint64 {
 	return cg.nonces[addr]
 }
 
-// MakeCall makes does a call to the recipient using the given input. It can switch between vault and public
-// by setting the vault boolean flag. It returns an error if the call failed.
-func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Address, input []byte) error {
+// MakeCall makes does a call to the recipient using the given input. It can switch between private and public
+// by setting the private boolean flag. It returns an error if the call failed.
+func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Address, input []byte) error {
 	var (
 		from = crypto.PubkeyToAddress(key.PublicKey)
 		err  error
@@ -49,6 +49,10 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	cg.header.GasLimit = 4700000
 
 	signer := types.MakeSigner(params.SmiloTestChainConfig, cg.header.Number)
+	if private {
+		signer = types.QuorumPrivateTxSigner{}
+	}
+
 	tx, err := types.SignTx(types.NewTransaction(cg.TxNonce(from), to, new(big.Int), 1000000, new(big.Int), input), signer, key)
 	if err != nil {
 		return err
@@ -60,7 +64,7 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	}
 
 	publicState, vaultState := cg.PublicState, cg.VaultState
-	if !vault {
+	if !private {
 		vaultState = publicState
 	} else {
 		tx.SetPrivate()

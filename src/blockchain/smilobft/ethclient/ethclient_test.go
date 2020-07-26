@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"reflect"
 	"testing"
@@ -337,4 +338,31 @@ func TestChainID(t *testing.T) {
 	if id == nil || id.Cmp(params.AllEthashProtocolChanges.ChainID) != 0 {
 		t.Fatalf("ChainID returned wrong number: %+v", id)
 	}
+}
+
+func TestClient_PreparePrivateTransaction_whenTypical(t *testing.T) {
+	testObject := NewClient(nil)
+
+	_, err := testObject.PreparePrivateTransaction([]byte("arbitrary payload"), "arbitrary private from")
+
+	assert.Error(t, err)
+}
+
+func TestClient_PreparePrivateTransaction_whenClientIsConfigured(t *testing.T) {
+	expectedData := []byte("arbitrary data")
+	testObject := NewClient(nil)
+	testObject.pc = &privateTransactionManagerStubClient{expectedData}
+
+	actualData, err := testObject.PreparePrivateTransaction([]byte("arbitrary payload"), "arbitrary private from")
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedData, actualData)
+}
+
+type privateTransactionManagerStubClient struct {
+	expectedData []byte
+}
+
+func (s *privateTransactionManagerStubClient) storeRaw(data []byte, privateFrom string) ([]byte, error) {
+	return s.expectedData, nil
 }

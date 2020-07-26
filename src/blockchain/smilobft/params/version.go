@@ -21,23 +21,35 @@ import (
 )
 
 const (
+	//GETH
 	VersionMajor = 1        // Major version component of the current release
 	VersionMinor = 9        // Minor version component of the current release
 	VersionPatch = 2        // Patch version component of the current release
 	VersionMeta  = "stable" // Version metadata to append to the version string
 
+	//Quorum
+	QuorumVersionMajor = 2
+	QuorumVersionMinor = 5
+	QuorumVersionPatch = 0
+
+	//Autonity
+	AutonityVersionMajor = 0    // Major version component of the current release
+	AutonityVersionMinor = 2    // Minor version component of the current release
+	AutonityVersionPatch = 1    // Patch version component of the current release
+
+	//Smilo
 	SmiloVersionMajor = 1
 	SmiloVersionMinor = 9
 	SmiloVersionPatch = 2
 	SmiloMinorPatch   = 4
 )
 
-// Version holds the textual version string.
+// Version holds the textual GETH version string.
 var Version = func() string {
 	return fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
 }()
 
-// VersionWithMeta holds the textual version string including the metadata.
+// VersionWithMeta holds the textual GETH version string including the metadata.
 var VersionWithMeta = func() string {
 	v := Version
 	if VersionMeta != "" {
@@ -60,10 +72,21 @@ func ArchiveVersion(gitCommit string) string {
 	return vsn
 }
 
-// Version holds the textual version string.
+// SmiloVersion holds the textual Smilo version string.
 var SmiloVersion = func() string {
 	return fmt.Sprintf("%d.%d.%d.%d", SmiloVersionMajor, SmiloVersionMinor, SmiloVersionPatch, SmiloMinorPatch)
 }()
+
+// QuorumVersion holds the textual Quorum version string.
+var QuorumVersion = func() string {
+	return fmt.Sprintf("%d.%d.%d", QuorumVersionMajor, QuorumVersionMinor, QuorumVersionPatch)
+}()
+
+// AutonityVersion holds the textual Autonity version string.
+var AutonityVersion = func() string {
+	return fmt.Sprintf("%d.%d.%d", AutonityVersionMajor, AutonityVersionMinor, AutonityVersionPatch)
+}()
+
 
 func VersionWithCommit(gitCommit, gitDate string) string {
 	vsn := VersionWithMeta

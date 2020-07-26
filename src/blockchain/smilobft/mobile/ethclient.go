@@ -19,6 +19,7 @@
 package geth
 
 import (
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -312,5 +313,5 @@ func (ec *EthereumClient) EstimateGas(ctx *Context, msg *CallMsg) (gas int64, _ 
 // If the transaction was a contract creation use the TransactionReceipt method to get the
 // contract address after the transaction has been mined.
 func (ec *EthereumClient) SendTransaction(ctx *Context, tx *Transaction) error {
-	return ec.client.SendTransaction(ctx.context, tx.tx)
+	return ec.client.SendTransaction(ctx.context, tx.tx, bind.PrivateTxArgs{})
 }

@@ -36,6 +36,13 @@ import (
 // sign the transaction before submission.
 type SignerFn func(types.Signer, common.Address, *types.Transaction) (*types.Transaction, error)
 
+// Quorum
+//
+// Additional arguments in order to support transaction privacy
+type PrivateTxArgs struct {
+	PrivateFor []string `json:"privateFor"`
+}
+
 // CallOpts is the collection of options to fine tune a contract call request.
 type CallOpts struct {
 	Pending     bool            // Whether to operate on the pending state or the last known one
@@ -56,6 +63,10 @@ type TransactOpts struct {
 	GasLimit uint64   // Gas limit to set for the transaction execution (0 = estimate)
 
 	Context context.Context // Network context to support cancellation and timeouts (nil = no timeout)
+
+	// Quorum
+	PrivateFrom string   // The public key of the Tessera/Constellation identity to send this tx from.
+	PrivateFor  []string // The public keys of the Tessera/Constellation identities this tx is intended for.
 }
 
 // FilterOpts is the collection of options to fine tune filtering for events
@@ -233,16 +244,36 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 	} else {
 		rawTx = types.NewTransaction(nonce, c.address, value, gasLimit, gasPrice, input)
 	}
+
+	// If this transaction is private, we need to substitute the data payload
+	// with the hash of the transaction from tessera/constellation/blackbox.
+	if opts.PrivateFor != nil {
+		var payload []byte
+		payload, err = c.transactor.PreparePrivateTransaction(rawTx.Data(), opts.PrivateFrom)
+		if err != nil {
+			return nil, err
+		}
+		rawTx = c.createPrivateTransaction(rawTx, payload)
+	}
+
+	// Choose signer to sign transaction
 	if opts.Signer == nil {
 		return nil, errors.New("no signer to authorize the transaction with")
 	}
-	signedTx, err := opts.Signer(types.HomesteadSigner{}, opts.From, rawTx)
+	var signedTx *types.Transaction
+	if rawTx.IsPrivate() {
+		signedTx, err = opts.Signer(types.QuorumPrivateTxSigner{}, opts.From, rawTx)
+	} else {
+		signedTx, err = opts.Signer(types.HomesteadSigner{}, opts.From, rawTx)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if err := c.transactor.SendTransaction(ensureContext(opts.Context), signedTx); err != nil {
+
+	if err := c.transactor.SendTransaction(ensureContext(opts.Context), signedTx, PrivateTxArgs{PrivateFor: opts.PrivateFor}); err != nil {
 		return nil, err
 	}
+
 	return signedTx, nil
 }
 
@@ -340,6 +371,18 @@ func (c *BoundContract) UnpackLog(out interface{}, event string, log types.Log) 
 		}
 	}
 	return parseTopics(out, indexed, log.Topics[1:])
+}
+
+// createPrivateTransaction replaces the payload of private transaction to the hash from Tessera/Constellation/Blackbox
+func (c *BoundContract) createPrivateTransaction(tx *types.Transaction, payload []byte) *types.Transaction {
+	var privateTx *types.Transaction
+	if tx.To() == nil {
+		privateTx = types.NewContractCreation(tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), payload)
+	} else {
+		privateTx = types.NewTransaction(tx.Nonce(), c.address, tx.Value(), tx.Gas(), tx.GasPrice(), payload)
+	}
+	privateTx.SetPrivate()
+	return privateTx
 }
 
 // UnpackLogIntoMap unpacks a retrieved log into the provided map.
