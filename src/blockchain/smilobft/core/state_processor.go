@@ -67,7 +67,7 @@ func (p *StateProcessor) SetAutonityContract(contract *autonity.Contract) {
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.StateDB, cfg vm.Config) (types.Receipts, types.Receipts, []*types.Log, uint64, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb, privateState *state.StateDB, cfg vm.Config) (types.Receipts, types.Receipts, []*types.Log, uint64, error) {
 	var (
 		receipts types.Receipts
 		usedGas  = new(uint64)
@@ -84,7 +84,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 
 	var contractMinGasPrice = new(big.Int)
 	if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil || p.bc.Config().Tendermint != nil) && p.autonityContract != nil {
-		minGasPrice, err := p.autonityContract.GetMinimumGasPrice(block, statedb, vaultState)
+		minGasPrice, err := p.autonityContract.GetMinimumGasPrice(block, statedb, privateState)
 		if err == nil {
 			contractMinGasPrice.SetUint64(minGasPrice)
 		}
@@ -109,9 +109,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 			//panic(msg)
 		}
 
-		vaultState.Prepare(tx.Hash(), block.Hash(), i)
+		privateState.Prepare(tx.Hash(), block.Hash(), i)
 
-		receipt, vaultReceipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, vaultState, header, tx, usedGas, cfg)
+		receipt, vaultReceipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, privateState, header, tx, usedGas, cfg)
 		if err != nil {
 			return nil, nil, nil, 0, err
 		}
@@ -146,10 +146,10 @@ func (p *StateProcessor) Process(block *types.Block, statedb, vaultState *state.
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
-func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb, vaultState *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, *types.Receipt, uint64, error) {
-	//if Smilo is enabled and transaction is Vault, set the VaultStateDB = StateDB
+func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb, privateState *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, *types.Receipt, uint64, error) {
+	//if Smilo is enabled and transaction is Private, set the PrivateStateDB = StateDB
 	if !config.IsSmilo || !tx.IsPrivate() {
-		vaultState = statedb
+		privateState = statedb
 	}
 
 	if !config.IsGas && tx.GasPrice() != nil && tx.GasPrice().Cmp(common.Big0) > 0 {
@@ -164,7 +164,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	context := NewEVMContext(msg, header, bc, author)
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
-	vmenv := vm.NewEVM(context, statedb, vaultState, config, cfg)
+	vmenv := vm.NewEVM(context, statedb, privateState, config, cfg)
 
 	// Apply the transaction to the current state (included in the env)
 	_, gas, failed, err := ApplyMessage(vmenv, msg, gp)
@@ -205,9 +205,9 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	if config.IsSmilo && tx.IsPrivate() {
 		var vaultRoot []byte
 		if config.IsByzantium(header.Number) {
-			vaultState.Finalise(true)
+			privateState.Finalise(true)
 		} else {
-			vaultRoot = vaultState.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
+			vaultRoot = privateState.IntermediateRoot(config.IsEIP158(header.Number)).Bytes()
 		}
 		vaultReceipt = types.NewReceipt(vaultRoot, failed, *usedGas)
 		vaultReceipt.TxHash = tx.Hash()
@@ -216,7 +216,7 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 			vaultReceipt.ContractAddress = crypto.CreateAddress(vmenv.Context.Origin, tx.Nonce())
 		}
 
-		vaultReceipt.Logs = vaultState.GetLogs(tx.Hash())
+		vaultReceipt.Logs = privateState.GetLogs(tx.Hash())
 		vaultReceipt.Bloom = types.CreateBloom(types.Receipts{vaultReceipt})
 	}
 

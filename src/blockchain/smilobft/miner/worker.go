@@ -88,7 +88,7 @@ type Work struct {
 	createdAt time.Time
 
 	// Leave this publicState named state, add privateState which most code paths can just ignore
-	vaultState *state.StateDB
+	privateState *state.StateDB
 }
 
 type Result struct {
@@ -212,12 +212,12 @@ func (self *worker) pending() (*types.Block, *state.StateDB, *state.StateDB) {
 		// return a snapshot to avoid contention on currentMu mutex
 		self.snapshotMu.RLock()
 		defer self.snapshotMu.RUnlock()
-		return self.snapshotBlock, self.snapshotState.Copy(), self.current.vaultState.Copy()
+		return self.snapshotBlock, self.snapshotState.Copy(), self.current.privateState.Copy()
 	}
 
 	self.currentMu.Lock()
 	defer self.currentMu.Unlock()
-	return self.current.Block, self.current.state.Copy(), self.current.vaultState.Copy()
+	return self.current.Block, self.current.state.Copy(), self.current.privateState.Copy()
 }
 
 func (self *worker) pendingBlock() *types.Block {
@@ -377,13 +377,13 @@ func (self *worker) wait() {
 					l.BlockHash = block.Hash()
 				}
 			}
-			for _, log := range append(work.state.Logs(), work.vaultState.Logs()...) {
+			for _, log := range append(work.state.Logs(), work.privateState.Logs()...) {
 				log.BlockHash = block.Hash()
 			}
 
 			// write private transacions
-			vaultStateRoot, _ := work.vaultState.Commit(self.chainConfig.IsEIP158(block.Number()))
-			core.WriteVaultStateRoot(self.chainDb, block.Root(), vaultStateRoot)
+			privateStateRoot, _ := work.privateState.Commit(self.chainConfig.IsEIP158(block.Number()))
+			core.WritePrivateStateRoot(self.chainDb, block.Root(), privateStateRoot)
 			allReceipts := mergeReceipts(work.receipts, work.vaultReceipts)
 
 			stat, err := self.chain.WriteBlockWithState(block, allReceipts, work.state, nil)
@@ -395,7 +395,7 @@ func (self *worker) wait() {
 			self.mux.Post(core.NewMinedBlockEvent{Block: block})
 			var (
 				events []interface{}
-				logs   = append(work.state.Logs(), work.vaultState.Logs()...)
+				logs   = append(work.state.Logs(), work.privateState.Logs()...)
 			)
 			events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 			if stat == core.CanonStatTy {
@@ -445,7 +445,7 @@ func (self *worker) push(work *Work) {
 
 // makeCurrent creates a new environment for the current cycle.
 func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	publicState, vaultState, err := self.chain.StateAt(parent.Root())
+	publicState, privateState, err := self.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
 	}
@@ -459,7 +459,7 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 		uncles:      mapset.NewSet(),
 		header:      header,
 		createdAt:   time.Now(),
-		vaultState:  vaultState,
+		privateState:  privateState,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -658,7 +658,7 @@ func (env *Work) commitTransactions(mux *cmn.TypeMux, txs *types.TransactionsByP
 		}
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), common.Hash{}, env.tcount)
-		env.vaultState.Prepare(tx.Hash(), common.Hash{}, env.tcount)
+		env.privateState.Prepare(tx.Hash(), common.Hash{}, env.tcount)
 
 		err, logs := env.commitTransaction(tx, bc, coinbase, env.gasPool)
 		switch err {
@@ -713,12 +713,12 @@ func (env *Work) commitTransactions(mux *cmn.TypeMux, txs *types.TransactionsByP
 
 func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, coinbase common.Address, gp *core.GasPool) (error, []*types.Log) {
 	snap := env.state.Snapshot()
-	vaultSnap := env.vaultState.Snapshot()
+	vaultSnap := env.privateState.Snapshot()
 
-	receipt, vaultReceipt, _, err := core.ApplyTransaction(env.chainConfig, bc, &coinbase, gp, env.state, env.vaultState, env.header, tx, &env.header.GasUsed, vm.Config{})
+	receipt, vaultReceipt, _, err := core.ApplyTransaction(env.chainConfig, bc, &coinbase, gp, env.state, env.privateState, env.header, tx, &env.header.GasUsed, vm.Config{})
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
-		env.vaultState.RevertToSnapshot(vaultSnap)
+		env.privateState.RevertToSnapshot(vaultSnap)
 		return err, nil
 	}
 	env.txs = append(env.txs, tx)

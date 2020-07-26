@@ -47,16 +47,16 @@ func ExampleMakeCallHelper() {
 		helper = MakeCallHelper()
 	)
 	// Vault contract address
-	vaultContractAddr := common.Address{1}
+	privateContractAddr := common.Address{1}
 	// Initialise custom code for vault contract
-	helper.VaultState.SetCode(vaultContractAddr, common.Hex2Bytes("600a60005500"))
+	helper.PrivateState.SetCode(privateContractAddr, common.Hex2Bytes("600a60005500"))
 	// Public contract address
 	pubContractAddr := common.Address{2}
 	// Initialise custom code for public contract
 	helper.PublicState.SetCode(pubContractAddr, common.Hex2Bytes("601460005500"))
 
 	// Make a call to the vault contract
-	err := helper.MakeCall(true, key, vaultContractAddr, nil)
+	err := helper.MakeCall(true, key, privateContractAddr, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -67,9 +67,9 @@ func ExampleMakeCallHelper() {
 	}
 
 	// Output:
-	// Vault: 10
+	// Private: 10
 	// Public: 20
-	fmt.Println("Vault:", helper.VaultState.GetState(vaultContractAddr, common.Hash{}).Big())
+	fmt.Println("Private:", helper.PrivateState.GetState(privateContractAddr, common.Hash{}).Big())
 	fmt.Println("Public:", helper.PublicState.GetState(pubContractAddr, common.Hash{}).Big())
 }
 
@@ -189,7 +189,7 @@ func runBlackbox() (*osExec.Cmd, error) {
 // [11] LOG1
 //
 // Store then log
-func TestVaultTransaction(t *testing.T) {
+func TestPrivateTransaction(t *testing.T) {
 	//TODO: Add blackbox OSX/WIN compiled libs, detect os and run appropriate files
 	if runtime.GOOS != "linux" {
 		t.Skip()
@@ -198,7 +198,7 @@ func TestVaultTransaction(t *testing.T) {
 	var (
 		key, _      = crypto.GenerateKey()
 		helper      = MakeCallHelper()
-		vaultState  = helper.VaultState
+		privateState  = helper.PrivateState
 		publicState = helper.PublicState
 	)
 
@@ -214,36 +214,36 @@ func TestVaultTransaction(t *testing.T) {
 	}
 	defer blackboxCmd.Process.Kill()
 
-	vaultContractAddr := common.Address{1}
+	privateContractAddr := common.Address{1}
 	pubContractAddr := common.Address{2}
-	vaultState.SetCode(vaultContractAddr, common.Hex2Bytes("600a600055600060006001a1"))
-	vaultState.SetState(vaultContractAddr, common.Hash{}, common.Hash{9})
+	privateState.SetCode(privateContractAddr, common.Hex2Bytes("600a600055600060006001a1"))
+	privateState.SetState(privateContractAddr, common.Hash{}, common.Hash{9})
 	publicState.SetCode(pubContractAddr, common.Hex2Bytes("6014600055"))
 	publicState.SetState(pubContractAddr, common.Hash{}, common.Hash{19})
 
-	if publicState.Exist(vaultContractAddr) {
+	if publicState.Exist(privateContractAddr) {
 		t.Error("didn't expect vault contract address to exist on public state")
 	}
 
 	// Vault transaction 1
-	err = helper.MakeCall(true, key, vaultContractAddr, nil)
+	err = helper.MakeCall(true, key, privateContractAddr, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stateEntry := vaultState.GetState(vaultContractAddr, common.Hash{}).Big()
+	stateEntry := privateState.GetState(privateContractAddr, common.Hash{}).Big()
 	if stateEntry.Cmp(big.NewInt(10)) != 0 {
 		t.Error("expected state to have 10, got", stateEntry)
 	}
-	if len(vaultState.Logs()) != 1 {
-		t.Error("expected vault state to have 1 log, got", len(vaultState.Logs()))
+	if len(privateState.Logs()) != 1 {
+		t.Error("expected vault state to have 1 log, got", len(privateState.Logs()))
 	}
 	if len(publicState.Logs()) != 0 {
 		t.Error("expected public state to have 0 logs, got", len(publicState.Logs()))
 	}
-	if publicState.Exist(vaultContractAddr) {
+	if publicState.Exist(privateContractAddr) {
 		t.Error("didn't expect vault contract address to exist on public state")
 	}
-	if !vaultState.Exist(vaultContractAddr) {
+	if !privateState.Exist(privateContractAddr) {
 		t.Error("expected vault contract address to exist on vault state")
 	}
 
@@ -258,16 +258,16 @@ func TestVaultTransaction(t *testing.T) {
 	}
 
 	// Vault transaction 2
-	err = helper.MakeCall(true, key, vaultContractAddr, nil)
-	stateEntry = vaultState.GetState(vaultContractAddr, common.Hash{}).Big()
+	err = helper.MakeCall(true, key, privateContractAddr, nil)
+	stateEntry = privateState.GetState(privateContractAddr, common.Hash{}).Big()
 	if stateEntry.Cmp(big.NewInt(10)) != 0 {
 		t.Error("expected state to have 10, got", stateEntry)
 	}
 
-	if publicState.Exist(vaultContractAddr) {
+	if publicState.Exist(privateContractAddr) {
 		t.Error("didn't expect vault contract address to exist on public state")
 	}
-	if vaultState.Exist(pubContractAddr) {
+	if privateState.Exist(pubContractAddr) {
 		t.Error("didn't expect public contract address to exist on vault state")
 	}
 }

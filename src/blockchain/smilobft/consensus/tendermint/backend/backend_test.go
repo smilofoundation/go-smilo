@@ -200,11 +200,11 @@ func TestVerifyProposal(t *testing.T) {
 		}
 		block = block.WithSeal(header)
 
-		state, vaultState, stateErr := blockchain.State()
+		state, privateState, stateErr := blockchain.State()
 		if stateErr != nil {
 			t.Fatalf("could not retrieve state %d, err=%s", i, stateErr)
 		}
-		if status, errW := blockchain.WriteBlockWithState(block, nil, state, vaultState); status != core.CanonStatTy && errW != nil {
+		if status, errW := blockchain.WriteBlockWithState(block, nil, state, privateState); status != core.CanonStatTy && errW != nil {
 			t.Fatalf("write block failure %d, err=%s", i, errW)
 		}
 		blocks[i] = block

@@ -53,7 +53,7 @@ type Account struct {
 // getState fetches the StateDB object for an account.
 func (a *Account) getState(ctx context.Context) (*state.StateDB, *state.StateDB, error) {
 	state, _, err := a.backend.StateAndHeaderByNumber(ctx, a.blockNumber)
-	return state.(eth.EthAPIState).State, state.(eth.EthAPIState).VaultState, err
+	return state.(eth.EthAPIState).State, state.(eth.EthAPIState).PrivateState, err
 }
 
 func (a *Account) Address(ctx context.Context) (common.Address, error) {

@@ -142,7 +142,7 @@ func (b *BloomIndexer) Commit() error {
 // getHeaderBloom executes an Or operation on public bloom and vault bloom
 func (b *BloomIndexer) getHeaderBloom(header *types.Header) types.Bloom {
 	headerBloom := header.Bloom
-	vaultBloom := core.GetVaultBlockBloom(b.db, header.Number.Uint64())
+	vaultBloom := core.GetPrivateBlockBloom(b.db, header.Number.Uint64())
 	headerBloom.OrOperationOnBloom(vaultBloom.Bytes())
 	return headerBloom
 }

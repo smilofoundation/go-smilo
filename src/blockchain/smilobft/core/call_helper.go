@@ -27,7 +27,7 @@ type callHelper struct {
 	header types.Header
 	gp     *GasPool
 
-	VaultState, PublicState *state.StateDB
+	PrivateState, PublicState *state.StateDB
 }
 
 // TxNonce returns the pending nonce
@@ -63,16 +63,16 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 		return err
 	}
 
-	publicState, vaultState := cg.PublicState, cg.VaultState
+	publicState, privateState := cg.PublicState, cg.PrivateState
 	if !private {
-		vaultState = publicState
+		privateState = publicState
 	} else {
 		tx.SetPrivate()
 	}
 
 	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
 	context := NewEVMContext(msg, &cg.header, bc, &from)
-	vmenv := vm.NewEVM(context, publicState, vaultState, params.SmiloTestChainConfig, vm.Config{})
+	vmenv := vm.NewEVM(context, publicState, privateState, params.SmiloTestChainConfig, vm.Config{})
 	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)
 	return err
 }
@@ -86,7 +86,7 @@ func MakeCallHelper() *callHelper {
 	if err != nil {
 		panic(err)
 	}
-	vaultState, err := state.New(common.Hash{}, db)
+	privateState, err := state.New(common.Hash{}, db)
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func MakeCallHelper() *callHelper {
 		nonces:      make(map[common.Address]uint64),
 		gp:          new(GasPool).AddGas(5000000),
 		PublicState: publicState,
-		VaultState:  vaultState,
+		PrivateState:  privateState,
 	}
 	return cg
 }

@@ -112,7 +112,7 @@ type Context struct {
 }
 
 type PublicState StateDB
-type VaultState StateDB
+type PrivateState StateDB
 
 // EVM is the Ethereum Virtual Machine base object and provides
 // the necessary tools to run a contract on the given state with
@@ -152,7 +152,7 @@ type EVM struct {
 
 	// Smilo additions:
 	publicState       PublicState
-	vaultState        VaultState
+	privateState        PrivateState
 	states            [1027]*state.StateDB
 	currentStateDepth uint
 	// Smilo read only state. Inside Vault State towards Public State read.
@@ -162,7 +162,7 @@ type EVM struct {
 
 // NewEVM returns a new EVM. The returned EVM is not thread safe and should
 // only ever be used *once*.
-func NewEVM(ctx Context, statedb, vaultState StateDB, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
+func NewEVM(ctx Context, statedb, privateState StateDB, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
 	evm := &EVM{
 		Context:      ctx,
 		StateDB:      statedb,
@@ -172,7 +172,7 @@ func NewEVM(ctx Context, statedb, vaultState StateDB, chainConfig *params.ChainC
 		interpreters: make([]Interpreter, 0, 1),
 
 		publicState: statedb,
-		vaultState:  vaultState,
+		privateState:  privateState,
 	}
 
 	if chainConfig.IsEWASM(ctx.BlockNumber) {
@@ -191,7 +191,7 @@ func NewEVM(ctx Context, statedb, vaultState StateDB, chainConfig *params.ChainC
 		panic("No supported ewasm interpreter yet.")
 	}
 
-	evm.Push(vaultState)
+	evm.Push(privateState)
 
 	// vmConfig.EVMInterpreter will be used by EVM-C, it won't be checked here
 	// as we always want to have the built-in EVM as the failover option.
@@ -490,7 +490,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	var IsPrivateOnDB bool
 	var creatorStateDb StateDB
 	if evm.Depth() > 0 {
-		creatorStateDb = evm.vaultState
+		creatorStateDb = evm.privateState
 		IsPrivateOnDB = true
 	} else {
 		creatorStateDb = evm.publicState
@@ -588,7 +588,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 func (evm *EVM) Create(caller ContractRef, code []byte, gas uint64, value *big.Int, IsPrivate bool) (ret []byte, contractAddr common.Address, leftOverGas uint64, err error) {
 	var creatorStateDb StateDB
 	if evm.depth > 0 {
-		creatorStateDb = evm.vaultState
+		creatorStateDb = evm.privateState
 	} else {
 		creatorStateDb = evm.publicState
 	}
@@ -615,9 +615,9 @@ func getPrivateOrPublicStateDB(env *EVM, addr common.Address) (IsPrivate bool, t
 	// priv: (a) ->  b   (public)
 	thisState = env.StateDB
 
-	if env.VaultState().Exist(addr) {
+	if env.PrivateState().Exist(addr) {
 		IsPrivate = true
-		thisState = env.VaultState()
+		thisState = env.PrivateState()
 	} else if env.PublicState().Exist(addr) {
 		thisState = env.PublicState()
 	}
@@ -626,9 +626,9 @@ func getPrivateOrPublicStateDB(env *EVM, addr common.Address) (IsPrivate bool, t
 }
 
 func (env *EVM) PublicState() PublicState { return env.publicState }
-func (env *EVM) VaultState() VaultState   { return env.vaultState }
+func (env *EVM) PrivateState() PrivateState   { return env.privateState }
 func (env *EVM) Push(statedb StateDB) {
-	if env.vaultState != statedb && !env.smiloReadOnly {
+	if env.privateState != statedb && !env.smiloReadOnly {
 		env.smiloReadOnly = true
 		env.readOnlyDepth = env.currentStateDepth
 	}

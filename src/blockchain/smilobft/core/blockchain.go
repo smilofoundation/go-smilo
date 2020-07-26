@@ -183,7 +183,7 @@ type BlockChain struct {
 
 	badBlocks       *lru.Cache                     // Bad block cache
 	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
-	vaultStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
+	privateStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
 	autonityContract *autonity.Contract
@@ -223,7 +223,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		engine:          engine,
 		vmConfig:        vmConfig,
 		badBlocks:       badBlocks,
-		vaultStateCache: state.NewDatabase(db),
+		privateStateCache: state.NewDatabase(db),
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
@@ -365,7 +365,7 @@ func (bc *BlockChain) loadLastState() error {
 	}
 
 	// Quorum
-	if _, err := state.New(GetVaultStateRoot(bc.db, currentBlock.Root()), bc.vaultStateCache); err != nil {
+	if _, err := state.New(GetPrivateStateRoot(bc.db, currentBlock.Root()), bc.privateStateCache); err != nil {
 		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
 		if err := bc.repair(&currentBlock); err != nil {
 			log.Warn("Could not repar vault state missing with repair method, will reset")
@@ -578,12 +578,12 @@ func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, *state.StateDB,
 	if publicStateDbErr != nil {
 		return nil, nil, publicStateDbErr
 	}
-	vaultStateDb, vaultStateDbErr := state.New(GetVaultStateRoot(bc.db, root), bc.vaultStateCache)
-	if vaultStateDbErr != nil {
-		return nil, nil, vaultStateDbErr
+	privateStateDb, privateStateDbErr := state.New(GetPrivateStateRoot(bc.db, root), bc.privateStateCache)
+	if privateStateDbErr != nil {
+		return nil, nil, privateStateDbErr
 	}
 
-	return publicStateDb, vaultStateDb, nil
+	return publicStateDb, privateStateDb, nil
 }
 
 // StateCache returns the caching database underpinning the blockchain instance.
@@ -1365,7 +1365,7 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 }
 
 // WriteBlockWithState writes the block and all associated state to the database.
-func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state, vaultState *state.StateDB) (status WriteStatus, err error) {
+func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state, privateState *state.StateDB) (status WriteStatus, err error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1380,16 +1380,16 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	// Quorum
 	// Write private state changes to database
-	privateRoot, err := vaultState.Commit(bc.chainConfig.IsEIP158(block.Number()))
+	privateRoot, err := privateState.Commit(bc.chainConfig.IsEIP158(block.Number()))
 	if err != nil {
 		return NonStatTy, err
 	}
-	if err := WriteVaultStateRoot(bc.db, block.Root(), privateRoot); err != nil {
+	if err := WritePrivateStateRoot(bc.db, block.Root(), privateRoot); err != nil {
 		log.Error("Failed writing private state root", "err", err)
 		return NonStatTy, err
 	}
 	// Explicit commit for privateStateTriedb
-	privateTriedb := bc.vaultStateCache.TrieDB()
+	privateTriedb := bc.privateStateCache.TrieDB()
 	if err := privateTriedb.Commit(privateRoot, false); err != nil {
 		return NonStatTy, err
 	}
@@ -1406,7 +1406,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	log.Warn("Call network permissioning logic before committing the state, UpdateEnodesWhitelist")
 	if bc.chainConfig.Istanbul != nil || bc.chainConfig.SportDAO != nil || bc.chainConfig.Tendermint != nil {
-		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, vaultState, block)
+		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, privateState, block)
 		if err != nil && err != autonity.ErrAutonityContract {
 			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
 			return NonStatTy, err
@@ -1761,8 +1761,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		// START Smilo
 		// alias state.New because we introduce a variable named state on the next line
 		stateNew := state.New
-		vaultStateRoot := GetVaultStateRoot(bc.db, parent.Root)
-		vaultState, err := stateNew(vaultStateRoot, bc.vaultStateCache)
+		privateStateRoot := GetPrivateStateRoot(bc.db, parent.Root)
+		privateState, err := stateNew(privateStateRoot, bc.privateStateCache)
 		if err != nil {
 			return it.index, events, coalescedLogs, err
 		}
@@ -1776,7 +1776,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 			if followup, err := it.peek(); followup != nil && err == nil {
 				go func(start time.Time) {
 					throwaway, _ := state.New(parent.Root, bc.stateCache)
-					bc.prefetcher.Prefetch(followup, throwaway, vaultState, bc.vmConfig, &followupInterrupt)
+					bc.prefetcher.Prefetch(followup, throwaway, privateState, bc.vmConfig, &followupInterrupt)
 
 					blockPrefetchExecuteTimer.Update(time.Since(start))
 					if atomic.LoadUint32(&followupInterrupt) == 1 {
@@ -1788,7 +1788,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		// Process block using the parent state as reference point.
 		substart := time.Now()
-		receipts, vaultReceipts, logs, usedGas, err := bc.processor.Process(block, thisstate, vaultState, bc.vmConfig)
+		receipts, vaultReceipts, logs, usedGas, err := bc.processor.Process(block, thisstate, privateState, bc.vmConfig)
 		if err != nil {
 			log.Error("error Process block using the parent state as reference point, running c.processor.Process")
 			bc.reportBlock(block, receipts, err)
@@ -1828,10 +1828,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		substart = time.Now()
 		// Smilo VAULT
 		// Write vault state changes to database
-		if vaultStateRoot, err = vaultState.Commit(bc.Config().IsEIP158(block.Number())); err != nil {
+		if privateStateRoot, err = privateState.Commit(bc.Config().IsEIP158(block.Number())); err != nil {
 			return it.index, events, coalescedLogs, err
 		}
-		if err := WriteVaultStateRoot(bc.db, block.Root(), vaultStateRoot); err != nil {
+		if err := WritePrivateStateRoot(bc.db, block.Root(), privateStateRoot); err != nil {
 			return it.index, events, coalescedLogs, err
 		}
 		allReceipts := mergeReceipts(receipts, vaultReceipts)
@@ -1839,7 +1839,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 
 		// Write the block to the chain and get the status.
 
-		status, err := bc.WriteBlockWithState(block, allReceipts, thisstate, vaultState)
+		status, err := bc.WriteBlockWithState(block, allReceipts, thisstate, privateState)
 		if err != nil {
 			atomic.StoreUint32(&followupInterrupt, 1)
 			return it.index, events, coalescedLogs, err
@@ -1853,7 +1853,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		blockWriteTimer.Update(time.Since(substart) - thisstate.AccountCommits - thisstate.StorageCommits)
 		blockInsertTimer.UpdateSince(start)
 
-		if err := WriteVaultBlockBloom(bc.db, block.NumberU64(), vaultReceipts); err != nil {
+		if err := WritePrivateBlockBloom(bc.db, block.NumberU64(), vaultReceipts); err != nil {
 			return it.index, events, coalescedLogs, err
 		}
 		switch status {

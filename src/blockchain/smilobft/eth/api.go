@@ -293,13 +293,13 @@ func NewPublicDebugAPI(eth *Smilo) *PublicDebugAPI {
 
 // DumpBlock retrieves the entire state of the database at a given block.
 func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ string) (state.Dump, error) {
-	var publicState, vaultState *state.StateDB
+	var publicState, privateState *state.StateDB
 	var err error
 	if blockNr == rpc.PendingBlockNumber {
 		// If we're dumping the pending state, we need to request
 		// both the pending block as well as the pending state from
 		// the miner and operate on those
-		_, publicState, vaultState = api.eth.miner.Pending()
+		_, publicState, privateState = api.eth.miner.Pending()
 	} else {
 		var block *types.Block
 		if blockNr == rpc.LatestBlockNumber {
@@ -310,7 +310,7 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ string) (state
 		if block == nil {
 			return state.Dump{}, fmt.Errorf("block #%d not found", blockNr)
 		}
-		publicState, vaultState, err = api.eth.BlockChain().StateAt(block.Root())
+		publicState, privateState, err = api.eth.BlockChain().StateAt(block.Root())
 		if err != nil {
 			return state.Dump{}, err
 		}
@@ -320,7 +320,7 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ string) (state
 	case "public":
 		return publicState.RawDump(false, false, true), nil
 	case "vault":
-		return vaultState.RawDump(false, false, true), nil
+		return privateState.RawDump(false, false, true), nil
 	default:
 		return state.Dump{}, fmt.Errorf("unknown type: '%s'", typ)
 	}

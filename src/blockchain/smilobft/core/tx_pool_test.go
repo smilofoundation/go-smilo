@@ -53,7 +53,7 @@ func init() {
 
 type testBlockChain struct {
 	statedb       *state.StateDB
-	vaultStateDb  *state.StateDB
+	privateStateDb  *state.StateDB
 	gasLimit      uint64
 	chainHeadFeed *event.Feed
 }
@@ -69,7 +69,7 @@ func (bc *testBlockChain) GetBlock(hash common.Hash, number uint64) *types.Block
 }
 
 func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, *state.StateDB, error) {
-	return bc.statedb, bc.vaultStateDb, nil
+	return bc.statedb, bc.privateStateDb, nil
 }
 
 func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {

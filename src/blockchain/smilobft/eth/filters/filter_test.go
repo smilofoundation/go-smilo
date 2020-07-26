@@ -164,6 +164,21 @@ func TestFilters(t *testing.T) {
 			}
 			gen.AddUncheckedReceipt(receipt)
 			gen.AddUncheckedTx(types.NewTransaction(998, common.HexToAddress("0x998"), big.NewInt(998), 998, big.NewInt(998), nil))
+
+			// Add pseudo Quorum private transaction
+			privateReceipt := types.NewReceipt(nil, false, 0)
+			privateReceipt.Logs = []*types.Log{
+				{
+					Address: addr,
+					Topics:  []common.Hash{hash5},
+				},
+			}
+			if err := core.WritePrivateBlockBloom(db, 999, []*types.Receipt{privateReceipt}); err != nil {
+				t.Fatal(err)
+			}
+			gen.AddUncheckedReceipt(privateReceipt)
+			gen.AddUncheckedTx(types.NewTransaction(998, common.HexToAddress("0x998"), big.NewInt(998), 998, big.NewInt(998), nil))
+
 		case 999:
 			receipt := types.NewReceipt(nil, false, 0)
 			receipt.Logs = []*types.Log{
@@ -176,20 +191,6 @@ func TestFilters(t *testing.T) {
 			gen.AddUncheckedTx(types.NewTransaction(999, common.HexToAddress("0x999"), big.NewInt(999), 999, big.NewInt(999), nil))
 		}
 	})
-
-	// Quorum
-	privateReceipt := types.NewReceipt(nil, false, 0)
-	privateReceipt.Logs = []*types.Log{
-		{
-			Address: addr,
-			Topics:  []common.Hash{hash5},
-		},
-	}
-	if err := core.WriteVaultBlockBloom(db, 999, []*types.Receipt{privateReceipt}); err != nil {
-		t.Fatal(err)
-	}
-	receipts[998] = append(receipts[998], privateReceipt)
-
 	for i, block := range chain {
 		rawdb.WriteBlock(db, block)
 		rawdb.WriteCanonicalHash(db, block.Hash(), block.NumberU64())
