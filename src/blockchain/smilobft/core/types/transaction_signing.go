@@ -127,7 +127,9 @@ var big8 = big.NewInt(8)
 
 func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
 	if tx.IsPrivate() {
-		return QuorumPrivateTxSigner{}.Sender(tx)
+		//TODO: Quorum. find out why this wont work
+		//return QuorumPrivateTxSigner{}.Sender(tx)
+		return HomesteadSigner{}.Sender(tx)
 	}
 	if !tx.Protected() {
 		return HomesteadSigner{}.Sender(tx)
@@ -137,12 +139,16 @@ func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
 	}
 	V := new(big.Int).Sub(tx.data.V, s.chainIdMul)
 	V.Sub(V, big8)
-	return recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, V, true)
+	return recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, V, true, tx.IsPrivate())
 }
 
 // SignatureValues returns signature values. This signature
 // needs to be in the [R || S || V] format where V is 0 or 1.
 func (s EIP155Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
+	if tx.IsPrivate() {
+		return HomesteadSigner{}.SignatureValues(tx, sig)
+	}
+
 	R, S, V, err = HomesteadSigner{}.SignatureValues(tx, sig)
 	if err != nil {
 		return nil, nil, nil, err
@@ -184,7 +190,7 @@ func (hs HomesteadSigner) SignatureValues(tx *Transaction, sig []byte) (r, s, v 
 }
 
 func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
-	return recoverPlain(hs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, true)
+	return recoverPlain(hs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, true, tx.IsPrivate())
 }
 
 type FrontierSigner struct{}
@@ -224,16 +230,16 @@ func (fs FrontierSigner) Hash(tx *Transaction) common.Hash {
 }
 
 func (fs FrontierSigner) Sender(tx *Transaction) (common.Address, error) {
-	return recoverPlain(fs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, false)
+	return recoverPlain(fs.Hash(tx), tx.data.R, tx.data.S, tx.data.V, false, tx.IsPrivate())
 }
 
-func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {
+func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool, isPrivate bool) (common.Address, error) {
 	if Vb.BitLen() > 8 {
 		return common.Address{}, ErrInvalidSig
 	}
 	var offset uint64
 	// private transaction has a v value of 37 or 38
-	if isPrivate(Vb) {
+	if isPrivate {
 		offset = 37
 	} else {
 		offset = 27

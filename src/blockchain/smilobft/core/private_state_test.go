@@ -85,7 +85,7 @@ func runBlackbox() (*osExec.Cmd, error) {
 		return nil, err
 	}
 
-	blackboxCMD := filepath.Join(here, "../../../../build/third-party", "blackbox-v0-1")
+	blackboxCMD := filepath.Join(here, "../../../../build/third-party", "blackbox-v2-0")
 	blackboxDBFile := filepath.Join(tempdir, "blackbox.db")
 	blackboxPeersDBFile := filepath.Join(tempdir, "blackbox-peers.db")
 

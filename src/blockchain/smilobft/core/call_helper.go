@@ -49,9 +49,10 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 	cg.header.GasLimit = 4700000
 
 	signer := types.MakeSigner(params.SmiloTestChainConfig, cg.header.Number)
-	if private {
-		signer = types.QuorumPrivateTxSigner{}
-	}
+	//TODO: Quorum. find out why this wont work
+	//if private {
+	//	signer = types.QuorumPrivateTxSigner{}
+	//}
 
 	tx, err := types.SignTx(types.NewTransaction(cg.TxNonce(from), to, new(big.Int), 1000000, new(big.Int), input), signer, key)
 	if err != nil {
