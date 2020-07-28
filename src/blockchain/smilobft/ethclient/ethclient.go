@@ -37,7 +37,7 @@ import (
 
 // Client defines typed wrappers for the Ethereum RPC API.
 type Client struct {
-	c *rpc.Client
+	c  *rpc.Client
 	pc privateTransactionManagerClient // Tessera/Constellation/Blackbox client
 }
 

@@ -28,7 +28,7 @@ var (
 	ErrContractAddressCollision = errors.New("contract address collision")
 	ErrNoCompatibleInterpreter  = errors.New("no compatible interpreter")
 
-	ErrReadOnlyValueTransfer      = errors.New("vm in read-only mode. Value transfer prohibited")
-	ErrReadOnlyMutateOpcode       = errors.New("vm in read-only mode. Mutating opcode prohibited")
+	ErrReadOnlyValueTransfer          = errors.New("vm in read-only mode. Value transfer prohibited")
+	ErrReadOnlyMutateOpcode           = errors.New("vm in read-only mode. Mutating opcode prohibited")
 	ErrIsPrivateDiffThenIsPrivateOnDB = errors.New("IsPrivate method input is different than IsPrivate on the DB")
 )

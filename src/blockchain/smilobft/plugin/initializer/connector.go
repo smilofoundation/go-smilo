@@ -5,6 +5,7 @@ import (
 
 	iplugin "go-smilo/src/blockchain/smilobft/internal/plugin"
 	"go-smilo/src/blockchain/smilobft/plugin/gen/proto_common"
+
 	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 )

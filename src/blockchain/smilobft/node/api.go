@@ -19,9 +19,10 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/metrics"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"

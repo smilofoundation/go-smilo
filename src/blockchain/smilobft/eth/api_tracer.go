@@ -81,11 +81,11 @@ type txTraceResult struct {
 // blockTraceTask represents a single block trace task when an entire chain is
 // being traced.
 type blockTraceTask struct {
-	statedb      *state.StateDB   // Intermediate state prepped for tracing
+	statedb        *state.StateDB   // Intermediate state prepped for tracing
 	privateStateDb *state.StateDB   // Smilo
-	block        *types.Block     // Block to trace the transactions from
-	rootref      common.Hash      // Trie root reference held for this task
-	results      []*txTraceResult // Trace results procudes by the task
+	block          *types.Block     // Block to trace the transactions from
+	rootref        common.Hash      // Trie root reference held for this task
+	results        []*txTraceResult // Trace results procudes by the task
 }
 
 // blockTraceResult represets the results of tracing a single block when an entire
@@ -99,9 +99,9 @@ type blockTraceResult struct {
 // txTraceTask represents a single transaction trace task when an entire block
 // is being traced.
 type txTraceTask struct {
-	statedb      *state.StateDB // Intermediate state prepped for tracing
+	statedb        *state.StateDB // Intermediate state prepped for tracing
 	privateStateDb *state.StateDB
-	index        int // Transaction offset in the block
+	index          int // Transaction offset in the block
 }
 
 // TraceChain returns the structured logs created during the execution of EVM
@@ -513,9 +513,9 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 	for i, tx := range txs {
 		// Send the trace task over for execution
 		jobs <- &txTraceTask{
-			statedb:      statedb.Copy(),
+			statedb:        statedb.Copy(),
 			privateStateDb: privateStateDb.Copy(),
-			index:        i,
+			index:          i,
 		}
 
 		// Generate the next state snapshot fast without tracing

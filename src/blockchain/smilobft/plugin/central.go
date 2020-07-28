@@ -42,7 +42,7 @@ func (cc *CentralClient) getNewSecureDialer() Dialer {
 		if cc.config.CertFingerprint != "" {
 			conState := c.ConnectionState()
 			for _, peercert := range conState.PeerCertificates {
-				if bytes.Compare(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) == 0 {
+				if bytes.Equal(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) {
 					return c, nil
 				}
 			}

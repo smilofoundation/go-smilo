@@ -92,11 +92,11 @@ func MakeCallHelper() *callHelper {
 		panic(err)
 	}
 	cg := &callHelper{
-		db:          memdb,
-		nonces:      make(map[common.Address]uint64),
-		gp:          new(GasPool).AddGas(5000000),
-		PublicState: publicState,
-		PrivateState:  privateState,
+		db:           memdb,
+		nonces:       make(map[common.Address]uint64),
+		gp:           new(GasPool).AddGas(5000000),
+		PublicState:  publicState,
+		PrivateState: privateState,
 	}
 	return cg
 }

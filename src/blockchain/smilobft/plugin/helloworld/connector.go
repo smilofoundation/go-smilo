@@ -4,6 +4,7 @@ import (
 	"context"
 
 	iplugin "go-smilo/src/blockchain/smilobft/internal/plugin"
+
 	"github.com/hashicorp/go-plugin"
 	"github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go/proto"
 	"google.golang.org/grpc"

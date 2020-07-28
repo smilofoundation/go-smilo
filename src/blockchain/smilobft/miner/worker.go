@@ -450,16 +450,16 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 		return err
 	}
 	work := &Work{
-		config:      self.config,
-		chainConfig: self.chainConfig,
-		signer:      types.MakeSigner(self.chainConfig, header.Number),
-		state:       publicState,
-		ancestors:   mapset.NewSet(),
-		family:      mapset.NewSet(),
-		uncles:      mapset.NewSet(),
-		header:      header,
-		createdAt:   time.Now(),
-		privateState:  privateState,
+		config:       self.config,
+		chainConfig:  self.chainConfig,
+		signer:       types.MakeSigner(self.chainConfig, header.Number),
+		state:        publicState,
+		ancestors:    mapset.NewSet(),
+		family:       mapset.NewSet(),
+		uncles:       mapset.NewSet(),
+		header:       header,
+		createdAt:    time.Now(),
+		privateState: privateState,
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"go-smilo/src/blockchain/smilobft/plugin/helloworld"
+
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/naoina/toml"

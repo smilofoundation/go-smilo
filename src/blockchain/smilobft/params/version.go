@@ -33,9 +33,9 @@ const (
 	QuorumVersionPatch = 0
 
 	//Autonity
-	AutonityVersionMajor = 0    // Major version component of the current release
-	AutonityVersionMinor = 2    // Minor version component of the current release
-	AutonityVersionPatch = 1    // Patch version component of the current release
+	AutonityVersionMajor = 0 // Major version component of the current release
+	AutonityVersionMinor = 2 // Minor version component of the current release
+	AutonityVersionPatch = 1 // Patch version component of the current release
 
 	//Smilo
 	SmiloVersionMajor = 1
@@ -86,7 +86,6 @@ var QuorumVersion = func() string {
 var AutonityVersion = func() string {
 	return fmt.Sprintf("%d.%d.%d", AutonityVersionMajor, AutonityVersionMinor, AutonityVersionPatch)
 }()
-
 
 func VersionWithCommit(gitCommit, gitDate string) string {
 	vsn := VersionWithMeta

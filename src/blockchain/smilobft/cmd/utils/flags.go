@@ -1295,6 +1295,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		cfg.InsecureUnlockAllowed = ctx.GlobalBool(InsecureUnlockAllowedFlag.Name)
 	}
 }
+
 // Quorum
 //
 // Read plugin settings from --plugins flag. Overwrite settings defined in --config if any

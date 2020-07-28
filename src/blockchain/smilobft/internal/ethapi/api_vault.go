@@ -31,14 +31,12 @@ import (
 	"go-smilo/src/blockchain/smilobft/private"
 )
 
-
 // Quorum
 //
 // Additional arguments in order to support transaction privacy
 type PrivateTxArgs struct {
 	PrivateFor []string `json:"privateFor"`
 }
-
 
 // SendRawTransactionVault will add the signed transaction to the Vault and to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.

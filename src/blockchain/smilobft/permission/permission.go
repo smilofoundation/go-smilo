@@ -22,12 +22,13 @@ import (
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/eth"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/node"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
 	pbind "go-smilo/src/blockchain/smilobft/permission/bind"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type NodeOperation uint8
@@ -51,7 +52,7 @@ type PermissionCtrl struct {
 	permOrg    *pbind.OrgManager
 	permConfig *types.PermissionConfig
 
-	startWaitGroup *sync.WaitGroup // waitgroup to make sure all dependenies are ready before we start the service
+	startWaitGroup *sync.WaitGroup // waitgroup to make sure all dependencies are ready before we start the service
 	stopFeed       event.Feed      // broadcasting stopEvent when service is being stopped
 	errorChan      chan error      // channel to capture error when starting aysnc
 
@@ -295,7 +296,7 @@ func (p *PermissionCtrl) monitorQIP714Block() error {
 		defer stopSubscription.Unsubscribe()
 		for {
 			select {
-			case  head := <-chainHeadCh:
+			case head := <-chainHeadCh:
 				if p.eth.ChainConfig().IsQIP714(head.Block.Number()) {
 					types.SetDefaultAccess()
 					return

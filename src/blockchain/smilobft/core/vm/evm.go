@@ -152,7 +152,7 @@ type EVM struct {
 
 	// Smilo additions:
 	publicState       PublicState
-	privateState        PrivateState
+	privateState      PrivateState
 	states            [1027]*state.StateDB
 	currentStateDepth uint
 	// Smilo read only state. Inside Vault State towards Public State read.
@@ -171,8 +171,8 @@ func NewEVM(ctx Context, statedb, privateState StateDB, chainConfig *params.Chai
 		chainRules:   chainConfig.Rules(ctx.BlockNumber),
 		interpreters: make([]Interpreter, 0, 1),
 
-		publicState: statedb,
-		privateState:  privateState,
+		publicState:  statedb,
+		privateState: privateState,
 	}
 
 	if chainConfig.IsEWASM(ctx.BlockNumber) {
@@ -625,8 +625,8 @@ func getPrivateOrPublicStateDB(env *EVM, addr common.Address) (IsPrivate bool, t
 	return IsPrivate, thisState
 }
 
-func (env *EVM) PublicState() PublicState { return env.publicState }
-func (env *EVM) PrivateState() PrivateState   { return env.privateState }
+func (env *EVM) PublicState() PublicState   { return env.publicState }
+func (env *EVM) PrivateState() PrivateState { return env.privateState }
 func (env *EVM) Push(statedb StateDB) {
 	if env.privateState != statedb && !env.smiloReadOnly {
 		env.smiloReadOnly = true

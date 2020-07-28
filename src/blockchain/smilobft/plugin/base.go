@@ -17,8 +17,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	iplugin "go-smilo/src/blockchain/smilobft/internal/plugin"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/plugin/initializer"
+
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/hashicorp/go-plugin"
 )
 

@@ -37,28 +37,7 @@ test-all: clean
 test-race: clean ## Run tests with -race. Note: expected to fail, but look for "DATA RACE" failures specifically
 	go test ./src/... -timeout=5m -race
 
-lint: clean ## Run linters. Use make install-linters first.
-	vendorcheck ./src/...
-	gometalinter --deadline=3m -j 2 --disable-all --tests --vendor \
-		-E deadcode \
-		-E errcheck \
-		-E gas \
-		-E goconst \
-		-E gofmt \
-		-E goimports \
-		-E golint \
-		-E ineffassign \
-		-E interfacer \
-		-E maligned \
-		-E megacheck \
-		-E misspell \
-		-E nakedret \
-		-E structcheck \
-		-E unconvert \
-		-E unparam \
-		-E varcheck \
-		-E vet \
-		./src/...
+lint: lint-eth ## Run linters
 
 lint-eth: clean
 	src/blockchain/smilobft/build/env.sh go run ./src/blockchain/smilobft/build/ci.go lint

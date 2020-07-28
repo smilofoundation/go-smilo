@@ -99,7 +99,6 @@ func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) 
 	}
 }
 
-
 // Quorum
 //
 // NewWalletTransactor is a utility method to easily create a transaction signer

@@ -70,9 +70,8 @@ var DefaultConfig = Config{
 		Percentile: 60,
 	},
 
-	Sport: *sport.DefaultConfig,
+	Sport:    *sport.DefaultConfig,
 	Istanbul: *istanbul.DefaultConfig,
-
 }
 
 func init() {

@@ -10,8 +10,9 @@ import (
 	ethereum "go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 )
 
