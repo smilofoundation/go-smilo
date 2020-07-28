@@ -49,7 +49,7 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 	cg.header.GasLimit = 4700000
 
 	signer := types.MakeSigner(params.SmiloTestChainConfig, cg.header.Number)
-	//TODO: Quorum. find out why this wont work
+	//TODO: Quorum. find out why this causes private_state_test.go to fail
 	//if private {
 	//	signer = types.QuorumPrivateTxSigner{}
 	//}

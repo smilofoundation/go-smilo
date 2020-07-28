@@ -159,6 +159,7 @@ generate:
 	src/blockchain/smilobft/build/env.sh go generate go-smilo/src/blockchain/smilobft/internal/jsre/deps
 	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/eth/config.go
 	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/eth/tracers/tracers.go
+	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/permission/contract/gen/gen.go
 	src/blockchain/smilobft/build/env.sh go generate ./src/blockchain/smilobft/...
 
 

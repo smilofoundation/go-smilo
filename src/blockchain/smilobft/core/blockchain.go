@@ -1378,23 +1378,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
 
-	// Quorum
-	// Write private state changes to database
-	privateRoot, err := privateState.Commit(bc.chainConfig.IsEIP158(block.Number()))
-	if err != nil {
-		return NonStatTy, err
-	}
-	if err := WritePrivateStateRoot(bc.db, block.Root(), privateRoot); err != nil {
-		log.Error("Failed writing private state root", "err", err)
-		return NonStatTy, err
-	}
-	// Explicit commit for privateStateTriedb
-	privateTriedb := bc.privateStateCache.TrieDB()
-	if err := privateTriedb.Commit(privateRoot, false); err != nil {
-		return NonStatTy, err
-	}
-	// /Quorum
-
 	currentBlock := bc.CurrentBlock()
 	localTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
@@ -1430,19 +1413,19 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
-	//This part of the code was replaced by the new original Quorum impl above.
-	//The code remains here until is clear we dont need it anymore and that checking privateState != nil is not required
-	//// Explicit commit for vault state
-	//if privateState != nil {
-	//	vaultRoot, err := privateState.Commit(bc.chainConfig.IsEIP158(block.Number()))
-	//	if err != nil {
-	//		return NonStatTy, err
-	//	}
-	//	vaultTriedb := bc.privateStateCache.TrieDB()
-	//	if err := vaultTriedb.Commit(vaultRoot, false); err != nil {
-	//		return NonStatTy, err
-	//	}
-	//}
+	// Quorum
+	// Write private state changes to database
+	if privateState != nil {
+		vaultRoot, err := privateState.Commit(bc.chainConfig.IsEIP158(block.Number()))
+		if err != nil {
+			return NonStatTy, err
+		}
+		// Explicit commit for privateStateTriedb
+		privateTriedb := bc.privateStateCache.TrieDB()
+		if err := privateTriedb.Commit(vaultRoot, false); err != nil {
+			return NonStatTy, err
+		}
+	}
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.TrieDirtyDisabled {
