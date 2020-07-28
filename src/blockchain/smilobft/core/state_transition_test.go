@@ -87,7 +87,7 @@ func TestStateTransitionPrivate(t *testing.T) {
 			description: "non party node processing",
 			blackboxVault: &StubPrivateTransactionManager{
 				responses: map[string][]interface{}{
-					"Receive": {
+					"Get": {
 						[]byte{},
 						nil,
 					},
@@ -134,7 +134,7 @@ func (spm *StubPrivateTransactionManager) PostRawTransaction(data []byte, to []s
 
 // Get is equivalent to Receive in Quorum
 func (spm *StubPrivateTransactionManager) Get(data []byte) ([]byte, error) {
-	res := spm.responses["Receive"]
+	res := spm.responses["Get"]
 	if err, ok := res[1].(error); ok {
 		return nil, err
 	}

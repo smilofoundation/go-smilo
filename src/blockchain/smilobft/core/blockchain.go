@@ -1430,6 +1430,19 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
+	//This part of the code was replaced by the new original Quorum impl above.
+	//The code remains here until is clear we dont need it anymore and that checking privateState != nil is not required
+	//// Explicit commit for vault state
+	//if privateState != nil {
+	//	vaultRoot, err := privateState.Commit(bc.chainConfig.IsEIP158(block.Number()))
+	//	if err != nil {
+	//		return NonStatTy, err
+	//	}
+	//	vaultTriedb := bc.privateStateCache.TrieDB()
+	//	if err := vaultTriedb.Commit(vaultRoot, false); err != nil {
+	//		return NonStatTy, err
+	//	}
+	//}
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.TrieDirtyDisabled {
