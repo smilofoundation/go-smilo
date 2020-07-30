@@ -1,24 +1,29 @@
 package core
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"go-smilo/src/blockchain/smilobft/private"
+	"go-smilo/src/blockchain/smilobft/private/privatetransactionmanager"
+	"html/template"
 	"io/ioutil"
 	"math/big"
+	"net"
+	"net/http"
 	"os"
 	osExec "os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 	"time"
 
-	"strings"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// callmsg is the message type used for call transactions in the vault state test
+// callmsg is the message type used for call transactions in the private state test
 type callmsg struct {
 	addr     common.Address
 	to       *common.Address
@@ -46,17 +51,17 @@ func ExampleMakeCallHelper() {
 		// create a new helper
 		helper = MakeCallHelper()
 	)
-	// Vault contract address
-	privateContractAddr := common.Address{1}
-	// Initialise custom code for vault contract
-	helper.PrivateState.SetCode(privateContractAddr, common.Hex2Bytes("600a60005500"))
+	// Private contract address
+	prvContractAddr := common.Address{1}
+	// Initialise custom code for private contract
+	helper.PrivateState.SetCode(prvContractAddr, common.Hex2Bytes("600a60005500"))
 	// Public contract address
 	pubContractAddr := common.Address{2}
 	// Initialise custom code for public contract
 	helper.PublicState.SetCode(pubContractAddr, common.Hex2Bytes("601460005500"))
 
-	// Make a call to the vault contract
-	err := helper.MakeCall(true, key, privateContractAddr, nil)
+	// Make a call to the private contract
+	err := helper.MakeCall(true, key, prvContractAddr, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -69,14 +74,87 @@ func ExampleMakeCallHelper() {
 	// Output:
 	// Private: 10
 	// Public: 20
-	fmt.Println("Private:", helper.PrivateState.GetState(privateContractAddr, common.Hash{}).Big())
+	fmt.Println("Private:", helper.PrivateState.GetState(prvContractAddr, common.Hash{}).Big())
 	fmt.Println("Public:", helper.PublicState.GetState(pubContractAddr, common.Hash{}).Big())
 }
 
-func runBlackbox() (*osExec.Cmd, error) {
+var constellationCfgTemplate = template.Must(template.New("t").Parse(`
+	url = "http://127.0.0.1:9000/"
+	port = 9000
+	socketPath = "{{.RootDir}}/qdata/tm1.ipc"
+	otherNodeUrls = []
+	publicKeyPath = "{{.RootDir}}/keys/tm1.pub"
+	privateKeyPath = "{{.RootDir}}/keys/tm1.key"
+	archivalPublicKeyPath = "{{.RootDir}}/keys/tm1a.pub"
+	archivalPrivateKeyPath = "{{.RootDir}}/keys/tm1a.key"
+	storagePath = "{{.RootDir}}/qdata/constellation1"
+`))
 
-	tempdir, err := ioutil.TempDir("", "blackbox")
+func runConstellation() (*osExec.Cmd, error) {
+	dir, err := ioutil.TempDir("", "TestPrivateTxConstellationData")
 	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	here, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	if err = os.MkdirAll(path.Join(dir, "qdata"), 0755); err != nil {
+		return nil, err
+	}
+	if err = os.Symlink(path.Join(here, "constellation-test-keys"), path.Join(dir, "keys")); err != nil {
+		return nil, err
+	}
+	cfgFile, err := os.Create(path.Join(dir, "constellation.cfg"))
+	if err != nil {
+		return nil, err
+	}
+	err = constellationCfgTemplate.Execute(cfgFile, map[string]string{"RootDir": dir})
+	if err != nil {
+		return nil, err
+	}
+	constellationCmd := osExec.Command("constellation-node", cfgFile.Name())
+	var stdout, stderr bytes.Buffer
+	constellationCmd.Stdout = &stdout
+	constellationCmd.Stderr = &stderr
+	var constellationErr error
+	go func() {
+		constellationErr = constellationCmd.Start()
+	}()
+	// Give the constellation subprocess some time to start.
+	time.Sleep(5 * time.Second)
+	fmt.Println(stdout.String() + stderr.String())
+	if constellationErr != nil {
+		return nil, constellationErr
+	}
+	private.VaultInstance = privatetransactionmanager.CreateNew(cfgFile.Name())
+	return constellationCmd, nil
+}
+
+func runTessera() (*osExec.Cmd, error) {
+	tesseraVersion := "0.6"
+	// make sure JRE is available
+	if err := osExec.Command("java").Start(); err != nil {
+		return nil, fmt.Errorf("runTessera: java not available - %s", err.Error())
+	}
+	// download binary from github/release
+	dir, err := ioutil.TempDir("", "tessera")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	resp, err := http.Get(fmt.Sprintf("https://github.com/jpmorganchase/tessera/releases/download/tessera-%s/tessera-app-%s-app.jar", tesseraVersion, tesseraVersion))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	tesseraJar := filepath.Join(dir, "tessera.jar")
+	if err := ioutil.WriteFile(tesseraJar, data, os.FileMode(0644)); err != nil {
 		return nil, err
 	}
 	// create config.json file
@@ -84,45 +162,45 @@ func runBlackbox() (*osExec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	blackboxCMD := filepath.Join(here, "../../../../build/third-party", "blackbox-v2-0")
-	blackboxDBFile := filepath.Join(tempdir, "blackbox.db")
-	blackboxPeersDBFile := filepath.Join(tempdir, "blackbox-peers.db")
-
-	if err = os.MkdirAll(path.Join(tempdir, "sdata"), 0755); err != nil {
+	if err = os.MkdirAll(path.Join(dir, "qdata"), 0755); err != nil {
 		return nil, err
 	}
-	tmIPCFile := filepath.Join(tempdir, "sdata", "tm.ipc")
-	keyData, err := ioutil.ReadFile(filepath.Join(here, "blackbox-test-keys", "tm1.key"))
+	tmIPCFile := filepath.Join(dir, "qdata", "tm.ipc")
+	keyData, err := ioutil.ReadFile(filepath.Join(here, "constellation-test-keys", "tm1.key"))
 	if err != nil {
 		return nil, err
 	}
-	publicKeyData, err := ioutil.ReadFile(filepath.Join(here, "blackbox-test-keys", "tm1.pub"))
+	publicKeyData, err := ioutil.ReadFile(filepath.Join(here, "constellation-test-keys", "tm1.pub"))
 	if err != nil {
 		return nil, err
 	}
-	blackboxConfigFile := filepath.Join(tempdir, "config.json")
-	if err := ioutil.WriteFile(blackboxConfigFile, []byte(fmt.Sprintf(`
+	tesseraConfigFile := filepath.Join(dir, "config.json")
+	if err := ioutil.WriteFile(tesseraConfigFile, []byte(fmt.Sprintf(`
 {
-    "useWhiteList": false,   
+    "useWhiteList": false,
+    "jdbc": {
+        "username": "sa",
+        "password": "",
+        "url": "jdbc:h2:./qdata/c0/db0;MODE=Oracle;TRACE_LEVEL_SYSTEM_OUT=0"
+    },
     "server": {
         "port": 9000,
         "hostName": "http://localhost",
         "sslConfig": {
             "tls": "OFF",
             "generateKeyStoreIfNotExisted": true,
-            "serverKeyStore": "./sdata/c1/server1-keystore",
-            "serverKeyStorePassword": "smilo",
-            "serverTrustStore": "./sdata/c1/server-truststore",
-            "serverTrustStorePassword": "smilo",
+            "serverKeyStore": "./qdata/c1/server1-keystore",
+            "serverKeyStorePassword": "quorum",
+            "serverTrustStore": "./qdata/c1/server-truststore",
+            "serverTrustStorePassword": "quorum",
             "serverTrustMode": "TOFU",
-            "knownClientsFile": "./sdata/c1/knownClients",
+            "knownClientsFile": "./qdata/c1/knownClients",
             "clientKeyStore": "./c1/client1-keystore",
-            "clientKeyStorePassword": "smilo",
+            "clientKeyStorePassword": "quorum",
             "clientTrustStore": "./c1/client-truststore",
-            "clientTrustStorePassword": "smilo",
+            "clientTrustStorePassword": "quorum",
             "clientTrustMode": "TOFU",
-            "knownServersFile": "./sdata/c1/knownServers"
+            "knownServersFile": "./qdata/c1/knownServers"
         }
     },
     "peer": [
@@ -140,111 +218,116 @@ func runBlackbox() (*osExec.Cmd, error) {
         ]
     },
     "alwaysSendTo": [],
-    "socket": "%s",
-    "dbfile": "%s",
-    "peersdbfile": "%s",
+    "unixSocketFile": "%s"
 }
-`, string(keyData), string(publicKeyData), tmIPCFile, blackboxDBFile, blackboxPeersDBFile)), os.FileMode(0644)); err != nil {
+`, string(keyData), string(publicKeyData), tmIPCFile)), os.FileMode(0644)); err != nil {
 		return nil, err
 	}
 
 	cmdStatusChan := make(chan error)
-	cmd := osExec.Command(blackboxCMD, "-configfile", blackboxConfigFile, "-dbfile", blackboxDBFile)
-	// run blackbox
+	cmd := osExec.Command("java", "-Xms128M", "-Xmx128M", "-jar", tesseraJar, "-configFile", tesseraConfigFile)
+	// run tessera
 	go func() {
 		err := cmd.Start()
 		cmdStatusChan <- err
 	}()
-	// wait 30s for blackbox to come up
-	var started bool
+	// wait for tessera to come up
 	go func() {
-
-		for i := 0; i < 10; i++ {
+		waitingErr := errors.New("waiting")
+		checkFunc := func() error {
+			conn, err := net.Dial("unix", tmIPCFile)
+			if err != nil {
+				return waitingErr
+			}
+			if _, err := conn.Write([]byte("GET /upcheck HTTP/1.0\r\n\r\n")); err != nil {
+				return waitingErr
+			}
+			result, err := ioutil.ReadAll(conn)
+			if err != nil || string(result) != "I'm up!" {
+				return waitingErr
+			}
+			return nil
+		}
+		for {
 			time.Sleep(3 * time.Second)
-			if err := checkFunc(tmIPCFile); err != nil && err == doneErr {
+			if err := checkFunc(); err != nil && err != waitingErr {
 				cmdStatusChan <- err
-			} else {
-				fmt.Println("Waiting for blackbox to start", "err", err)
 			}
 		}
-		if !started {
-			panic("Blackbox never managed to start!")
-		}
 	}()
-
 	if err := <-cmdStatusChan; err != nil {
 		return nil, err
 	}
-	// wait until blackbox is up
+	// wait until tessera is up
 	return cmd, nil
 }
 
 // 600a600055600060006001a1
-// [1] PUSH1 0x0a (store value)
-// [3] PUSH1 0x00 (store addr)
-// [4] SSTORE
-// [6] PUSH1 0x00
-// [8] PUSH1 0x00
-// [10] PUSH1 0x01
-// [11] LOG1
+// 60 0a, 60 00, 55,  60 00, 60 00, 60 01,  a1
+// [1] (0x60) PUSH1 0x0a (store value)
+// [3] (0x60) PUSH1 0x00 (store addr)
+// [4] (0x55) SSTORE  (Store (k-00,v-a))
+
+// [6] (0x60) PUSH1 0x00
+// [8] (0x60) PUSH1 0x00
+// [10](0x60) PUSH1 0x01
+// [11](0xa1) LOG1 offset(0x01), len(0x00), topic(0x00)
 //
 // Store then log
 func TestPrivateTransaction(t *testing.T) {
-	//TODO: Add blackbox OSX/WIN compiled libs, detect os and run appropriate files
-	if runtime.GOOS != "linux" {
-		t.Skip()
-	}
-
 	var (
-		key, _      = crypto.GenerateKey()
-		helper      = MakeCallHelper()
-		privateState  = helper.PrivateState
-		publicState = helper.PublicState
+		key, _       = crypto.GenerateKey()
+		helper       = MakeCallHelper()
+		privateState = helper.PrivateState
+		publicState  = helper.PublicState
 	)
 
-	blackboxCmd, err := runBlackbox()
+	constellationCmd, err := runConstellation()
 	if err != nil {
 		if strings.Contains(err.Error(), "executable file not found") {
-			if blackboxCmd, err = runBlackbox(); err != nil {
+			if constellationCmd, err = runTessera(); err != nil {
 				t.Fatal(err)
 			}
 		} else {
 			t.Fatal(err)
 		}
 	}
-	defer blackboxCmd.Process.Kill()
+	defer constellationCmd.Process.Kill()
 
-	privateContractAddr := common.Address{1}
+	prvContractAddr := common.Address{1}
 	pubContractAddr := common.Address{2}
-	privateState.SetCode(privateContractAddr, common.Hex2Bytes("600a600055600060006001a1"))
-	privateState.SetState(privateContractAddr, common.Hash{}, common.Hash{9})
+	// SSTORE (K,V) SSTORE(0, 10): 600a600055
+	// +
+	// LOG1 OFFSET LEN TOPIC,  LOG1 (a1) 01, 00, 00: 600060006001a1
+	privateState.SetCode(prvContractAddr, common.Hex2Bytes("600a600055600060006001a1"))
+	// SSTORE (K,V) SSTORE(0, 14): 6014600055
 	publicState.SetCode(pubContractAddr, common.Hex2Bytes("6014600055"))
-	publicState.SetState(pubContractAddr, common.Hash{}, common.Hash{19})
 
-	if publicState.Exist(privateContractAddr) {
-		t.Error("didn't expect vault contract address to exist on public state")
+	if publicState.Exist(prvContractAddr) {
+		t.Error("didn't expect private contract address to exist on public state")
 	}
 
-	// Vault transaction 1
-	err = helper.MakeCall(true, key, privateContractAddr, nil)
+	// Private transaction 1
+	err = helper.MakeCall(true, key, prvContractAddr, nil)
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	stateEntry := privateState.GetState(privateContractAddr, common.Hash{}).Big()
+	stateEntry := privateState.GetState(prvContractAddr, common.Hash{}).Big()
 	if stateEntry.Cmp(big.NewInt(10)) != 0 {
 		t.Error("expected state to have 10, got", stateEntry)
 	}
 	if len(privateState.Logs()) != 1 {
-		t.Error("expected vault state to have 1 log, got", len(privateState.Logs()))
+		t.Error("expected private state to have 1 log, got", len(privateState.Logs()))
 	}
 	if len(publicState.Logs()) != 0 {
 		t.Error("expected public state to have 0 logs, got", len(publicState.Logs()))
 	}
-	if publicState.Exist(privateContractAddr) {
-		t.Error("didn't expect vault contract address to exist on public state")
+	if publicState.Exist(prvContractAddr) {
+		t.Error("didn't expect private contract address to exist on public state")
 	}
-	if !privateState.Exist(privateContractAddr) {
-		t.Error("expected vault contract address to exist on vault state")
+	if !privateState.Exist(prvContractAddr) {
+		t.Error("expected private contract address to exist on private state")
 	}
 
 	// Public transaction 1
@@ -257,17 +340,17 @@ func TestPrivateTransaction(t *testing.T) {
 		t.Error("expected state to have 20, got", stateEntry)
 	}
 
-	// Vault transaction 2
-	err = helper.MakeCall(true, key, privateContractAddr, nil)
-	stateEntry = privateState.GetState(privateContractAddr, common.Hash{}).Big()
+	// Private transaction 2
+	err = helper.MakeCall(true, key, prvContractAddr, nil)
+	stateEntry = privateState.GetState(prvContractAddr, common.Hash{}).Big()
 	if stateEntry.Cmp(big.NewInt(10)) != 0 {
 		t.Error("expected state to have 10, got", stateEntry)
 	}
 
-	if publicState.Exist(privateContractAddr) {
-		t.Error("didn't expect vault contract address to exist on public state")
+	if publicState.Exist(prvContractAddr) {
+		t.Error("didn't expect private contract address to exist on public state")
 	}
 	if privateState.Exist(pubContractAddr) {
-		t.Error("didn't expect public contract address to exist on vault state")
+		t.Error("didn't expect public contract address to exist on private state")
 	}
 }
