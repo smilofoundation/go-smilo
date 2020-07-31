@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/eth"
 	"math/big"
 	"sync"
 	"time"
@@ -91,6 +92,20 @@ func NewSimulatedBackendWithDatabase(database ethdb.Database, alloc core.Genesis
 // for testing purposes.
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
 	return NewSimulatedBackendWithDatabase(rawdb.NewMemoryDatabase(), alloc, gasLimit)
+}
+
+// Quorum
+//
+// Create a simulated backend based on existing Ethereum service
+func NewSimulatedBackendFrom(ethereum *eth.Smilo) *SimulatedBackend {
+	backend := &SimulatedBackend{
+		database:   ethereum.ChainDb(),
+		blockchain: ethereum.BlockChain(),
+		config:     ethereum.ChainConfig(),
+		events:     filters.NewEventSystem(new(cmn.TypeMux), &filterBackend{ethereum.ChainDb(), ethereum.BlockChain()}, false),
+	}
+	backend.rollback()
+	return backend
 }
 
 // Close terminates the underlying blockchain's update loop.
@@ -302,7 +317,7 @@ func (b *SimulatedBackend) EstimateGas(ctx context.Context, call smilobft.CallMs
 
 // callContract implements common code between normal and pending contract calls.
 // state is modified during execution, make sure to copy it if necessary.
-func (b *SimulatedBackend) callContract(ctx context.Context, call smilobft.CallMsg, block *types.Block, statedb *state.StateDB, vaultState *state.StateDB) ([]byte, uint64, bool, error) {
+func (b *SimulatedBackend) callContract(ctx context.Context, call smilobft.CallMsg, block *types.Block, statedb *state.StateDB, privateState *state.StateDB) ([]byte, uint64, bool, error) {
 	// Ensure message is initialized properly.
 	if call.GasPrice == nil {
 		call.GasPrice = big.NewInt(1)
@@ -323,7 +338,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call smilobft.CallM
 	evmContext := core.NewEVMContext(msg, block.Header(), b.blockchain, nil)
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
-	vmenv := vm.NewEVM(evmContext, statedb, vaultState, b.config, vm.Config{})
+	vmenv := vm.NewEVM(evmContext, statedb, privateState, b.config, vm.Config{})
 	gaspool := new(core.GasPool).AddGas(math.MaxUint64)
 
 	return core.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
@@ -331,7 +346,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call smilobft.CallM
 
 // SendTransaction updates the pending block to include the given transaction.
 // It panics if the transaction is invalid.
-func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction, args bind.PrivateTxArgs) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -355,6 +370,11 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	b.pendingBlock = blocks[0]
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
 	return nil
+}
+
+// PreparePrivateTransaction dummy implementation
+func (b *SimulatedBackend) PreparePrivateTransaction(data []byte, privateFrom string) ([]byte, error) {
+	return data, nil
 }
 
 // FilterLogs executes a log filter operation, blocking during execution and

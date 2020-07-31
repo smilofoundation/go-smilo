@@ -202,8 +202,7 @@ func AssetNames() []string {
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
 	"bignumber.js": bignumberJs,
-
-	"web3.js": web3Js,
+	"web3.js":      web3Js,
 }
 
 // AssetDir returns the file names below a certain

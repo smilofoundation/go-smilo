@@ -171,8 +171,8 @@ func (s *stateObject) getTrie(db Database) Trie {
 	return s.trie
 }
 
-func (so *stateObject) storageRoot(db Database) common.Hash {
-	return so.getTrie(db).Hash()
+func (s *stateObject) storageRoot(db Database) common.Hash {
+	return s.getTrie(db).Hash()
 }
 
 // GetState retrieves a value from the account storage trie.
@@ -340,17 +340,17 @@ func (s *stateObject) AddBalance(amount *big.Int, blockNumber *big.Int) {
 
 // AddSmiloPay removes amount from c's balance.
 // It is used to add funds to the destination account of a transfer.
-func (c *stateObject) AddSmiloPay(amount *big.Int) {
+func (s *stateObject) AddSmiloPay(amount *big.Int) {
 	// EIP158: We must check emptiness for the objects such that the account
 	// clearing (0,0,0 objects) can take effect.
 	if amount.Sign() == 0 {
-		if c.empty() {
-			c.touch()
+		if s.empty() {
+			s.touch()
 		}
 
 		return
 	}
-	c.SetSmiloPay(new(big.Int).Add(c.SmiloPay(), amount))
+	s.SetSmiloPay(new(big.Int).Add(s.SmiloPay(), amount))
 }
 
 // SubBalance removes amount from c's balance.
@@ -362,12 +362,12 @@ func (s *stateObject) SubBalance(amount *big.Int, blockNumber *big.Int) {
 	s.SetBalance(new(big.Int).Sub(s.Balance(), amount), blockNumber)
 }
 
-func (c *stateObject) SubSmiloPay(amount, blockNumber *big.Int) {
+func (s *stateObject) SubSmiloPay(amount, blockNumber *big.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	c.UpdateSmiloPay(blockNumber)
-	c.SetSmiloPay(new(big.Int).Sub(c.SmiloPay(), amount))
+	s.UpdateSmiloPay(blockNumber)
+	s.SetSmiloPay(new(big.Int).Sub(s.SmiloPay(), amount))
 }
 
 func (s *stateObject) SetBalance(amount, blockNumber *big.Int) {

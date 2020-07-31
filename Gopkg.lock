@@ -226,11 +226,16 @@
   version = "1.3.1"
 
 [[projects]]
-  digest = "1:a02bd86b9a3a64546d2d34b8c1082a41c5ed1f6621c15f66e7730606681f98e2"
+  digest = "1:f2bc519aefa5511928d70d067ae2828cfa60fd3947cc8d166f070a0ce705f782"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
     "protoc-gen-go/descriptor",
+    "ptypes",
+    "ptypes/any",
+    "ptypes/duration",
+    "ptypes/empty",
+    "ptypes/timestamp",
   ]
   pruneopts = "UT"
   revision = ""
@@ -284,6 +289,25 @@
   revision = "8f92f34fc59823d34fc08bfdc9fd266b854e2b50"
 
 [[projects]]
+  digest = "1:c00bae911fa65705f0f2e70abaecc0cdc93029e54af3d741b91282e4117a67c9"
+  name = "github.com/hashicorp/go-hclog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "4a9e55fb9e7db75382c419e20dd1eb26821ec85e"
+  version = "v0.14.1"
+
+[[projects]]
+  digest = "1:d136620a688946a445a1b2e519118c7ecfc6147992bd1f34e5d3443da07aacd1"
+  name = "github.com/hashicorp/go-plugin"
+  packages = [
+    ".",
+    "internal/plugin",
+  ]
+  pruneopts = "UT"
+  revision = "4eb6499078a886723bee3e4ab1acd4c66a38df70"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:8ec8d88c248041a6df5f6574b87bc00e7e0b493881dad2e7ef47b11dc69093b5"
   name = "github.com/hashicorp/golang-lru"
   packages = [
@@ -293,6 +317,14 @@
   pruneopts = "UT"
   revision = "20f1fb78b0740ba8c3cb143a61e86ba5c8669768"
   version = "v0.5.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:a88cd58a7207a0c343ac90c929e8835009ea840704af89b86b6302b91d91e96d"
+  name = "github.com/hashicorp/yamux"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "aecfd211c9ce5303cd19780c8fc96a01b42fa298"
 
 [[projects]]
   digest = "1:7159b4af2aae0c37b088cea9cb5932b8801a289616c5b789e4669558521cff0c"
@@ -348,6 +380,17 @@
   pruneopts = "UT"
   revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
   version = "v1.0.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:64c6a499a357af6ac4686048e9a11b3fb4f39a4b5488f2513e4b0dc0dd1baeb0"
+  name = "github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go"
+  packages = [
+    "mock_proto",
+    "proto",
+  ]
+  pruneopts = "UT"
+  revision = "57f99f69eeb30b32aa867ef956a1133ab6852f86"
 
 [[projects]]
   digest = "1:f97285a3b0a496dcf8801072622230d513f69175665d94de60eb042d03387f6c"
@@ -422,6 +465,14 @@
   version = "v0.0.3"
 
 [[projects]]
+  digest = "1:6b05e5774cb925702ef2a698dfe26fbec8df2ecc3c12cc6c693d2c2e1a0f10d7"
+  name = "github.com/mitchellh/go-testing-interface"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "93f0c65740d3e21a23304be03030037f06e933ea"
+  version = "v1.14.1"
+
+[[projects]]
   branch = "master"
   digest = "1:84bd7f8a2e0bcd53ddc33c3b47c34c1fe340c8632cbe928f7f8ae10ec6ecdd62"
   name = "github.com/mohae/deepcopy"
@@ -447,6 +498,14 @@
   pruneopts = "UT"
   revision = "e6f5723bf2a66af014955e0888881314cf294129"
   version = "v0.1.1"
+
+[[projects]]
+  digest = "1:109a4e5eccbcaea2e63f89e2eccecbd7f427a893a8712defce705e14c1d51d3c"
+  name = "github.com/oklog/run"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9c53bcd6fefd554246da88d55efcc283aff63659"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -685,15 +744,20 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6004827847d07052d9eb1590a949097529e7155649cd27a24e03eb1cb600575d"
+  digest = "1:fe2b5673f659c38872de171895d851f1667789bda1e573610fac41d429c8cdb9"
   name = "golang.org/x/net"
   packages = [
     "context",
     "html",
     "html/atom",
     "html/charset",
+    "http/httpguts",
     "http/httpproxy",
+    "http2",
+    "http2/hpack",
     "idna",
+    "internal/timeseries",
+    "trace",
     "websocket",
   ]
   pruneopts = "UT"
@@ -757,6 +821,102 @@
   pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:38a535c0a08f69883a9b411d8a3407ec2a0edf0e7dfb12e5f7000f41197d8441"
+  name = "google.golang.org/genproto"
+  packages = ["googleapis/rpc/status"]
+  pruneopts = "UT"
+  revision = "43cab4749ae7254af90e92cb2cd767dfc641f6dd"
+
+[[projects]]
+  digest = "1:8e5f235e541a6768caac8bb550fa99a402cee94ab5f8a0880f8b53568e1dfa65"
+  name = "google.golang.org/grpc"
+  packages = [
+    ".",
+    "attributes",
+    "backoff",
+    "balancer",
+    "balancer/base",
+    "balancer/grpclb/state",
+    "balancer/roundrobin",
+    "binarylog/grpc_binarylog_v1",
+    "codes",
+    "connectivity",
+    "credentials",
+    "credentials/internal",
+    "encoding",
+    "encoding/proto",
+    "grpclog",
+    "health",
+    "health/grpc_health_v1",
+    "internal",
+    "internal/backoff",
+    "internal/balancerload",
+    "internal/binarylog",
+    "internal/buffer",
+    "internal/channelz",
+    "internal/envconfig",
+    "internal/grpclog",
+    "internal/grpcrand",
+    "internal/grpcsync",
+    "internal/grpcutil",
+    "internal/resolver/dns",
+    "internal/resolver/passthrough",
+    "internal/serviceconfig",
+    "internal/status",
+    "internal/syscall",
+    "internal/transport",
+    "keepalive",
+    "metadata",
+    "peer",
+    "reflection",
+    "reflection/grpc_reflection_v1alpha",
+    "resolver",
+    "serviceconfig",
+    "stats",
+    "status",
+    "tap",
+  ]
+  pruneopts = "UT"
+  revision = "1f47ba4663831f2a9c28a62a7de3ff8bc45078f0"
+  version = "v1.30.0"
+
+[[projects]]
+  digest = "1:cccb3a18e62abaccd19c309fc01a69da2509719f5a453cb2e66969f670503245"
+  name = "google.golang.org/protobuf"
+  packages = [
+    "encoding/prototext",
+    "encoding/protowire",
+    "internal/descfmt",
+    "internal/descopts",
+    "internal/detrand",
+    "internal/encoding/defval",
+    "internal/encoding/messageset",
+    "internal/encoding/tag",
+    "internal/encoding/text",
+    "internal/errors",
+    "internal/fieldsort",
+    "internal/filedesc",
+    "internal/filetype",
+    "internal/flags",
+    "internal/genid",
+    "internal/impl",
+    "internal/mapsort",
+    "internal/pragma",
+    "internal/set",
+    "internal/strs",
+    "internal/version",
+    "proto",
+    "reflect/protoreflect",
+    "reflect/protoregistry",
+    "runtime/protoiface",
+    "runtime/protoimpl",
+  ]
+  pruneopts = "UT"
+  revision = "3f7a61f89bb6813f89d981d1870ed68da0b3c3f1"
+  version = "v1.25.0"
 
 [[projects]]
   branch = "v1"
@@ -852,6 +1012,8 @@
     "github.com/gorilla/websocket",
     "github.com/graph-gophers/graphql-go",
     "github.com/graph-gophers/graphql-go/relay",
+    "github.com/hashicorp/go-hclog",
+    "github.com/hashicorp/go-plugin",
     "github.com/hashicorp/golang-lru",
     "github.com/hashicorp/golang-lru/simplelru",
     "github.com/huin/goupnp",
@@ -859,6 +1021,8 @@
     "github.com/huin/goupnp/dcps/internetgateway2",
     "github.com/huin/goupnp/httpu",
     "github.com/jackpal/go-nat-pmp",
+    "github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go/mock_proto",
+    "github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go/proto",
     "github.com/julienschmidt/httprouter",
     "github.com/karalabe/usb",
     "github.com/mattn/go-colorable",
@@ -900,6 +1064,9 @@
     "golang.org/x/sync/errgroup",
     "golang.org/x/sync/syncmap",
     "golang.org/x/text/unicode/norm",
+    "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
     "gopkg.in/check.v1",
     "gopkg.in/karalabe/cookiejar.v2/collections/prque",
     "gopkg.in/natefinch/npipe.v2",

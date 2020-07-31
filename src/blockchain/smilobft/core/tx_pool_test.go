@@ -53,7 +53,7 @@ func init() {
 
 type testBlockChain struct {
 	statedb       *state.StateDB
-	vaultStateDb  *state.StateDB
+	privateStateDb  *state.StateDB
 	gasLimit      uint64
 	chainHeadFeed *event.Feed
 }
@@ -69,7 +69,7 @@ func (bc *testBlockChain) GetBlock(hash common.Hash, number uint64) *types.Block
 }
 
 func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, *state.StateDB, error) {
-	return bc.statedb, bc.vaultStateDb, nil
+	return bc.statedb, bc.privateStateDb, nil
 }
 
 func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {
@@ -304,7 +304,7 @@ func TestInvalidTransactions(t *testing.T) {
 
 	from, _ = deriveSender(tx3)
 	pool.currentState.AddBalance(from, balance, big.NewInt(1))
-	tx3.SetVault()
+	tx3.SetPrivate()
 	if err := pool.AddRemote(tx3); err != ErrEtherValueUnsupported {
 		t.Error("expected", ErrEtherValueUnsupported, "; got", err)
 	}
@@ -343,7 +343,7 @@ func TestInvalidTransactionsCustomTransactionSizeLimit(t *testing.T) {
 
 	from, _ = deriveSender(tx6)
 	pool.currentState.AddBalance(from, balance, big.NewInt(1))
-	tx6.SetVault()
+	tx6.SetPrivate()
 	if err := pool.AddRemote(tx6); err != ErrEtherValueUnsupported {
 		t.Error("expected", ErrEtherValueUnsupported, "; got", err)
 	}

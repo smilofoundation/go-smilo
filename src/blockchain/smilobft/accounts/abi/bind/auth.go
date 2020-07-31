@@ -83,6 +83,8 @@ func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 	}
 }
 
+// Quorum
+//
 // NewClefTransactor is a utility method to easily create a transaction signer
 // with a clef backend.
 func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) *TransactOpts {
@@ -93,6 +95,23 @@ func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) 
 				return nil, errors.New("not authorized to sign this account")
 			}
 			return clef.SignTx(account, transaction, nil) // Clef enforces its own chain id
+		},
+	}
+}
+
+// Quorum
+//
+// NewWalletTransactor is a utility method to easily create a transaction signer
+// from a wallet account
+func NewWalletTransactor(w accounts.Wallet, from accounts.Account) *TransactOpts {
+	return &TransactOpts{
+		From: from.Address,
+		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			signature, err := w.SignText(from, signer.Hash(tx).Bytes())
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
 		},
 	}
 }

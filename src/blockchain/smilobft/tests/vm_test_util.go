@@ -81,9 +81,9 @@ type vmExecMarshaling struct {
 	GasPrice *math.HexOrDecimal256
 }
 
-func (t *VMTest) Run(vmconfig vm.Config, isVault bool) error {
+func (t *VMTest) Run(vmconfig vm.Config, IsPrivate bool) error {
 	statedb := MakePreState(rawdb.NewMemoryDatabase(), t.json.Pre)
-	ret, gasRemaining, err := t.exec(statedb, vmconfig, isVault)
+	ret, gasRemaining, err := t.exec(statedb, vmconfig, IsPrivate)
 
 	if t.json.GasRemaining == nil {
 		if err == nil {
@@ -117,10 +117,10 @@ func (t *VMTest) Run(vmconfig vm.Config, isVault bool) error {
 	return nil
 }
 
-func (t *VMTest) exec(statedb *state.StateDB, vmconfig vm.Config, isVault bool) ([]byte, uint64, error) {
+func (t *VMTest) exec(statedb *state.StateDB, vmconfig vm.Config, IsPrivate bool) ([]byte, uint64, error) {
 	evm := t.newEVM(statedb, vmconfig)
 	e := t.json.Exec
-	return evm.Call(vm.AccountRef(e.Caller), e.Address, e.Data, e.GasLimit, e.Value, isVault)
+	return evm.Call(vm.AccountRef(e.Caller), e.Address, e.Data, e.GasLimit, e.Value, IsPrivate)
 }
 
 func (t *VMTest) newEVM(statedb *state.StateDB, vmconfig vm.Config) *vm.EVM {

@@ -30,7 +30,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/vm"
 
 	"go-smilo/src/blockchain/smilobft/params"
-	"go-smilo/src/blockchain/smilobft/vault"
+	"go-smilo/src/blockchain/smilobft/private"
 )
 
 var (
@@ -84,7 +84,7 @@ type Message interface {
 // VaultMessage implements a vault message
 type VaultMessage interface {
 	Message
-	IsVault() bool
+	IsPrivate() bool
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
@@ -215,16 +215,16 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	isGasRefunded := st.evm.ChainConfig().IsGasRefunded
 
 	var data []byte
-	isVault := false
+	isPrivate := false
 	publicState := st.state
-	if msg, ok := msg.(VaultMessage); ok && isSmilo && msg.IsVault() {
-		if vault.VaultInstance == nil {
-			log.Error("&*&*&*&*& state_transition TransitionDb, Got Vault message but Vault is offline. Please report to SystemAdmin. ", "st.data", cmn.Bytes2Hex(st.data), "contractCreation", contractCreation, "isVault", isVault, "len(ret)", len(ret), "st.gasUsed", st.gasUsed(), "st.gasPrice", st.gasPrice, "sender.Address", sender.Address())
+	if msg, ok := msg.(VaultMessage); ok && isSmilo && msg.IsPrivate() {
+		if private.VaultInstance == nil {
+			log.Error("&*&*&*&*& state_transition TransitionDb, Got Vault message but Vault is offline. Please report to SystemAdmin. ", "st.data", cmn.Bytes2Hex(st.data), "contractCreation", contractCreation, "isPrivate", isPrivate, "len(ret)", len(ret), "st.gasUsed", st.gasUsed(), "st.gasPrice", st.gasPrice, "sender.Address", sender.Address())
 			publicState.SetNonce(sender.Address(), publicState.GetNonce(sender.Address())+1)
 			return nil, 0, false, nil
 		} else {
-			isVault = true
-			data, err = vault.VaultInstance.Get(st.data)
+			isPrivate = true
+			data, err = private.VaultInstance.Get(st.data)
 			// Increment the public account nonce if:
 			// 1. Tx is vault and *not* a participant of the group and either call or create
 			// 2. Tx is vault we are part of the group and is a call
@@ -258,13 +258,13 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		gasNotUsed uint64
 	)
 	if contractCreation {
-		log.Debug("############### state_transition, will execute evm.Create, ", "isVault", isVault)
-		ret, _, gasNotUsed, vmerr = evm.Create(sender, data, st.gas, st.value, isVault)
+		log.Debug("############### state_transition, will execute evm.Create, ", "isPrivate", isPrivate)
+		ret, _, gasNotUsed, vmerr = evm.Create(sender, data, st.gas, st.value, isPrivate)
 	} else {
 		// Increment the account nonce only if the transaction isn't vault.
 		// If the transaction is vault it has already been incremented on
 		// the public state.
-		if !isVault {
+		if !isPrivate {
 			publicState.SetNonce(msg.From(), publicState.GetNonce(sender.Address())+1)
 		}
 		var to common.Address
@@ -274,7 +274,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 			to = st.to()
 		}
 		//if input is empty for the smart contract call, return
-		if len(data) == 0 && isVault {
+		if len(data) == 0 && isPrivate {
 			if isSmilo && isGas {
 				st.refundGasSmiloVersion()
 			} else {
@@ -284,8 +284,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 			return nil, 0, false, nil
 		}
 
-		log.Debug("############### state_transition, will execute evm.Call, ", "isVault", isVault)
-		ret, gasNotUsed, vmerr = evm.Call(sender, to, data, st.gas, st.value, isVault)
+		log.Debug("############### state_transition, will execute evm.Call, ", "isPrivate", isPrivate)
+		ret, gasNotUsed, vmerr = evm.Call(sender, to, data, st.gas, st.value, isPrivate)
 	}
 	if vmerr != nil {
 		log.Info("VM returned with error", "err", vmerr)
@@ -296,7 +296,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 			return nil, 0, false, vmerr
 		}
 	} else {
-		log.Debug("############### state_transition, VM returned with NO error after executing evm, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+		log.Debug("############### state_transition, VM returned with NO error after executing evm, ", "contractCreation", contractCreation, "isPrivate", isPrivate, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 	}
 
 	if st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil) {
@@ -312,24 +312,24 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	} else {
 
 		// avoid 'BAD BLOCK' crash
-		if !isVault {
+		if !isPrivate {
 			st.gas = gasNotUsed
 		}
 
 		//give back gas if no err on EVM && IsSmilo=true,IsGas=true,IsGasRefund=true
 		if vmerr == nil && isSmilo && isGas && isGasRefunded {
-			log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+			log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isPrivate", isPrivate, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 			st.refundGasSmiloVersion()
 			// miners do not get reward in gas for transactions on smilo
 			//st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
 			//running normal node should do the default
 		} else {
-			log.Debug("############### state_transition, refund gas left if err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isVault", isVault, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+			log.Debug("############### state_transition, refund gas left if err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isPrivate", isPrivate, "gasNotUsed", gasNotUsed, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 			st.refundGas()
 			st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)
 		}
 
-		if isVault {
+		if isPrivate {
 			return ret, 0, vmerr != nil, err
 		}
 		return ret, st.gasUsed(), vmerr != nil, err

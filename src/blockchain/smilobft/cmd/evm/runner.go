@@ -82,7 +82,7 @@ func runCmd(ctx *cli.Context) error {
 		DisableStack:  ctx.GlobalBool(DisableStackFlag.Name),
 		Debug:         ctx.GlobalBool(DebugFlag.Name),
 	}
-	var IsVaultFlag = ctx.GlobalBool(IsVaultFlag.Name)
+	var IsPrivateFlag = ctx.GlobalBool(IsPrivateFlag.Name)
 
 	var (
 		tracer        vm.Tracer
@@ -209,12 +209,12 @@ func runCmd(ctx *cli.Context) error {
 	var leftOverGas uint64
 	if ctx.GlobalBool(CreateFlag.Name) {
 		input := append(code, common.Hex2Bytes(ctx.GlobalString(InputFlag.Name))...)
-		ret, _, leftOverGas, err = runtime.Create(input, &runtimeConfig, IsVaultFlag)
+		ret, _, leftOverGas, err = runtime.Create(input, &runtimeConfig, IsPrivateFlag)
 	} else {
 		if len(code) > 0 {
 			statedb.SetCode(receiver, code)
 		}
-		ret, leftOverGas, err = runtime.Call(receiver, common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)), &runtimeConfig, IsVaultFlag)
+		ret, leftOverGas, err = runtime.Call(receiver, common.Hex2Bytes(ctx.GlobalString(InputFlag.Name)), &runtimeConfig, IsPrivateFlag)
 	}
 	execTime := time.Since(tstart)
 

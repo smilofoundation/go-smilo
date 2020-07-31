@@ -31,12 +31,12 @@ import (
 	"go-smilo/src/blockchain/smilobft/rpc"
 
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/vault"
+	"go-smilo/src/blockchain/smilobft/private"
 )
 
 // GetSmiloPayload returns the contents of a private transaction
 func (s *PublicBlockChainAPI) GetSmiloPayload(digestHex string) (string, error) {
-	if vault.VaultInstance == nil {
+	if private.VaultInstance == nil {
 		return "", fmt.Errorf("vault is not enabled")
 	}
 	if len(digestHex) < 3 {
@@ -52,7 +52,7 @@ func (s *PublicBlockChainAPI) GetSmiloPayload(digestHex string) (string, error) 
 	if len(b) != 64 {
 		return "", fmt.Errorf("expected a Smilo digest of length 64, but got %d", len(b))
 	}
-	data, err := vault.VaultInstance.Get(b)
+	data, err := private.VaultInstance.Get(b)
 	if err != nil {
 		return "", err
 	}
@@ -76,7 +76,7 @@ func (s *PublicBlockChainAPI) GetSmiloPay(ctx context.Context, address common.Ad
 
 // SendVaultTransaction will POST data to local blackbox node if data is valid; used by PublicTransactionPoolAPI.SendTransaction
 func SendVaultTransactionWithExtraCheck(args SendTxArgs) (d hexutil.Bytes, err error) {
-	if vault.VaultInstance == nil {
+	if private.VaultInstance == nil {
 		return d, fmt.Errorf("failed to get VaultInstance, is Vault node running ?? ")
 	} else if args.Value != nil && args.Value.ToInt().Sign() != 0 {
 		return d, vm.ErrReadOnlyValueTransfer
@@ -91,9 +91,9 @@ func SendVaultTransactionWithExtraCheck(args SendTxArgs) (d hexutil.Bytes, err e
 
 	//Send transaction Blackbox node
 	if len(data) > 0 {
-		log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.VaultFrom, "sharedwith", args.SharedWith)
-		data, err = vault.VaultInstance.Post(data, args.VaultFrom, args.SharedWith)
-		log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.VaultFrom, "sharedwith", args.SharedWith)
+		log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.PrivateFrom, "sharedwith", args.PrivateFor)
+		data, err = private.VaultInstance.Post(data, args.PrivateFrom, args.PrivateFor)
+		log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.PrivateFrom, "sharedwith", args.PrivateFor)
 		if err != nil {
 			return nil, err
 		}
@@ -111,9 +111,9 @@ func SendVaultTransaction(args SendTxArgs) (d hexutil.Bytes, err error) {
 
 	data := []byte(*args.Data)
 	if len(data) > 0 {
-		log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "VaultFrom", args.VaultFrom, "SharedWith", args.SharedWith)
-		data, err := vault.VaultInstance.Post(data, args.VaultFrom, args.SharedWith)
-		log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "VaultFrom", args.VaultFrom, "SharedWith", args.SharedWith)
+		log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "PrivateFrom", args.PrivateFrom, "PrivateFor", args.PrivateFor)
+		data, err := private.VaultInstance.Post(data, args.PrivateFrom, args.PrivateFor)
+		log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "PrivateFrom", args.PrivateFrom, "PrivateFor", args.PrivateFor)
 		if err != nil {
 			return nil, err
 		}

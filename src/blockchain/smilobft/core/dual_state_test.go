@@ -134,17 +134,17 @@ func TestDualState(t *testing.T) {
 
 			db := rawdb.NewMemoryDatabase()
 
-			vaultState, _ := state.New(common.Hash{}, state.NewDatabase(db))
+			privateState, _ := state.New(common.Hash{}, state.NewDatabase(db))
 			publicState, _ := state.New(common.Hash{}, state.NewDatabase(db))
 
 			if test.firstState == "vault" {
-				vaultState.SetCode(common.Address{2}, common.Hex2Bytes(test.firstStateCode))
+				privateState.SetCode(common.Address{2}, common.Hex2Bytes(test.firstStateCode))
 			} else if test.firstState == "public" {
 				publicState.SetCode(common.Address{2}, common.Hex2Bytes(test.firstStateCode))
 			}
 
 			if test.secondState == "vault" {
-				vaultState.SetCode(*test.callMessage.to, common.Hex2Bytes(test.secondStateCode))
+				privateState.SetCode(*test.callMessage.to, common.Hex2Bytes(test.secondStateCode))
 			} else if test.secondState == "public" {
 				publicState.SetCode(*test.callMessage.to, common.Hex2Bytes(test.secondStateCode))
 			}
@@ -153,11 +153,11 @@ func TestDualState(t *testing.T) {
 			msg := test.callMessage
 
 			ctx := NewEVMContext(msg, &dualStateTestHeader, nil, &author)
-			env := vm.NewEVM(ctx, publicState, vaultState, &params.ChainConfig{}, vm.Config{})
+			env := vm.NewEVM(ctx, publicState, privateState, &params.ChainConfig{}, vm.Config{})
 			env.Call(vm.AccountRef(author), callAddr, msg.data, msg.gas, new(big.Int), true)
 
 			if test.expectedState == "vault" {
-				value := vaultState.GetState(test.expectedStateAddr, common.Hash{})
+				value := privateState.GetState(test.expectedStateAddr, common.Hash{})
 				require.Equal(t, test.expectedHash, value)
 			} else if test.expectedState == "public" {
 				value := publicState.GetState(test.expectedStateAddr, common.Hash{})

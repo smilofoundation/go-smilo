@@ -28,18 +28,20 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/vault"
+	"go-smilo/src/blockchain/smilobft/private"
 )
 
-// SendRawTxArgs represents the arguments to submit a new signed private transaction into the transaction pool.
-type VaultSendRawTxArgs struct {
-	SharedWith []string `json:"sharedWith"`
+// Quorum
+//
+// Additional arguments in order to support transaction privacy
+type PrivateTxArgs struct {
+	PrivateFor []string `json:"privateFor"`
 }
 
 // SendRawTransactionVault will add the signed transaction to the Vault and to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
-func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, encodedTx hexutil.Bytes, args VaultSendRawTxArgs) (common.Hash, error) {
-	if vault.VaultInstance == nil {
+func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, encodedTx hexutil.Bytes, args PrivateTxArgs) (common.Hash, error) {
+	if private.VaultInstance == nil {
 		return common.Hash{}, fmt.Errorf("vault is not enabled")
 	}
 
@@ -49,13 +51,13 @@ func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, 
 	}
 
 	data := tx.Data()
-	isVault := args.SharedWith != nil
+	IsPrivate := args.PrivateFor != nil
 
-	if isVault {
+	if IsPrivate {
 		if len(data) > 0 {
-			log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.SharedWith, "sharedwith", args.SharedWith)
-			data, err := vault.VaultInstance.PostRawTransaction(data, args.SharedWith)
-			log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "vaultfrom", args.SharedWith, "sharedwith", args.SharedWith)
+			log.Info("sending vault tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFor)
+			data, err := private.VaultInstance.PostRawTransaction(data, args.PrivateFor)
+			log.Info("sent vault tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFor)
 
 			if err != nil {
 				return common.Hash{}, err
@@ -65,12 +67,12 @@ func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, 
 		return common.Hash{}, fmt.Errorf("transaction is not vault type")
 	}
 
-	return SubmitTransaction(ctx, s.b, tx, isVault)
+	return SubmitTransaction(ctx, s.b, tx, IsPrivate)
 }
 
 // Get the Vault Transaction content
 func (s *PublicBlockChainAPI) GetVaultTransaction(digestHex string) (data string, err error) {
-	if vault.VaultInstance == nil {
+	if private.VaultInstance == nil {
 		err = fmt.Errorf("vault is not enabled")
 		return data, err
 	}
@@ -92,7 +94,7 @@ func (s *PublicBlockChainAPI) GetVaultTransaction(digestHex string) (data string
 		return data, err
 	}
 	var responseData []byte
-	responseData, err = vault.VaultInstance.Get(b)
+	responseData, err = private.VaultInstance.Get(b)
 	if err != nil {
 		return data, err
 	}

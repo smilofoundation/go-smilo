@@ -158,7 +158,6 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
-		utils.SportEnableNodePermissionFlag,
 		utils.SportRequestTimeoutFlag,
 		utils.SportBlockPeriodFlag,
 		utils.SolcPathFlag,
@@ -169,6 +168,10 @@ var (
 		utils.SportDAORequestTimeoutFlag,
 		utils.SportDAOBlockPeriodFlag,
 		utils.EnableNodePermissionFlag,
+		utils.PluginSettingsFlag,
+		utils.PluginSkipVerifyFlag,
+		utils.PluginLocalVerifyFlag,
+		utils.PluginPublicKeyFlag,
 	}
 
 	rpcFlags = []cli.Flag{

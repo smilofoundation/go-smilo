@@ -19,6 +19,8 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/params"
+	"go-smilo/src/blockchain/smilobft/plugin"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -165,6 +167,8 @@ type Config struct {
 	// *WARNING* Only set this if the node is running in a trusted network, exposing
 	// private APIs to untrusted users is a major security risk.
 	WSExposeAll bool `toml:",omitempty"`
+
+	Plugins *plugin.Settings `toml:",omitempty"`
 
 	// GraphQLHost is the host interface on which to start the GraphQL server. If this
 	// field is empty, no GraphQL API endpoint will be started.
@@ -466,6 +470,43 @@ func (c *Config) AccountConfig() (int, int, string, error) {
 		keydir, err = filepath.Abs(c.KeyStoreDir)
 	}
 	return scryptN, scryptP, keydir, err
+}
+
+// Quorum
+//
+// Make sure plugin base dir exists
+func (c *Config) ResolvePluginBaseDir() error {
+	if c.Plugins == nil {
+		return nil
+	}
+	baseDir := c.Plugins.BaseDir.String()
+	if baseDir == "" {
+		baseDir = filepath.Join(c.DataDir, "plugins")
+	}
+	if !common.FileExist(baseDir) {
+		if err := os.MkdirAll(baseDir, 0755); err != nil {
+			return err
+		}
+	}
+	absBaseDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		return err
+	}
+	c.Plugins.BaseDir = plugin.EnvironmentAwaredValue(absBaseDir)
+	return nil
+}
+
+// check if smart-contract-based permissioning is enabled by reading `--permissioned` flag and checking permission config file
+func (c *Config) IsPermissionEnabled() bool {
+	if c.EnableNodePermissionFlag {
+		fullPath := filepath.Join(c.DataDir, params.PERMISSION_MODEL_CONFIG)
+		if _, err := os.Stat(fullPath); err != nil {
+			log.Warn(fmt.Sprintf("%s file is missing. Smart-contract-based permission service will be disabled", params.PERMISSION_MODEL_CONFIG), "error", err)
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func makeAccountManager(conf *Config) (*accounts.Manager, string, error) {

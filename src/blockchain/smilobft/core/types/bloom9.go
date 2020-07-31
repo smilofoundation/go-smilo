@@ -135,6 +135,7 @@ func BloomLookup(bin Bloom, topic bytesBacked) bool {
 	return bloom.And(bloom, cmp).Cmp(cmp) == 0
 }
 
+// Quorum
 // OrOperationOnBloom will execute a Or (sets z = b OR newBloom)
 func (b *Bloom) OrOperationOnBloom(newBloomInput []byte) {
 	originalBloom := new(big.Int).SetBytes(b[:])

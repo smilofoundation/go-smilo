@@ -19,6 +19,7 @@ package src
 import (
 	"context"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -114,7 +115,7 @@ func ProcessValidTXAndGas(validTX *types.Transaction, gasprice int64, minGasPric
 	defer cancel()
 
 	fmt.Println("signedTx, ", signedTx)
-	err = client.SendTransaction(thisctx, signedTx)
+	err = client.SendTransaction(thisctx, signedTx, bind.PrivateTxArgs{})
 	if err != nil {
 		fmt.Println("Failed to send transaction, ", validTX.Hash().Hex(), err)
 		return cli.NewExitError("Signed transaction failed SendTransaction, ", 1)

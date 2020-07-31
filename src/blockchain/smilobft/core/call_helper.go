@@ -27,7 +27,7 @@ type callHelper struct {
 	header types.Header
 	gp     *GasPool
 
-	VaultState, PublicState *state.StateDB
+	PrivateState, PublicState *state.StateDB
 }
 
 // TxNonce returns the pending nonce
@@ -35,9 +35,9 @@ func (cg *callHelper) TxNonce(addr common.Address) uint64 {
 	return cg.nonces[addr]
 }
 
-// MakeCall makes does a call to the recipient using the given input. It can switch between vault and public
-// by setting the vault boolean flag. It returns an error if the call failed.
-func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Address, input []byte) error {
+// MakeCall makes does a call to the recipient using the given input. It can switch between private and public
+// by setting the private boolean flag. It returns an error if the call failed.
+func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Address, input []byte) error {
 	var (
 		from = crypto.PubkeyToAddress(key.PublicKey)
 		err  error
@@ -49,6 +49,11 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 	cg.header.GasLimit = 4700000
 
 	signer := types.MakeSigner(params.SmiloTestChainConfig, cg.header.Number)
+	//TODO: Quorum. find out why this causes private_state_test.go to fail
+	//if private {
+	//	signer = types.QuorumPrivateTxSigner{}
+	//}
+
 	tx, err := types.SignTx(types.NewTransaction(cg.TxNonce(from), to, new(big.Int), 1000000, new(big.Int), input), signer, key)
 	if err != nil {
 		return err
@@ -59,16 +64,16 @@ func (cg *callHelper) MakeCall(vault bool, key *ecdsa.PrivateKey, to common.Addr
 		return err
 	}
 
-	publicState, vaultState := cg.PublicState, cg.VaultState
-	if !vault {
-		vaultState = publicState
+	publicState, privateState := cg.PublicState, cg.PrivateState
+	if !private {
+		privateState = publicState
 	} else {
-		tx.SetVault()
+		tx.SetPrivate()
 	}
 
 	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
 	context := NewEVMContext(msg, &cg.header, bc, &from)
-	vmenv := vm.NewEVM(context, publicState, vaultState, params.SmiloTestChainConfig, vm.Config{})
+	vmenv := vm.NewEVM(context, publicState, privateState, params.SmiloTestChainConfig, vm.Config{})
 	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)
 	return err
 }
@@ -82,16 +87,16 @@ func MakeCallHelper() *callHelper {
 	if err != nil {
 		panic(err)
 	}
-	vaultState, err := state.New(common.Hash{}, db)
+	privateState, err := state.New(common.Hash{}, db)
 	if err != nil {
 		panic(err)
 	}
 	cg := &callHelper{
-		db:          memdb,
-		nonces:      make(map[common.Address]uint64),
-		gp:          new(GasPool).AddGas(5000000),
-		PublicState: publicState,
-		VaultState:  vaultState,
+		db:           memdb,
+		nonces:       make(map[common.Address]uint64),
+		gp:           new(GasPool).AddGas(5000000),
+		PublicState:  publicState,
+		PrivateState: privateState,
 	}
 	return cg
 }

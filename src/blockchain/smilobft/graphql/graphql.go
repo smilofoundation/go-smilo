@@ -53,7 +53,7 @@ type Account struct {
 // getState fetches the StateDB object for an account.
 func (a *Account) getState(ctx context.Context) (*state.StateDB, *state.StateDB, error) {
 	state, _, err := a.backend.StateAndHeaderByNumber(ctx, a.blockNumber)
-	return state.(eth.EthAPIState).State, state.(eth.EthAPIState).VaultState, err
+	return state.(eth.EthAPIState).State, state.(eth.EthAPIState).PrivateState, err
 }
 
 func (a *Account) Address(ctx context.Context) (common.Address, error) {
@@ -1002,7 +1002,7 @@ func (r *Resolver) SendRawTransaction(ctx context.Context, args struct{ Data hex
 	if err := rlp.DecodeBytes(args.Data, tx); err != nil {
 		return common.Hash{}, err
 	}
-	hash, err := ethapi.SubmitTransaction(ctx, r.backend, tx, tx.IsVault())
+	hash, err := ethapi.SubmitTransaction(ctx, r.backend, tx, tx.IsPrivate())
 	return hash, err
 }
 
