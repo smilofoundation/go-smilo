@@ -41,7 +41,7 @@ const (
 	SmiloVersionMajor = 1
 	SmiloVersionMinor = 9
 	SmiloVersionPatch = 2
-	SmiloMinorPatch   = 4
+	SmiloMinorPatch   = 5
 )
 
 // Version holds the textual GETH version string.
