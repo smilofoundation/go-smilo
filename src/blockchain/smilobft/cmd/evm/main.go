@@ -118,6 +118,7 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+	// Quorum
 	IsPrivateFlag = cli.BoolFlag{
 		Name:  "IsPrivate",
 		Usage: "enable / disable vault",
@@ -146,6 +147,7 @@ func init() {
 		DisableMemoryFlag,
 		DisableStackFlag,
 		EVMInterpreterFlag,
+		//Quorum
 		IsPrivateFlag,
 	}
 	app.Commands = []cli.Command{

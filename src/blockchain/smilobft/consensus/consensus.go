@@ -143,7 +143,7 @@ type PoW interface {
 	Hashrate() float64
 }
 
-// BFT consensus implementations
+// BFT is a consensus engine to avoid byzantine failure
 type BFT interface {
 	Engine
 

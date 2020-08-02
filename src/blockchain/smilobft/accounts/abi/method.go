@@ -32,18 +32,7 @@ import (
 // be flagged `false`.
 // Input specifies the required input parameters for this gives method.
 type Method struct {
-	// Name is the method name used for internal representation. It's derived from
-	// the raw name and a suffix will be added in the case of a function overload.
-	//
-	// e.g.
-	// There are two functions have same name:
-	// * foo(int,int)
-	// * foo(uint,uint)
-	// The method name of the first one will be resolved as foo while the second one
-	// will be resolved as foo0.
-	Name string
-	// RawName is the raw method name parsed from ABI.
-	RawName string
+	Name    string
 	Const   bool
 	Inputs  Arguments
 	Outputs Arguments
@@ -53,7 +42,7 @@ type Method struct {
 //
 // Example
 //
-//     function foo(uint32 a, int b) = "foo(uint32,int256)"
+//     function foo(uint32 a, int b)    =    "foo(uint32,int256)"
 //
 // Please note that "int" is substitute for its canonical representation "int256"
 func (method Method) Sig() string {
@@ -61,7 +50,7 @@ func (method Method) Sig() string {
 	for i, input := range method.Inputs {
 		types[i] = input.Type.String()
 	}
-	return fmt.Sprintf("%v(%v)", method.RawName, strings.Join(types, ","))
+	return fmt.Sprintf("%v(%v)", method.Name, strings.Join(types, ","))
 }
 
 func (method Method) String() string {
@@ -80,7 +69,7 @@ func (method Method) String() string {
 	if method.Const {
 		constant = "constant "
 	}
-	return fmt.Sprintf("function %v(%v) %sreturns(%v)", method.RawName, strings.Join(inputs, ", "), constant, strings.Join(outputs, ", "))
+	return fmt.Sprintf("function %v(%v) %sreturns(%v)", method.Name, strings.Join(inputs, ", "), constant, strings.Join(outputs, ", "))
 }
 
 // ID returns the canonical representation of the method's signature used by the

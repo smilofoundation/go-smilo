@@ -56,7 +56,6 @@ const (
 // Clique proof-of-authority protocol constants.
 var (
 	epochLength = uint64(30000) // Default number of blocks after which to checkpoint and reset the pending votes
-	blockPeriod = uint64(15)    // Default minimum difference between two consecutive block's timestamps
 
 	extraVanity = 32 // Fixed number of extra-data prefix bytes reserved for signer vanity
 	extraSeal   = 65 // Fixed number of extra-data suffix bytes reserved for signer seal
@@ -97,20 +96,19 @@ var (
 
 	// errMissingSignature is returned if a block's extra-data section doesn't seem
 	// to contain a 65 byte secp256k1 signature.
-	errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
+	errMissingSignature = errors.New("extra-data 65 byte signature suffix missing")
 
 	// errExtraSigners is returned if non-checkpoint block contain signer data in
 	// their extra-data fields.
 	errExtraSigners = errors.New("non-checkpoint block contains extra signer list")
 
 	// errInvalidCheckpointSigners is returned if a checkpoint block contains an
-	// invalid list of signers (i.e. non divisible by 20 bytes, or not the correct
-	// ones).
+	// invalid list of signers (i.e. non divisible by 20 bytes).
 	errInvalidCheckpointSigners = errors.New("invalid signer list on checkpoint block")
 
 	// errMismatchingCheckpointSigners is returned if a checkpoint block contains a
 	// list of signers different than the one the local node calculated.
-	//errMismatchingCheckpointSigners = errors.New("mismatching signer list on checkpoint block")
+	errMismatchingCheckpointSigners = errors.New("mismatching signer list on checkpoint block")
 
 	// errInvalidMixDigest is returned if a block's mix digest is non-zero.
 	errInvalidMixDigest = errors.New("non-zero mix digest")
@@ -118,8 +116,7 @@ var (
 	// errInvalidUncleHash is returned if a block contains an non-empty uncle list.
 	errInvalidUncleHash = errors.New("non empty uncle hash")
 
-	// errInvalidDifficulty is returned if the difficulty of a block is not either
-	// of 1 or 2, or if the value does not match the turn of the signer.
+	// errInvalidDifficulty is returned if the difficulty of a block neither 1 or 2.
 	errInvalidDifficulty = errors.New("invalid difficulty")
 
 	// errWrongDifficulty is returned if the difficulty of a block doesn't match the
@@ -147,7 +144,7 @@ var (
 	errRecentlySigned = errors.New("recently signed")
 )
 
-// SignerFn is a signer callback function to request a hash to be signed by a
+// SignerFn is a signer callback function to request a header to be signed by a
 // backing account.
 type SignerFn func(accounts.Account, string, []byte) ([]byte, error)
 
@@ -378,7 +375,7 @@ func (c *Clique) verifyCascadingFields(chain consensus.ChainReader, header *type
 		}
 		extraSuffix := len(header.Extra) - extraSeal
 		if !bytes.Equal(header.Extra[extraVanity:extraSuffix], signers) {
-			return errInvalidCheckpointSigners
+			return errMismatchingCheckpointSigners
 		}
 	}
 	// All basic checks passed, verify the seal and return

@@ -71,7 +71,7 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 		tx.SetPrivate()
 	}
 
-	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
+	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil, NewTxSenderCacher())
 	context := NewEVMContext(msg, &cg.header, bc, &from)
 	vmenv := vm.NewEVM(context, publicState, privateState, params.SmiloTestChainConfig, vm.Config{})
 	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)

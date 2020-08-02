@@ -47,6 +47,9 @@ type dummyStatedb struct {
 	state.StateDB
 }
 
+func (s *dummyStatedb) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	panic("implement me")
+}
 func (*dummyStatedb) GetRefund() uint64 { return 1337 }
 
 func TestStoreCapture(t *testing.T) {

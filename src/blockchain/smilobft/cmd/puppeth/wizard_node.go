@@ -143,7 +143,7 @@ func (w *wizard) deployNode(boot bool) {
 				infos.keyPass = w.readPassword()
 
 				if _, err := keystore.DecryptKey([]byte(infos.keyJSON), infos.keyPass); err != nil {
-					log.Error("Failed to decrypt key with given password")
+					log.Error("Failed to decrypt key with given passphrase")
 					return
 				}
 			}

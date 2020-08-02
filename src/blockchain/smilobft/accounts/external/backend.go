@@ -1,29 +1,30 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2019 The go-ethereum Authors
+// This file is part of the go-ethereum library.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// The go-ethereum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 package external
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft"
 	"math/big"
 	"sync"
 
+
 	"github.com/ethereum/go-ethereum/event"
 
-	"go-smilo/src/blockchain/smilobft"
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/internal/ethapi"
@@ -36,35 +37,41 @@ import (
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
-type ExternalBackend struct {
+type Backend struct {
 	signers []accounts.Wallet
 }
 
-func (eb *ExternalBackend) Wallets() []accounts.Wallet {
+func (eb *Backend) Wallets() []accounts.Wallet {
 	return eb.signers
 }
 
-func NewExternalBackend(endpoint string) (*ExternalBackend, error) {
+func NewExternalBackend(endpoint string) (*Backend, error) {
 	signer, err := NewExternalSigner(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	return &ExternalBackend{
+	return &Backend{
 		signers: []accounts.Wallet{signer},
 	}, nil
 }
 
-func (eb *ExternalBackend) Subscribe(sink chan<- accounts.WalletEvent) event.Subscription {
+func (eb *Backend) Subscribe(sink chan<- accounts.WalletEvent) event.Subscription {
 	return event.NewSubscription(func(quit <-chan struct{}) error {
 		<-quit
 		return nil
 	})
 }
 
-// ExternalSigner provides an API to interact with an external signer (clef)
+func (eb *Backend) Close() {
+	for _, w := range eb.signers {
+		w.Close()
+	}
+}
+
+// Signer provides an API to interact with an external signer (clef)
 // It proxies request to the external signer while forwarding relevant
 // request headers
-type ExternalSigner struct {
+type Signer struct {
 	client   *rpc.Client
 	endpoint string
 	status   string
@@ -72,12 +79,12 @@ type ExternalSigner struct {
 	cache    []accounts.Account
 }
 
-func NewExternalSigner(endpoint string) (*ExternalSigner, error) {
+func NewExternalSigner(endpoint string) (*Signer, error) {
 	client, err := rpc.Dial(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	extsigner := &ExternalSigner{
+	extsigner := &Signer{
 		client:   client,
 		endpoint: endpoint,
 	}
@@ -90,28 +97,28 @@ func NewExternalSigner(endpoint string) (*ExternalSigner, error) {
 	return extsigner, nil
 }
 
-func (api *ExternalSigner) URL() accounts.URL {
+func (api *Signer) URL() accounts.URL {
 	return accounts.URL{
 		Scheme: "extapi",
 		Path:   api.endpoint,
 	}
 }
 
-func (api *ExternalSigner) Status() (string, error) {
+func (api *Signer) Status() (string, error) {
 	return api.status, nil
 }
 
-func (api *ExternalSigner) Open(passphrase string) error {
+func (api *Signer) Open(passphrase string) error {
 	return fmt.Errorf("operation not supported on external signers")
 }
 
-func (api *ExternalSigner) Close() error {
+func (api *Signer) Close() error {
 	return fmt.Errorf("operation not supported on external signers")
 }
 
-func (api *ExternalSigner) Accounts() []accounts.Account {
-	var accnts []accounts.Account
+func (api *Signer) Accounts() []accounts.Account {
 	res, err := api.listAccounts()
+	accnts := make([]accounts.Account, 0, len(res))
 	if err != nil {
 		log.Error("account listing failed", "error", err)
 		return accnts
@@ -131,7 +138,7 @@ func (api *ExternalSigner) Accounts() []accounts.Account {
 	return accnts
 }
 
-func (api *ExternalSigner) Contains(account accounts.Account) bool {
+func (api *Signer) Contains(account accounts.Account) bool {
 	api.cacheMu.RLock()
 	defer api.cacheMu.RUnlock()
 	for _, a := range api.cache {
@@ -142,20 +149,20 @@ func (api *ExternalSigner) Contains(account accounts.Account) bool {
 	return false
 }
 
-func (api *ExternalSigner) Derive(path accounts.DerivationPath, pin bool) (accounts.Account, error) {
+func (api *Signer) Derive(path accounts.DerivationPath, pin bool) (accounts.Account, error) {
 	return accounts.Account{}, fmt.Errorf("operation not supported on external signers")
 }
 
-func (api *ExternalSigner) SelfDerive(bases []accounts.DerivationPath, chain smilobft.ChainStateReader) {
+func (api *Signer) SelfDerive(bases []accounts.DerivationPath, chain smilobft.ChainStateReader) {
 	log.Error("operation SelfDerive not supported on external signers")
 }
 
-func (api *ExternalSigner) signHash(account accounts.Account, hash []byte) ([]byte, error) {
+func (api *Signer) signHash(account accounts.Account, hash []byte) ([]byte, error) {
 	return []byte{}, fmt.Errorf("operation not supported on external signers")
 }
 
 // SignData signs keccak256(data). The mimetype parameter describes the type of data being signed
-func (api *ExternalSigner) SignData(account accounts.Account, mimeType string, data []byte) ([]byte, error) {
+func (api *Signer) SignData(account accounts.Account, mimeType string, data []byte) ([]byte, error) {
 	var res hexutil.Bytes
 	var signAddress = common.NewMixedcaseAddress(account.Address)
 	if err := api.client.Call(&res, "account_signData",
@@ -171,7 +178,7 @@ func (api *ExternalSigner) SignData(account accounts.Account, mimeType string, d
 	return res, nil
 }
 
-func (api *ExternalSigner) SignText(account accounts.Account, text []byte) ([]byte, error) {
+func (api *Signer) SignText(account accounts.Account, text []byte) ([]byte, error) {
 	var res hexutil.Bytes
 	var signAddress = common.NewMixedcaseAddress(account.Address)
 	if err := api.client.Call(&res, "account_signData",
@@ -183,7 +190,7 @@ func (api *ExternalSigner) SignText(account accounts.Account, text []byte) ([]by
 	return res, nil
 }
 
-func (api *ExternalSigner) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
+func (api *Signer) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
 	res := ethapi.SignTransactionResult{}
 	data := hexutil.Bytes(tx.Data())
 	var to *common.MixedcaseAddress
@@ -206,18 +213,18 @@ func (api *ExternalSigner) SignTx(account accounts.Account, tx *types.Transactio
 	return res.Tx, nil
 }
 
-func (api *ExternalSigner) SignTextWithPassphrase(account accounts.Account, passphrase string, text []byte) ([]byte, error) {
-	return []byte{}, fmt.Errorf("password-operations not supported on external signers")
+func (api *Signer) SignTextWithPassphrase(account accounts.Account, passphrase string, text []byte) ([]byte, error) {
+	return []byte{}, fmt.Errorf("passphrase-operations not supported on external signers")
 }
 
-func (api *ExternalSigner) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
-	return nil, fmt.Errorf("password-operations not supported on external signers")
+func (api *Signer) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
+	return nil, fmt.Errorf("passphrase-operations not supported on external signers")
 }
-func (api *ExternalSigner) SignDataWithPassphrase(account accounts.Account, passphrase, mimeType string, data []byte) ([]byte, error) {
-	return nil, fmt.Errorf("password-operations not supported on external signers")
+func (api *Signer) SignDataWithPassphrase(account accounts.Account, passphrase, mimeType string, data []byte) ([]byte, error) {
+	return nil, fmt.Errorf("passphrase-operations not supported on external signers")
 }
 
-func (api *ExternalSigner) listAccounts() ([]common.Address, error) {
+func (api *Signer) listAccounts() ([]common.Address, error) {
 	var res []common.Address
 	if err := api.client.Call(&res, "account_list"); err != nil {
 		return nil, err
@@ -225,7 +232,7 @@ func (api *ExternalSigner) listAccounts() ([]common.Address, error) {
 	return res, nil
 }
 
-func (api *ExternalSigner) pingVersion() (string, error) {
+func (api *Signer) pingVersion() (string, error) {
 	var v string
 	if err := api.client.Call(&v, "account_version"); err != nil {
 		return "", err

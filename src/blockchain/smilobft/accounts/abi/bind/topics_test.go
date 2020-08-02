@@ -43,6 +43,7 @@ func TestMakeTopics(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := makeTopics(tt.args.query...)
 			if (err != nil) != tt.wantErr {
@@ -90,6 +91,7 @@ func TestParseTopics(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			createObj := tt.args.createObj()
 			if err := parseTopics(createObj, tt.args.fields, tt.args.topics); (err != nil) != tt.wantErr {

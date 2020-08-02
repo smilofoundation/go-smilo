@@ -24,7 +24,7 @@ const (
 	//GETH
 	VersionMajor = 1        // Major version component of the current release
 	VersionMinor = 9        // Minor version component of the current release
-	VersionPatch = 2        // Patch version component of the current release
+	VersionPatch = 7        // Patch version component of the current release
 	VersionMeta  = "stable" // Version metadata to append to the version string
 
 	//Quorum
@@ -34,8 +34,8 @@ const (
 
 	//Autonity
 	AutonityVersionMajor = 0 // Major version component of the current release
-	AutonityVersionMinor = 2 // Minor version component of the current release
-	AutonityVersionPatch = 1 // Patch version component of the current release
+	AutonityVersionMinor = 3 // Minor version component of the current release
+	AutonityVersionPatch = 0 // Patch version component of the current release
 
 	//Smilo
 	SmiloVersionMajor = 1

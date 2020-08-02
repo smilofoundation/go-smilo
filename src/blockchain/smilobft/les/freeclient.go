@@ -1,4 +1,4 @@
-// Copyright 2016 The go-ethereum Authors
+// Copyright 2018 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -62,7 +62,9 @@ type freeClientPool struct {
 }
 
 const (
-	recentUsageExpTC = time.Hour // time constant of the exponential weighting window for "recent" server usage
+	recentUsageExpTC     = time.Hour   // time constant of the exponential weighting window for "recent" server usage
+	fixedPointMultiplier = 0x1000000   // constant to convert logarithms to fixed point format
+	connectedBias        = time.Minute // this bias is applied in favor of already connected clients in order to avoid kicking them out very soon
 )
 
 // newFreeClientPool creates a new free client pool

@@ -125,16 +125,7 @@ func (c *core) processBacklog() {
 		if backlog == nil {
 			continue
 		}
-		//if c.valSet != nil {
-		//	_, src := c.valSet.GetByAddress(src.Address())
-		//	if src == nil {
-		//		// validator is not available
-		//		delete(c.backlogs, src)
-		//		continue
-		//	}
-		//} else {
-		//	log.Warn("c.valSet is nil, wtf ?")
-		//}
+
 		logger := c.logger.New("from", src, "state", c.state)
 		isFuture := false
 

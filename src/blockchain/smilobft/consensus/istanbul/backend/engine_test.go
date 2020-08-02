@@ -57,7 +57,7 @@ func newBlockChain(n int) (*core.BlockChain, *Backend, error) {
 	// Use the first key as private key
 	b := New(config, nodeKeys[0], memDB, genesis.Config, &vm.Config{})
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil, core.NewTxSenderCacher())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,7 +101,6 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	// force enable Istanbul engine
 	genesis.Config.Istanbul = &params.IstanbulConfig{}
 	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
-
 	genesis.Config.Ethash = nil
 	genesis.Difficulty = defaultDifficulty
 	genesis.Nonce = emptyNonce.Uint64()
@@ -112,7 +111,6 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return genesis, nodeKeys, nil
 }
 
@@ -312,12 +310,12 @@ func TestVerifyHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// errEmptyCommittedSeals case
 	block, err := makeBlockWithoutSeal(chain, engine, chain.Genesis())
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	block, _ = engine.updateBlock(block)
 	err = engine.VerifyHeader(chain, block.Header(), false)
 	if err != types.ErrEmptyCommittedSeals {
@@ -343,7 +341,6 @@ func TestVerifyHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	header = block.Header()
 	header.MixDigest = cmn.StringToHash("123456789")
 	err = engine.VerifyHeader(chain, header, false)
@@ -356,7 +353,6 @@ func TestVerifyHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	header = block.Header()
 	header.UncleHash = cmn.StringToHash("123456789")
 	err = engine.VerifyHeader(chain, header, false)
@@ -381,7 +377,6 @@ func TestVerifyHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	header = block.Header()
 	header.Time = new(big.Int).Add(big.NewInt(int64(chain.Genesis().Time())), new(big.Int).SetUint64(engine.config.BlockPeriod-1)).Uint64()
 	err = engine.VerifyHeader(chain, header, false)
@@ -406,7 +401,6 @@ func TestVerifyHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	header = block.Header()
 	copy(header.Nonce[:], hexutil.MustDecode("0x111111111111"))
 	header.Number = big.NewInt(int64(engine.config.Epoch))
@@ -453,6 +447,7 @@ func TestVerifySeal(t *testing.T) {
 	}
 }
 
+/* The logic of this needs to change with respect of Autonity contact */
 func TestVerifyHeaders(t *testing.T) {
 	chain, engine, err := newBlockChain(1)
 	if err != nil {

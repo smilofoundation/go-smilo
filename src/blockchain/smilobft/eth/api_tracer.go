@@ -222,6 +222,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 					}
 					// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
 					task.statedb.Finalise(api.eth.blockchain.Config().IsEIP158(task.block.Number()))
+					// Quorum
 					task.privateStateDb.Finalise(api.eth.blockchain.Config().IsEIP158(task.block.Number()))
 					task.results[i] = &txTraceResult{Result: res}
 				}
@@ -311,7 +312,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 				failed = err
 				break
 			}
-
+			// Quorum
 			privateStateRoot, err := privateStateDb.Commit(true)
 			if err != nil {
 				failed = err
@@ -530,6 +531,7 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 		// Finalize the state so any modifications are written to the trie
 		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
 		statedb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
+		// Quorum
 		privateStateDb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
 	}
 	close(jobs)
@@ -711,6 +713,7 @@ func (api *PrivateDebugAPI) computeStateDB(block *types.Block, reexec uint64) (*
 		if err := statedb.Reset(root); err != nil {
 			return nil, nil, err
 		}
+		// Quorum
 		privateStateRoot, err := privateStateDb.Commit(api.eth.blockchain.Config().IsEIP158(block.Number()))
 		if err != nil {
 			return nil, nil, err

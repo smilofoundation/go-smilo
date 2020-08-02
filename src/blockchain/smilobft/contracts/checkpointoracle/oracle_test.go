@@ -1,4 +1,4 @@
-// Copyright 2018 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -176,10 +176,8 @@ func TestCheckpointRegister(t *testing.T) {
 	sort.Sort(accounts)
 
 	// Deploy registrar contract
-	contractBackend := backends.NewSimulatedBackend(core.GenesisAlloc{accounts[0].addr: {Balance: big.NewInt(1000000000)}, accounts[1].addr: {Balance: big.NewInt(1000000000)}, accounts[2].addr: {Balance: big.NewInt(1000000000)}}, 180000000)
-	defer contractBackend.Close()
-
 	transactOpts := bind.NewKeyedTransactor(accounts[0].key)
+	contractBackend := backends.NewSimulatedBackend(core.GenesisAlloc{accounts[0].addr: {Balance: big.NewInt(1000000000)}, accounts[1].addr: {Balance: big.NewInt(1000000000)}, accounts[2].addr: {Balance: big.NewInt(1000000000)}}, 180000000)
 	// 3 trusted signers, threshold 2
 	contractAddr, _, c, err := contract.DeployCheckpointOracle(transactOpts, contractBackend, []common.Address{accounts[0].addr, accounts[1].addr, accounts[2].addr}, sectionSize, processConfirms, big.NewInt(2))
 	if err != nil {

@@ -201,7 +201,7 @@ func (s *stateObject) GetCommittedState(db Database, key common.Hash) common.Has
 	if cached {
 		return value
 	}
-	// Track the amount of time wasted on reading the storage trie
+	// Track the amount of time wasted on reading the storge trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.db.StorageReads += time.Since(start) }(time.Now())
 	}

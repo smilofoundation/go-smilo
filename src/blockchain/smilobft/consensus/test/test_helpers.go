@@ -3,7 +3,6 @@ package test
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -215,7 +214,7 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 		return nil, err
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		config := &eth.Config{
+		return eth.New(ctx, &eth.Config{
 			Genesis:         genesis,
 			NetworkId:       genesis.Config.ChainID.Uint64(),
 			SyncMode:        downloader.FullSync,
@@ -223,10 +222,7 @@ func makeValidator(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr 
 			DatabaseHandles: 256,
 			TxPool:          core.DefaultTxPoolConfig,
 			Tendermint:      *config.DefaultConfig(),
-		}
-		config.Ethash.PowMode = ethash.ModeFake
-
-		return eth.New(ctx, config, cons)
+		}, cons)
 	}); err != nil {
 		return nil, err
 	}

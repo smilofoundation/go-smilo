@@ -102,7 +102,7 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 		// do not to accept another proposal in current round
 		c.setStep(prevote)
 
-		c.logger.Error("Failed to verify proposal", "err", err, "duration", duration)
+		c.logger.Warn("Failed to verify proposal", "err", err, "duration", duration)
 		// if it's a future block, we will handle it again after the duration
 		// TIME FIELD OF HEADER CHECKED HERE - NOT HEIGHT
 		// TODO: implement wiggle time / median time
@@ -125,7 +125,7 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 		return err
 	}
 
-	//
+	// Here is about to accept the Proposal
 	if c.currentRoundState.Step() == propose {
 		c.logger.Warn("Here is about to accept the Proposal ", "c.currentRoundState.Step()", c.currentRoundState.Step())
 

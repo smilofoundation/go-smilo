@@ -242,10 +242,10 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		// the propagated block if the head is too old. Unfortunately there is a corner
 		// case when starting new networks, where the genesis might be ancient (0 unix)
 		// which would prevent full nodes from accepting it.
-		//if manager.blockchain.CurrentBlock().NumberU64() < manager.checkpointNumber {
-		//	log.Warn("Unsynced yet, discarded propagated block", "blocks[0].number", blocks[0].Number(), "blocks[0].hash", blocks[0].Hash(), "manager.blockchain.CurrentBlock.NumberU64",manager.blockchain.CurrentBlock().NumberU64(), "manager.checkpointNumber", manager.checkpointNumber)
-		//	return 0, nil
-		//}
+		if manager.blockchain.CurrentBlock().NumberU64() < manager.checkpointNumber {
+			log.Warn("Unsynced yet, discarded propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash())
+			return 0, nil
+		}
 		// If fast sync is running, deny importing weird blocks. This is a problematic
 		// clause when starting up a new network, because fast-syncing miners might not
 		// accept each others' blocks until a restart. Unfortunately we haven't figured
@@ -492,7 +492,6 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		syncer := pm.blockchain.Engine().(consensus.Syncer)
 		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 		syncer.ResetPeerCache(address)
-		syncer.SyncPeer(address)
 	} else {
 		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
 	}
@@ -1012,6 +1011,26 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	}
 }
 
+func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[common.Address]consensus.Peer {
+	m := make(map[common.Address]consensus.Peer)
+
+	for _, p := range pm.peers.Peers() {
+		pubKey := p.Node().Pubkey()
+		if pubKey == nil {
+			log.Error("p.Node().Pubkey() is nil")
+			continue
+		}
+		addr := crypto.PubkeyToAddress(*pubKey)
+		if _, ok := targets[addr]; ok {
+			m[addr] = p
+		}
+	}
+
+	log.Debug("eth/handler.go, FindPeers(), ", "len(foundPeers)", len(m))
+
+	return m
+}
+
 // NodeInfo represents a short summary of the Ethereum sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
@@ -1032,24 +1051,4 @@ func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 		Config:     pm.blockchain.Config(),
 		Head:       currentBlock.Hash(),
 	}
-}
-
-func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[common.Address]consensus.Peer {
-	m := make(map[common.Address]consensus.Peer)
-
-	for _, p := range pm.peers.Peers() {
-		pubKey := p.Node().Pubkey()
-		if pubKey == nil {
-			log.Error("p.Node().Pubkey() is nil")
-			continue
-		}
-		addr := crypto.PubkeyToAddress(*pubKey)
-		if _, ok := targets[addr]; ok {
-			m[addr] = p
-		}
-	}
-
-	log.Debug("eth/handler.go, FindPeers(), ", "len(foundPeers)", len(m))
-
-	return m
 }

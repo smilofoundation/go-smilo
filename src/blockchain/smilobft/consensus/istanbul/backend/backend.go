@@ -50,6 +50,7 @@ func New(config *istanbul.Config, privateKey *ecdsa.PrivateKey, db ethdb.Databas
 	if chainConfig.Istanbul.Epoch != 0 {
 		config.Epoch = chainConfig.Istanbul.Epoch
 	}
+
 	if chainConfig.Istanbul.RequestTimeout != 0 {
 		config.RequestTimeout = chainConfig.Istanbul.RequestTimeout
 	}

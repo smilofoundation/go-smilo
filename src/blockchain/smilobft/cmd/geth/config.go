@@ -28,7 +28,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/dashboard"
 
 	"github.com/naoina/toml"
 
@@ -36,7 +35,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/eth"
 	"go-smilo/src/blockchain/smilobft/node"
 	"go-smilo/src/blockchain/smilobft/params"
-	whisper "go-smilo/src/blockchain/smilobft/whisper/whisperv6"
 )
 
 var (
@@ -45,7 +43,7 @@ var (
 		Name:        "dumpconfig",
 		Usage:       "Show configuration values",
 		ArgsUsage:   "",
-		Flags:       append(append(nodeFlags, rpcFlags...), whisperFlags...),
+		Flags:       append(append(nodeFlags, rpcFlags...) ),
 		Category:    "MISCELLANEOUS COMMANDS",
 		Description: `The dumpconfig command shows configuration values.`,
 	}
@@ -79,10 +77,8 @@ type ethstatsConfig struct {
 
 type gethConfig struct {
 	Eth       eth.Config
-	Shh       whisper.Config
 	Node      node.Config
 	Ethstats  ethstatsConfig
-	Dashboard dashboard.Config
 }
 
 func loadConfig(file string, cfg *gethConfig) error {
@@ -131,9 +127,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	// Load defaults.
 	cfg := gethConfig{
 		Eth:       eth.DefaultConfig,
-		Shh:       whisper.DefaultConfig,
 		Node:      defaultNodeConfig(),
-		Dashboard: dashboard.DefaultConfig,
 	}
 
 	// Load config file.
@@ -160,20 +154,8 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		cfg.Ethstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
 	}
 
-	utils.SetShhConfig(ctx, stack, &cfg.Shh)
-	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
 
 	return stack, cfg
-}
-
-// enableWhisper returns true in case one of the whisper flags is set.
-func enableWhisper(ctx *cli.Context) bool {
-	for _, flag := range whisperFlags {
-		if ctx.GlobalIsSet(flag.GetName()) {
-			return true
-		}
-	}
-	return false
 }
 
 func makeFullNode(ctx *cli.Context) *node.Node {
@@ -187,24 +169,6 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 		utils.RegisterPluginService(stack, &cfg.Node, ctx.Bool(utils.PluginSkipVerifyFlag.Name), ctx.Bool(utils.PluginLocalVerifyFlag.Name), ctx.String(utils.PluginPublicKeyFlag.Name))
 	}
 
-	if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
-		utils.RegisterDashboardService(stack, &cfg.Dashboard, gitCommit)
-	}
-	// Whisper must be explicitly enabled by specifying at least 1 whisper flag or in dev mode
-	shhEnabled := enableWhisper(ctx)
-	shhAutoEnabled := !ctx.GlobalIsSet(utils.WhisperEnabledFlag.Name) && ctx.GlobalIsSet(utils.DeveloperFlag.Name)
-	if shhEnabled || shhAutoEnabled {
-		if ctx.GlobalIsSet(utils.WhisperMaxMessageSizeFlag.Name) {
-			cfg.Shh.MaxMessageSize = uint32(ctx.Int(utils.WhisperMaxMessageSizeFlag.Name))
-		}
-		if ctx.GlobalIsSet(utils.WhisperMinPOWFlag.Name) {
-			cfg.Shh.MinimumAcceptedPOW = ctx.Float64(utils.WhisperMinPOWFlag.Name)
-		}
-		if ctx.GlobalIsSet(utils.WhisperRestrictConnectionBetweenLightClientsFlag.Name) {
-			cfg.Shh.RestrictConnectionBetweenLightClients = true
-		}
-		utils.RegisterShhService(stack, &cfg.Shh)
-	}
 	// Configure GraphQL if requested
 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
 		utils.RegisterGraphQLService(stack, cfg.Node.GraphQLEndpoint(), cfg.Node.GraphQLCors, cfg.Node.GraphQLVirtualHosts, cfg.Node.HTTPTimeouts)

@@ -188,7 +188,8 @@ func newTestProtocolManager(lightSync bool, blocks int, odr *LesOdr, indexers []
 		peers = newPeerSet()
 	}
 	// create a simulation backend and pre-commit several customized block to the database.
-	simulation := backends.NewSimulatedBackendWithDatabase(db, gspec.Alloc, 180000000)
+	cacher := core.NewTxSenderCacher()
+	simulation := backends.NewSimulatedBackendWithDatabase(db, gspec.Alloc, 100000000, cacher)
 	prepareTestchain(blocks, simulation)
 
 	// initialize empty chain for light client or pre-committed chain for server.
@@ -198,7 +199,7 @@ func newTestProtocolManager(lightSync bool, blocks int, odr *LesOdr, indexers []
 		chain = simulation.Blockchain()
 		config := core.DefaultTxPoolConfig
 		config.Journal = ""
-		pool = core.NewTxPool(config, gspec.Config, simulation.Blockchain())
+		pool = core.NewTxPool(config, gspec.Config, simulation.Blockchain(), cacher)
 	}
 
 	// Create contract registrar
@@ -426,7 +427,6 @@ func newServerEnv(t *testing.T, blocks int, protocol int, waitIndexers func(*cor
 			// Note bloom trie indexer will be closed by it parent recursively.
 			cIndexer.Close()
 			bIndexer.Close()
-			b.Close()
 		}
 }
 
@@ -508,7 +508,5 @@ func newClientServerEnv(t *testing.T, blocks int, protocol int, waitIndexers fun
 			bIndexer.Close()
 			lcIndexer.Close()
 			lbIndexer.Close()
-			b.Close()
-			lb.Close()
 		}
 }

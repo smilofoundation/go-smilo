@@ -32,6 +32,7 @@ func NewAutonityContract(
 		transfer:    transfer,
 		GetHashFn:   GetHashFn,
 		//SavedValidatorsRetriever: SavedValidatorsRetriever,
+
 	}
 }
 
@@ -59,58 +60,11 @@ type Contract struct {
 	contractABI              *abi.ABI
 	bc                       Blockchainer
 	SavedValidatorsRetriever func(i uint64) ([]common.Address, error)
-	metrics                  EconomicMetrics
 
 	canTransfer func(db vm.StateDB, addr common.Address, amount *big.Int) bool
 	transfer    func(db vm.StateDB, sender, recipient common.Address, amount, blockNumber *big.Int)
 	GetHashFn   func(ref *types.Header, chain ChainContext) func(n uint64) common.Hash
 	sync.RWMutex
-}
-
-// measure metrics of user's meta data by regarding of network economic.
-func (ac *Contract) MeasureMetricsOfNetworkEconomic(header *types.Header, stateDB *state.StateDB) {
-	if header == nil || stateDB == nil || header.Number.Uint64() < 1 {
-		return
-	}
-
-	// prepare abi and evm context
-	deployer := ac.bc.Config().AutonityContractConfig.Deployer
-	sender := vm.AccountRef(deployer)
-	gas := uint64(0xFFFFFFFF)
-	evm := ac.getEVM(header, deployer, stateDB)
-
-	ABI, err := ac.abi()
-	if err != nil {
-		return
-	}
-
-	// pack the function which dump the data from contract.
-	input, err := ABI.Pack("dumpEconomicsMetricData")
-	if err != nil {
-		log.Warn("cannot pack the method: ", err.Error())
-		return
-	}
-
-	// call evm.
-	value := new(big.Int).SetUint64(0x00)
-	ret, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)
-	log.Debug("bytes return from contract: ", ret)
-	if vmerr != nil {
-		log.Warn("Error Autonity Contract dumpNetworkEconomics")
-		return
-	}
-
-	// marshal the data from bytes arrays into specified structure.
-	v := EconomicMetaData{make([]common.Address, 32), make([]uint8, 32), make([]*big.Int, 32),
-		make([]*big.Int, 32), new(big.Int), new(big.Int)}
-
-	if err := ABI.Unpack(&v, "dumpEconomicsMetricData", ret); err != nil { // can't work with aliased types
-		log.Warn("Could not unpack dumpNetworkEconomicsData returned value", "err", err, "header.num",
-			header.Number.Uint64())
-		return
-	}
-
-	ac.metrics.SubmitEconomicMetrics(&v, stateDB, header.Number.Uint64(), ac.bc.Config().AutonityContractConfig.Operator)
 }
 
 //// Instantiates a new EVM object which is required when creating or calling a deployed contract
@@ -140,27 +94,34 @@ func (ac *Contract) DeployAutonityContract(chain consensus.ChainReader, header *
 	evm := ac.getEVM(header, chain.Config().AutonityContractConfig.Deployer, statedb)
 	sender := vm.AccountRef(chain.Config().AutonityContractConfig.Deployer)
 
+	//todo do we need it?
+	//validators, err = ac.SavedValidatorsRetriever(1)
+	//sort.Sort(validators)
+
+	//We need to append to data the constructor's parameters
+	//That should always be genesis validators
+
 	contractABI, err := ac.abi()
+
 	if err != nil {
 		log.Error("abi.JSON returns err", "err", err)
 		return common.Address{}, err
 	}
 
-	ln := len(chain.Config().AutonityContractConfig.Users)
-	users := make(cmn.Addresses, 0, ln)
+	ln := len(chain.Config().AutonityContractConfig.GetValidatorUsers())
+	validators := make(cmn.Addresses, 0, ln)
 	enodes := make([]string, 0, ln)
 	accTypes := make([]*big.Int, 0, ln)
 	participantStake := make([]*big.Int, 0, ln)
 	for _, v := range chain.Config().AutonityContractConfig.Users {
-		users = append(users, v.Address)
+		validators = append(validators, v.Address)
 		enodes = append(enodes, v.Enode)
 		accTypes = append(accTypes, big.NewInt(int64(v.Type.GetID())))
 		participantStake = append(participantStake, big.NewInt(int64(v.Stake)))
 	}
 
-	//"" means contructor
 	constructorParams, err := contractABI.Pack("",
-		users,
+		validators,
 		enodes,
 		accTypes,
 		participantStake,
@@ -171,7 +132,6 @@ func (ac *Contract) DeployAutonityContract(chain consensus.ChainReader, header *
 		return common.Address{}, err
 	}
 
-	//We need to append to data the constructor's parameters
 	data := append(contractBytecode, constructorParams...)
 	gas := uint64(0xFFFFFFFF)
 	value := new(big.Int).SetUint64(0x00)
@@ -400,26 +360,11 @@ func (ac *Contract) callPerformRedistribution(state *state.StateDB, header *type
 
 	value := new(big.Int).SetUint64(0x00)
 
-	ret, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)
+	_, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)
 	if vmerr != nil {
 		log.Error("Error Autonity Contract callPerformRedistribution()", "err", err)
 		return vmerr
 	}
-
-	// after reward distribution, update metrics with the return values.
-	//v := RewardDistributionMetaData {true, make([]common.Address, 32), make([]*big.Int, 32), new(big.Int)}
-	v := RewardDistributionMetaData{}
-	v.Result = true
-	v.Holders = make([]common.Address, 32)
-	v.Rewardfractions = make([]*big.Int, 32)
-	v.Amount = new(big.Int)
-
-	if err := ABI.Unpack(&v, "performRedistribution", ret); err != nil { // can't work with aliased types
-		log.Error("Could not unpack performRedistribution returned value", "err", err, "header.num", header.Number.Uint64())
-		return nil
-	}
-
-	ac.metrics.SubmitRewardDistributionMetrics(&v, header.Number.Uint64())
 	return nil
 }
 
@@ -432,7 +377,6 @@ func (ac *Contract) ApplyPerformRedistribution(transactions types.Transactions, 
 	for i, tx := range transactions {
 		blockGas.Add(blockGas, new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(receipts[i].GasUsed)))
 	}
-
 	log.Info("execution start ApplyPerformRedistribution", "balance", statedb.GetBalance(ac.Address()), "block", header.Number.Uint64(), "gas", blockGas.Uint64())
 	if blockGas.Cmp(new(big.Int)) == 0 {
 		log.Info("execution start ApplyPerformRedistribution with 0 gas", "balance", statedb.GetBalance(ac.Address()), "block", header.Number.Uint64())

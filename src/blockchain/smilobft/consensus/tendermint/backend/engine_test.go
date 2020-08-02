@@ -74,7 +74,6 @@ func TestSealCommittedOtherHash(t *testing.T) {
 	}
 	go eventLoop()
 	seal := func() {
-		//resultCh := make(chan *types.Block)
 		block, err = engine.Seal(chain, block, nil)
 		if err != nil {
 			t.Error("seal should not return error", err.Error())
@@ -100,7 +99,6 @@ func TestSealCommitted(t *testing.T) {
 	}
 	expectedBlock, _ := engine.updateBlock(block)
 
-	//resultCh := make(chan *types.Block)
 	block, err = engine.Seal(chain, block, nil)
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want nil", err)

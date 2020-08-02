@@ -151,6 +151,7 @@ var (
 		"trusty": "golang-1.11",
 		"xenial": "golang-go",
 		"bionic": "golang-go",
+		"cosmic": "golang-go",
 		"disco":  "golang-go",
 		"eoan":   "golang-go",
 		"focal":  "golang-go",
@@ -365,6 +366,7 @@ func doTest(cmdline []string) {
 	coverage := flag.Bool("coverage", false, "Whether to record code coverage")
 	verbose := flag.Bool("v", false, "Whether to log verbosely")
 	timeout := flag.String("t", "5m", "Timeout for tests")
+	race := flag.Bool("race", false, "Run with `race` flag")
 
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
@@ -390,6 +392,9 @@ func doTest(cmdline []string) {
 	}
 	if *verbose {
 		gotest.Args = append(gotest.Args, "-v")
+	}
+	if *race {
+		gotest.Args = append(gotest.Args, "-race")
 	}
 
 	gotest.Args = append(gotest.Args, packages...)
@@ -1118,11 +1123,16 @@ func doXgo(cmdline []string) {
 
 func xgoTool(args []string) *exec.Cmd {
 	cmd := exec.Command(filepath.Join(GOBIN, "xgo"), args...)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, []string{
+	cmd.Env = []string{
 		"GOPATH=" + build.GOPATH(),
 		"GOBIN=" + GOBIN,
-	}...)
+	}
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "GOPATH=") || strings.HasPrefix(e, "GOBIN=") {
+			continue
+		}
+		cmd.Env = append(cmd.Env, e)
+	}
 	return cmd
 }
 

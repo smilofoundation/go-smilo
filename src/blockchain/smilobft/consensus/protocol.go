@@ -51,7 +51,7 @@ type Protocol struct {
 type Broadcaster interface {
 	// Enqueue add a block into fetcher queue
 	Enqueue(id string, block *types.Block)
-	// FindPeers retrieves peers by addresses
+	// FindPeers retrives connected peers by addresses
 	FindPeers(map[common.Address]struct{}) map[common.Address]Peer
 }
 

@@ -360,7 +360,9 @@ func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
 	// Get all rounds from c.futureRoundsChange and remove previous rounds
 	var i int64
 	for i = 0; i <= r.Int64(); i++ {
-		delete(c.futureRoundsChange, i)
+		if _, ok := c.futureRoundsChange[i]; ok {
+			delete(c.futureRoundsChange, i)
+		}
 	}
 	// Add a copy of c.currentRoundState to c.currentHeightOldRoundsStates and then update c.currentRoundState
 	// We only add old round prevote messages to c.currentHeightOldRoundsStates, while future messages are sent to the

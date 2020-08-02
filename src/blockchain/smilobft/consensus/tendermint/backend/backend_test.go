@@ -646,7 +646,7 @@ func newBlockChain(n int) (*core.BlockChain, *Backend) {
 	//c := tendermintCore.New(b, cfg)
 
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil, core.NewTxSenderCacher())
 	if err != nil {
 		panic(err)
 	}
@@ -772,8 +772,33 @@ func makeBlockWithoutSeal(chain *core.BlockChain, engine *Backend, parent *types
 	header := makeHeader(parent, engine.config)
 	_ = engine.Prepare(chain, header)
 
-	state, _, _ := chain.StateAt(parent.Root())
-	block, err := engine.Finalize(chain, header, state, nil, nil, nil)
+	state, vaultState, err := chain.StateAt(parent.Root())
+	if err != nil {
+		return nil, err
+	}
+
+	//add a few txs
+	txs := make(types.Transactions, 5)
+	nonce := state.GetNonce(engine.address)
+	gasPrice := new(big.Int).SetUint64(1000000)
+	gasPool := new(core.GasPool).AddGas(header.GasLimit)
+	var receipts types.Receipts
+	for i := range txs {
+		amount := new(big.Int).SetUint64((nonce + 1) * 1000000000)
+		tx := types.NewTransaction(nonce, common.Address{}, amount, params.TxGas, gasPrice, []byte{})
+		tx, err := types.SignTx(tx, types.NewEIP155Signer(big.NewInt(1)), engine.privateKey)
+		if err != nil {
+			return nil, err
+		}
+		txs[i] = tx
+		receipt, _, _, err := core.ApplyTransaction(chain.Config(), chain, nil, gasPool, state, vaultState, header, txs[i], &header.GasUsed, *engine.vmConfig)
+		if err != nil {
+			return nil, err
+		}
+		nonce++
+		receipts = append(receipts, receipt)
+	}
+	block, err := engine.Finalize(chain, header, state, txs, nil, receipts)
 	if err != nil {
 		return nil, err
 	}

@@ -352,12 +352,16 @@ func TestClientNotificationStorm(t *testing.T) {
 
 		// Process each notification, try to run a call in between each of them.
 		for i := 0; i < count; i++ {
+			if wantError && i == count-1 {
+				cancel()
+			}
+
 			select {
 			case val := <-nc:
 				if val != i {
 					t.Fatalf("(%d/%d) unexpected value %d", i, count, val)
 				}
-			case err := <-sub.Err():
+			case err = <-sub.Err():
 				if wantError && err != ErrSubscriptionQueueOverflow {
 					t.Fatalf("(%d/%d) got error %q, want %q", i, count, err, ErrSubscriptionQueueOverflow)
 				} else if !wantError {
@@ -380,7 +384,7 @@ func TestClientNotificationStorm(t *testing.T) {
 	}
 
 	doTest(8000, false)
-	doTest(22000, true)
+	doTest(23000, true)
 }
 
 func TestClientHTTP(t *testing.T) {

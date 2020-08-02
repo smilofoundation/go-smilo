@@ -82,6 +82,7 @@ func runCmd(ctx *cli.Context) error {
 		DisableStack:  ctx.GlobalBool(DisableStackFlag.Name),
 		Debug:         ctx.GlobalBool(DebugFlag.Name),
 	}
+	//Quorum
 	var IsPrivateFlag = ctx.GlobalBool(IsPrivateFlag.Name)
 
 	var (

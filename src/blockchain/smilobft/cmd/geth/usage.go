@@ -262,10 +262,6 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: metricsFlags,
 	},
 	{
-		Name:  "WHISPER (EXPERIMENTAL)",
-		Flags: whisperFlags,
-	},
-	{
 		Name: "DEPRECATED",
 		Flags: []cli.Flag{
 			utils.LightLegacyServFlag,

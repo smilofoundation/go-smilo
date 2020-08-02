@@ -1,4 +1,4 @@
-// Copyright 2018 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of go-ethereum.
 //
 // go-ethereum is free software: you can redistribute it and/or modify
@@ -87,7 +87,7 @@ var commandPublish = cli.Command{
 // the network where the connected node is located.
 func deploy(ctx *cli.Context) error {
 	// Gather all the addresses that should be permitted to sign
-	var addrs []common.Address
+	addrs := make([]common.Address, 0, 100)
 	for _, account := range strings.Split(ctx.String(signersFlag.Name), ",") {
 		if trimmed := strings.TrimSpace(account); !common.IsHexAddress(trimmed) {
 			utils.Fatalf("Invalid account in --signers: '%s'", trimmed)
@@ -253,7 +253,7 @@ func ecrecover(sighash []byte, sig []byte) common.Address {
 func publish(ctx *cli.Context) error {
 	// Print the checkpoint oracle's current status to make sure we're interacting
 	// with the correct network and contract.
-	status(ctx)
+	_ = status(ctx)
 
 	// Gather the signatures from the CLI
 	var sigs [][]byte

@@ -352,9 +352,11 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 // Note, the block header and state database might be updated to reflect any
 // consensus rules that happen at finalization (e.g. block rewards).
 func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
+	sb.blockchainInitMu.Lock()
 	if sb.blockchain == nil {
 		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
 	}
+	sb.blockchainInitMu.Unlock()
 
 	validators, err := sb.getValidators(header, chain, state)
 	if err != nil {
@@ -419,7 +421,7 @@ func (sb *Backend) getValidators(header *types.Header, chain consensus.ChainRead
 
 	} else {
 		if sb.autonityContractAddress == common.HexToAddress("0000000000000000000000000000000000000000") {
-			sb.autonityContractAddress = crypto.CreateAddress(chain.Config().AutonityContractConfig.Deployer, 0)
+			sb.autonityContractAddress = crypto.CreateAddress(sb.blockchain.Config().AutonityContractConfig.Deployer, 0)
 		}
 
 		var err error
@@ -468,6 +470,9 @@ func (sb *Backend) Seal(chain consensus.ChainReader, block *types.Block, stop <-
 	delay := time.Unix(int64(block.Header().Time), 0).Sub(now())
 	select {
 	case <-time.After(delay):
+		// nothing to do
+	case <-sb.stopped:
+		return nil, nil
 	case <-stop:
 		log.Error("Seal, Bail out <-stop")
 		return nil, nil
@@ -592,13 +597,12 @@ func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, current
 	}
 	sb.commitCh = make(chan *types.Block, 1)
 
+	sb.blockchainInitMu.Lock()
 	sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
+	sb.blockchainInitMu.Unlock()
+
 	sb.currentBlock = currentBlock
 	sb.hasBadBlock = hasBadBlock
-
-	//if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
-	//	return err
-	//}
 
 	sb.coreStarted = true
 

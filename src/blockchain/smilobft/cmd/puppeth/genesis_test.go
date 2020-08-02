@@ -31,9 +31,6 @@ import (
 
 // Tests the go-ethereum to Aleth chainspec conversion for the Stureby testnet.
 func TestAlethSturebyConverter(t *testing.T) {
-	// TODO: fix test
-	t.SkipNow()
-
 	blob, err := ioutil.ReadFile("testdata/stureby_geth.json")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
@@ -65,7 +62,7 @@ func TestAlethSturebyConverter(t *testing.T) {
 		got := strings.Split(c.Sdump(spec), "\n")
 		for i := 0; i < len(exp) && i < len(got); i++ {
 			if exp[i] != got[i] {
-				fmt.Printf("got: %v\nexp: %v\n", exp[i], got[i])
+				t.Logf("got: %v\nexp: %v\n", exp[i], got[i])
 			}
 		}
 	}

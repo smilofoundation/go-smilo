@@ -395,7 +395,7 @@ func (s *Service) login(conn *websocket.Conn) error {
 			API:      "No",
 			Os:       runtime.GOOS,
 			OsVer:    runtime.GOARCH,
-			Client:   "0.1.1",
+			Client:   "0.1.6",
 			History:  true,
 		},
 		Secret: s.pass,

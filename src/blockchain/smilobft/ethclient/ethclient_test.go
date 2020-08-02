@@ -340,6 +340,7 @@ func TestChainID(t *testing.T) {
 	}
 }
 
+// Quorum
 func TestClient_PreparePrivateTransaction_whenTypical(t *testing.T) {
 	testObject := NewClient(nil)
 

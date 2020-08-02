@@ -73,7 +73,6 @@ var (
 		ByzantiumBlock:      big.NewInt(4370000),
 		ConstantinopleBlock: big.NewInt(7280000),
 		PetersburgBlock:     big.NewInt(7280000),
-		IstanbulBlock:       nil,
 		Ethash:              new(EthashConfig),
 	}
 
@@ -161,7 +160,6 @@ var (
 		ByzantiumBlock:      big.NewInt(1035301),
 		ConstantinopleBlock: big.NewInt(3660663),
 		PetersburgBlock:     big.NewInt(4321234),
-		IstanbulBlock:       nil,
 		Clique: &CliqueConfig{
 			Period: 15,
 			Epoch:  30000,
@@ -200,7 +198,6 @@ var (
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
-		IstanbulBlock:       nil,
 		Clique: &CliqueConfig{
 			Period: 15,
 			Epoch:  30000,
@@ -209,10 +206,10 @@ var (
 
 	// GoerliTrustedCheckpoint contains the light client trusted checkpoint for the Görli test network.
 	GoerliTrustedCheckpoint = &TrustedCheckpoint{
-		SectionIndex: 26,
-		SectionHead:  common.HexToHash("0xd0c206e064c8efea930d97e56786af95354ea481b35294a20e5a340937e4c2c9"),
-		CHTRoot:      common.HexToHash("0xce7235999aa8d73c4493b8f397474dafc627652a790dec60c4a968e2dfa5d7be"),
-		BloomRoot:    common.HexToHash("0xc1ac19553473ebb07325b5092a09277d62e9ffe159166a1c6fbec614c4dfd885"),
+		SectionIndex: 28,
+		SectionHead:  common.HexToHash("0x5baedfb5006507906cce3b6487080c810aa79806b0388c3671ee6d56694a591e"),
+		CHTRoot:      common.HexToHash("0x89ff7aabc7a0a13c25aeb1e3e333063acf80473a571e465d7c884b183a67e717"),
+		BloomRoot:    common.HexToHash("0x56eccfd9171d2df3e62ffd61c442dfb69b603b1f28fbb267c28b3444fdeae6c6"),
 	}
 
 	// GoerliCheckpointOracle contains a set of configs for the Goerli test network oracle.

@@ -69,6 +69,7 @@ func NewPublicFilterAPI(backend Backend, lightMode bool) *PublicFilterAPI {
 	api := &PublicFilterAPI{
 		backend: backend,
 		mux:     backend.EventMux(),
+		quit:    make(chan struct{}, 1),
 		chainDb: backend.ChainDb(),
 		events:  NewEventSystem(backend.EventMux(), backend, lightMode),
 		filters: make(map[rpc.ID]*filter),
@@ -83,7 +84,13 @@ func NewPublicFilterAPI(backend Backend, lightMode bool) *PublicFilterAPI {
 func (api *PublicFilterAPI) timeoutLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	for {
-		<-ticker.C
+		select {
+		case <-ticker.C:
+		//nothing to do
+		case <-api.quit:
+			return
+		}
+
 		api.filtersMu.Lock()
 		for id, f := range api.filters {
 			select {
@@ -96,6 +103,10 @@ func (api *PublicFilterAPI) timeoutLoop() {
 		}
 		api.filtersMu.Unlock()
 	}
+}
+
+func (api *PublicFilterAPI) Close() {
+	close(api.quit)
 }
 
 // NewPendingTransactionFilter creates a filter that fetches pending transaction hashes
@@ -128,6 +139,8 @@ func (api *PublicFilterAPI) NewPendingTransactionFilter() rpc.ID {
 				api.filtersMu.Lock()
 				delete(api.filters, pendingTxSub.ID)
 				api.filtersMu.Unlock()
+				return
+			case <-api.quit:
 				return
 			}
 		}
@@ -164,6 +177,8 @@ func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Su
 			case <-notifier.Closed():
 				pendingTxSub.Unsubscribe()
 				return
+			case <-api.quit:
+				return
 			}
 		}
 	}()
@@ -199,6 +214,8 @@ func (api *PublicFilterAPI) NewBlockFilter() rpc.ID {
 				delete(api.filters, headerSub.ID)
 				api.filtersMu.Unlock()
 				return
+			case <-api.quit:
+				return
 			}
 		}
 	}()
@@ -228,6 +245,8 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 				return
 			case <-notifier.Closed():
 				headersSub.Unsubscribe()
+				return
+			case <-api.quit:
 				return
 			}
 		}
@@ -266,6 +285,8 @@ func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc
 				return
 			case <-notifier.Closed(): // connection dropped
 				logsSub.Unsubscribe()
+				return
+			case <-api.quit:
 				return
 			}
 		}
@@ -315,6 +336,8 @@ func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 				api.filtersMu.Lock()
 				delete(api.filters, logsSub.ID)
 				api.filtersMu.Unlock()
+				return
+			case <-api.quit:
 				return
 			}
 		}

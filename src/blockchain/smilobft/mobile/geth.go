@@ -36,7 +36,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/nat"
 	"go-smilo/src/blockchain/smilobft/params"
 
-	whisper "go-smilo/src/blockchain/smilobft/whisper/whisperv6"
 )
 
 // NodeConfig represents the collection of configuration values to fine tune the Geth
@@ -71,9 +70,6 @@ type NodeConfig struct {
 	//
 	// It has the form "nodename:secret@host:port"
 	EthereumNetStats string
-
-	// WhisperEnabled specifies whether the node should run the Whisper protocol.
-	WhisperEnabled bool
 
 	// Listening address of pprof server.
 	PprofAddress string
@@ -157,13 +153,13 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 	}
 	// Register the Ethereum protocol if requested
 	if config.EthereumEnabled {
-		ethConf := &eth.DefaultConfig
+		ethConf := eth.DefaultConfig
 		ethConf.Genesis = genesis
 		ethConf.SyncMode = downloader.LightSync
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)
 		ethConf.DatabaseCache = config.EthereumDatabaseCache
 		if err := rawStack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			return les.New(ctx, ethConf)
+			return les.New(ctx, &ethConf)
 		}); err != nil {
 			return nil, fmt.Errorf("ethereum init: %v", err)
 		}
@@ -177,14 +173,6 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 			}); err != nil {
 				return nil, fmt.Errorf("netstats init: %v", err)
 			}
-		}
-	}
-	// Register the Whisper protocol if requested
-	if config.WhisperEnabled {
-		if err := rawStack.Register(func(*node.ServiceContext) (node.Service, error) {
-			return whisper.New(&whisper.DefaultConfig), nil
-		}); err != nil {
-			return nil, fmt.Errorf("whisper init: %v", err)
 		}
 	}
 	return &Node{rawStack}, nil

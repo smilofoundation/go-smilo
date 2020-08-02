@@ -79,7 +79,7 @@ func (b *LesApiBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumbe
 	if header == nil || err != nil {
 		return nil, err
 	}
-	return b.BlockByHash(ctx, header.Hash())
+	return b.GetBlock(ctx, header.Hash())
 }
 
 func (b *LesApiBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {

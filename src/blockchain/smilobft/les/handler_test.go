@@ -498,9 +498,6 @@ func TestGetBloombitsProofs(t *testing.T) {
 }
 
 func TestTransactionStatusLes2(t *testing.T) {
-	//TODO: fix this test
-	t.SkipNow()
-
 	server, tearDown := newServerEnv(t, 0, 2, nil)
 	defer tearDown()
 	server.pm.addTxsSync = true
@@ -508,7 +505,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 	chain := server.pm.blockchain.(*core.BlockChain)
 	config := core.DefaultTxPoolConfig
 	config.Journal = ""
-	txpool := core.NewTxPool(config, params.TestChainConfig, chain)
+	txpool := core.NewTxPool(config, params.TestChainConfig, chain, core.NewTxSenderCacher())
 	server.pm.txpool = txpool
 	peer, _ := newTestPeer(t, "peer", 2, server.pm, true, 0)
 	defer peer.close()

@@ -142,7 +142,15 @@ func forEachUnpack(t Type, output []byte, start, size int) (interface{}, error) 
 	elemSize := getTypeSize(*t.Elem)
 
 	for i, j := start, 0; j < size; i, j = i+elemSize, j+1 {
-		inter, err := toGoType(i, *t.Elem, output)
+		var inter interface{}
+		var err error
+		if t.T == SliceTy && t.Elem.T == StringTy {
+			offset := binary.BigEndian.Uint64(output[i+32-8 : i+32])
+			stringStart := start + int(offset)
+			inter, err = toGoType(stringStart, *t.Elem, output, true)
+		} else {
+			inter, err = toGoType(i, *t.Elem, output, false)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +167,7 @@ func forTupleUnpack(t Type, output []byte) (interface{}, error) {
 	retval := reflect.New(t.Type).Elem()
 	virtualArgs := 0
 	for index, elem := range t.TupleElems {
-		marshalledValue, err := toGoType((index+virtualArgs)*32, *elem, output)
+		marshalledValue, err := toGoType((index+virtualArgs)*32, *elem, output, false)
 		if elem.T == ArrayTy && !isDynamicType(*elem) {
 			// If we have a static array, like [3]uint256, these are coded as
 			// just like uint256,uint256,uint256.
@@ -187,7 +195,7 @@ func forTupleUnpack(t Type, output []byte) (interface{}, error) {
 
 // toGoType parses the output bytes and recursively assigns the value of these bytes
 // into a go type with accordance with the ABI spec.
-func toGoType(index int, t Type, output []byte) (interface{}, error) {
+func toGoType(index int, t Type, output []byte, ABIv2Hack bool) (interface{}, error) {
 	if index+32 > len(output) {
 		return nil, fmt.Errorf("abi: cannot marshal in to go type: length insufficient %d require %d", len(output), index+32)
 	}
@@ -200,7 +208,13 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 
 	// if we require a length prefix, find the beginning word and size returned.
 	if t.requiresLengthPrefix() {
-		begin, length, err = lengthPrefixPointsTo(index, output)
+		if ABIv2Hack {
+			begin = index + 32
+			length = int(big.NewInt(0).SetBytes(output[index : index+32]).Uint64())
+		} else {
+			begin, length, err = lengthPrefixPointsTo(index, output)
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -211,14 +225,13 @@ func toGoType(index int, t Type, output []byte) (interface{}, error) {
 	switch t.T {
 	case TupleTy:
 		if isDynamicType(t) {
-			begin, err := tuplePointsTo(index, output)
+			begin, err = tuplePointsTo(index, output)
 			if err != nil {
 				return nil, err
 			}
 			return forTupleUnpack(t, output[begin:])
-		} else {
-			return forTupleUnpack(t, output[index:])
 		}
+		return forTupleUnpack(t, output[index:])
 	case SliceTy:
 		return forEachUnpack(t, output[begin:], 0, length)
 	case ArrayTy:

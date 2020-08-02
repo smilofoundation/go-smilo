@@ -120,6 +120,7 @@ type Backend struct {
 	logger       log.Logger
 	db           ethdb.Database
 	blockchain   *core.BlockChain
+	blockchainInitMu sync.Mutex
 	chain        consensus.ChainReader
 	currentBlock func() *types.Block
 	hasBadBlock  func(hash common.Hash) bool

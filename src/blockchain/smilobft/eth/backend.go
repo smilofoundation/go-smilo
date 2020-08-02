@@ -112,7 +112,6 @@ type Smilo struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
-	//protocol Protocol
 
 	glienickeCh  chan core.WhitelistEvent
 	glienickeSub event.Subscription
@@ -218,18 +217,6 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		eth.etherbase = crypto.PubkeyToAddress(ctx.NodeKey().PublicKey)
 	}
 
-	//if h, ok := eth.engine.(consensus.Handler); ok {
-	//	protocolName, extraMsgCodes := h.Protocol()
-	//	eth.protocol.Name = protocolName
-	//	eth.protocol.Versions = ProtocolVersions
-	//	eth.protocol.Lengths = make([]uint64, len(protocolLengths))
-	//	for i := range eth.protocol.Lengths {
-	//		eth.protocol.Lengths[i] = protocolLengths[uint(i)] + extraMsgCodes
-	//	}
-	//} else {
-	//	eth.protocol = EthDefaultProtocol
-	//}
-
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
 	var dbVer = "<nil>"
 	if bcVersion != nil {
@@ -246,7 +233,9 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		}
 	}
 
-	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
+	senderCacher := core.NewTxSenderCacher()
+
+	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve, senderCacher)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +254,7 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		config.TxPool.Blacklist = ctx.ResolvePath(config.TxPool.Blacklist)
 	}
 
-	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, eth.blockchain)
+	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, eth.blockchain, senderCacher)
 
 	// Permit the downloader to use the trie cache allowance during fast sync
 	cacheLimit := cacheConfig.TrieCleanLimit + cacheConfig.TrieDirtyLimit
@@ -386,7 +375,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		return ethash.NewFaker()
 	case ModeTest:
 		log.Warn("Ethash used in test mode")
-		return ethash.NewTester()
+		return ethash.NewTester(nil, noverify)
 	case ModeShared:
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
@@ -550,13 +539,14 @@ func (s *Smilo) shouldPreserve(block *types.Block) bool {
 
 // SetEtherbase sets the mining reward address.
 func (s *Smilo) SetEtherbase(etherbase common.Address) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	if _, ok := s.engine.(consensus.BFT); ok {
 		log.Error("Cannot set etherbase in BFT consensus")
 		return
 	}
+
+	s.lock.Lock()
 	s.etherbase = etherbase
+	s.lock.Unlock()
 
 	s.miner.SetEtherbase(etherbase)
 }
@@ -701,6 +691,11 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 // Whitelist updating loop. Act as a relay between state processing logic and DevP2P
 // for updating the list of authorized enodes
 func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
+
+	savedList := rawdb.ReadEnodeWhitelist(s.chainDb, server.EnableNodePermissionFlag)
+	log.Info("Reading Whitelist", "list", savedList.StrList)
+	server.UpdateWhitelist(savedList.List)
+
 	for {
 		select {
 		case event := <-s.glienickeCh:

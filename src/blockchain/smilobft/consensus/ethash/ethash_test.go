@@ -17,15 +17,36 @@
 package ethash
 
 import (
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
+
+// Tests that ethash works correctly in test mode.
+func TestTestMode(t *testing.T) {
+	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
+
+	ethash := NewTester(nil, false)
+	defer ethash.Close()
+
+	block, err := ethash.Seal(nil, types.NewBlockWithHeader(header),  nil)
+	if err != nil {
+		t.Fatalf("failed to seal block: %v", err)
+	}
+	header.Nonce = types.EncodeNonce(block.Nonce())
+	header.MixDigest = block.MixDigest()
+	if err := ethash.VerifySeal(nil, header); err != nil {
+		t.Fatalf("unexpected verification error: %v", err)
+	}
+}
 
 // This test checks that cache lru logic doesn't crash under load.
 // It reproduces https://github.com/ethereum/go-ethereum/issues/14943
@@ -35,7 +56,8 @@ func TestCacheFileEvict(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpdir)
-	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest})
+	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest}, nil, false)
+	defer e.Close()
 
 	workers := 8
 	epochs := 100
@@ -57,7 +79,90 @@ func verifyTest(wg *sync.WaitGroup, e *Ethash, workerIndex, epochs int) {
 		if block < 0 {
 			block = 0
 		}
-		head := &types.Header{Number: big.NewInt(block), Difficulty: big.NewInt(100)}
-		e.VerifySeal(nil, head)
+		header := &types.Header{Number: big.NewInt(block), Difficulty: big.NewInt(100)}
+		e.VerifySeal(nil, header)
+	}
+}
+
+func TestRemoteSealer(t *testing.T) {
+	ethash := NewTester(nil, false)
+	defer ethash.Close()
+
+	api := &API{ethash}
+	var err error
+	if _, err = api.GetWork(); err != errNoMiningWork {
+		t.Error("expect to return an error indicate there is no mining work")
+	}
+	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
+	block := types.NewBlockWithHeader(header)
+	sealhash := ethash.SealHash(header)
+
+	// Push new work.
+	block, err = ethash.Seal(nil, block, nil)
+	if err != nil {
+		t.Fatalf("failed to seal block: %v", err)
+	}
+
+	var (
+		work [4]string
+	)
+	if work, err = api.GetWork(); err != nil || work[0] != sealhash.Hex() {
+		t.Error("expect to return a mining work has same hash")
+	}
+
+	if res := api.SubmitWork(types.BlockNonce{}, sealhash, common.Hash{}); res {
+		t.Error("expect to return false when submit a fake solution")
+	}
+	// Push new block with same block number to replace the original one.
+	header = &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(1000)}
+	block = types.NewBlockWithHeader(header)
+	sealhash = ethash.SealHash(header)
+	block, err = ethash.Seal(nil, block, nil)
+	if err != nil {
+		t.Fatalf("failed to seal block: %v", err)
+	}
+
+	if work, err = api.GetWork(); err != nil || work[0] != sealhash.Hex() {
+		t.Error("expect to return the latest pushed work")
+	}
+}
+
+func TestHashRate(t *testing.T) {
+	var (
+		hashrate = []hexutil.Uint64{100, 200, 300}
+		expect   uint64
+		ids      = []common.Hash{common.HexToHash("a"), common.HexToHash("b"), common.HexToHash("c")}
+	)
+	ethash := NewTester(nil, false)
+	defer ethash.Close()
+
+	if tot := ethash.Hashrate(); tot != 0 {
+		t.Error("expect the result should be zero")
+	}
+
+	api := &API{ethash}
+	for i := 0; i < len(hashrate); i += 1 {
+		if res := api.SubmitHashRate(hashrate[i], ids[i]); !res {
+			t.Error("remote miner submit hashrate failed")
+		}
+		expect += uint64(hashrate[i])
+	}
+	if tot := ethash.Hashrate(); tot != float64(expect) {
+		t.Error("expect total hashrate should be same")
+	}
+}
+
+func TestClosedRemoteSealer(t *testing.T) {
+	ethash := NewTester(nil, false)
+	time.Sleep(1 * time.Second) // ensure exit channel is listening
+	ethash.Close()
+
+	api := &API{ethash}
+	if _, err := api.GetWork(); err != errEthashStopped {
+		t.Error("expect to return an error to indicate ethash is stopped")
+	}
+
+	if res := api.SubmitHashRate(hexutil.Uint64(100), common.HexToHash("a")); res {
+		t.Error("expect to return false when submit hashrate to a stopped ethash")
 	}
 }

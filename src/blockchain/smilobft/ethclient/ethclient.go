@@ -530,6 +530,7 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction, ar
 	if err != nil {
 		return err
 	}
+	// Quorum
 	if args.PrivateFor != nil {
 		return ec.c.CallContext(ctx, nil, "eth_sendRawPrivateTransaction", common.ToHex(data), bind.PrivateTxArgs{PrivateFor: args.PrivateFor})
 	} else {

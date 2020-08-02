@@ -177,6 +177,7 @@ func parseComplete(rawurl string, resolve bool) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid host: %v", err)
 	}
+
 	if ip = net.ParseIP(host); ip == nil {
 		if !resolve {
 			return nil, errors.New("invalid IP address")

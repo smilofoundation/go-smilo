@@ -44,6 +44,15 @@ const (
 	LangObjC
 )
 
+const (
+	AddressType   = "Address"
+	BigIntType    = "BigInt"
+	BooleanType   = "boolean"
+	ByteType      = "[]byte"
+	FixedByteType = "byte[]"
+	StringType    = "String"
+)
+
 // Bind generates a Go wrapper around a contract ABI. This wrapper isn't meant
 // to be used as is in client code, but rather as an intermediate struct which
 // enforces compile time type safety and naming convention opposed to having to
@@ -230,7 +239,7 @@ func bindBasicTypeGo(kind abi.Type) string {
 	case abi.FixedBytesTy:
 		return fmt.Sprintf("[%d]byte", kind.Size)
 	case abi.BytesTy:
-		return "[]byte"
+		return ByteType
 	case abi.FunctionTy:
 		return "[24]byte"
 	default:
@@ -259,7 +268,7 @@ func bindTypeGo(kind abi.Type, structs map[string]*tmplStruct) string {
 func bindBasicTypeJava(kind abi.Type) string {
 	switch kind.T {
 	case abi.AddressTy:
-		return "Address"
+		return AddressType
 	case abi.IntTy, abi.UintTy:
 		// Note that uint and int (without digits) are also matched,
 		// these are size 256, and will translate to BigInt (the default).
@@ -270,7 +279,7 @@ func bindBasicTypeJava(kind abi.Type) string {
 		// All unsigned integers should be translated to BigInt since gomobile doesn't
 		// support them.
 		if parts[1] == "u" {
-			return "BigInt"
+			return BigIntType
 		}
 
 		namedSize := map[string]string{
@@ -282,15 +291,15 @@ func bindBasicTypeJava(kind abi.Type) string {
 
 		// default to BigInt
 		if namedSize == "" {
-			namedSize = "BigInt"
+			namedSize = BigIntType
 		}
 		return namedSize
 	case abi.FixedBytesTy, abi.BytesTy:
-		return "byte[]"
+		return FixedByteType
 	case abi.BoolTy:
-		return "boolean"
+		return BooleanType
 	case abi.StringTy:
-		return "String"
+		return StringType
 	case abi.FunctionTy:
 		return "byte[24]"
 	default:
@@ -302,15 +311,15 @@ func bindBasicTypeJava(kind abi.Type) string {
 // type in go side.
 func pluralizeJavaType(typ string) string {
 	switch typ {
-	case "boolean":
+	case BooleanType:
 		return "Bools"
-	case "String":
+	case StringType:
 		return "Strings"
-	case "Address":
+	case AddressType:
 		return "Addresses"
-	case "byte[]":
+	case FixedByteType:
 		return "Binaries"
-	case "BigInt":
+	case BigIntType:
 		return "BigInts"
 	}
 	return typ + "[]"
@@ -341,7 +350,7 @@ var bindTopicType = map[Lang]func(kind abi.Type, structs map[string]*tmplStruct)
 // funcionality as for simple types, but dynamic types get converted to hashes.
 func bindTopicTypeGo(kind abi.Type, structs map[string]*tmplStruct) string {
 	bound := bindTypeGo(kind, structs)
-	if bound == "string" || bound == "[]byte" {
+	if bound == "string" || bound == ByteType {
 		bound = "common.Hash"
 	}
 	return bound
@@ -351,7 +360,7 @@ func bindTopicTypeGo(kind abi.Type, structs map[string]*tmplStruct) string {
 // funcionality as for simple types, but dynamic types get converted to hashes.
 func bindTopicTypeJava(kind abi.Type, structs map[string]*tmplStruct) string {
 	bound := bindTypeJava(kind, structs)
-	if bound == "String" || bound == "byte[]" {
+	if bound == StringType || bound == FixedByteType {
 		bound = "Hash"
 	}
 	return bound
@@ -431,9 +440,9 @@ var namedType = map[Lang]func(string, abi.Type) string{
 // be used as parts of method names.
 func namedTypeJava(javaKind string, solKind abi.Type) string {
 	switch javaKind {
-	case "byte[]":
+	case FixedByteType:
 		return "Binary"
-	case "boolean":
+	case BooleanType:
 		return "Bool"
 	default:
 		parts := regexp.MustCompile(`(u)?int([0-9]*)(\[[0-9]*\])?`).FindStringSubmatch(solKind.String())
@@ -520,9 +529,8 @@ loop:
 	}
 	if s, exist := structs[embedded]; exist {
 		return prefix + s.Name
-	} else {
-		return arg.Type.String()
 	}
+	return arg.Type.String()
 }
 
 // formatMethod transforms raw method representation into a user friendly one.
@@ -542,7 +550,7 @@ func formatMethod(method abi.Method, structs map[string]*tmplStruct) string {
 	if method.Const {
 		constant = "constant "
 	}
-	return fmt.Sprintf("function %v(%v) %sreturns(%v)", method.RawName, strings.Join(inputs, ", "), constant, strings.Join(outputs, ", "))
+	return fmt.Sprintf("function %v(%v) %sreturns(%v)", method.Name, strings.Join(inputs, ", "), constant, strings.Join(outputs, ", "))
 }
 
 // formatEvent transforms raw event representation into a user friendly one.
@@ -555,5 +563,5 @@ func formatEvent(event abi.Event, structs map[string]*tmplStruct) string {
 			inputs[i] = fmt.Sprintf("%v %v", resolveArgName(input, structs), input.Name)
 		}
 	}
-	return fmt.Sprintf("event %v(%v)", event.RawName, strings.Join(inputs, ", "))
+	return fmt.Sprintf("event %v(%v)", event.Name, strings.Join(inputs, ", "))
 }

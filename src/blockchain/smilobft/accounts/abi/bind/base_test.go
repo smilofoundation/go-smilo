@@ -1,4 +1,4 @@
-// Copyright 2018 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -66,7 +66,7 @@ func TestPassingBlockNumber(t *testing.T) {
 
 	blockNumber := big.NewInt(42)
 
-	bc.Call(&bind.CallOpts{BlockNumber: blockNumber}, &ret, "something")
+	_ = bc.Call(&bind.CallOpts{BlockNumber: blockNumber}, &ret, "something")
 
 	if mc.callContractBlockNumber != blockNumber {
 		t.Fatalf("CallContract() was not passed the block number")
@@ -76,7 +76,7 @@ func TestPassingBlockNumber(t *testing.T) {
 		t.Fatalf("CodeAt() was not passed the block number")
 	}
 
-	bc.Call(&bind.CallOpts{}, &ret, "something")
+	_ = bc.Call(&bind.CallOpts{}, &ret, "something")
 
 	if mc.callContractBlockNumber != nil {
 		t.Fatalf("CallContract() was passed a block number when it should not have been")

@@ -111,11 +111,10 @@ type peer struct {
 	updateTime     mclock.AbsTime
 	frozen         uint32 // 1 if client is in frozen state
 
-	fcClient       *flowcontrol.ClientNode // nil if the peer is server only
-	fcServer       *flowcontrol.ServerNode // nil if the peer is client only
-	fcParams       flowcontrol.ServerParams
-	fcCosts        requestCostTable
-	balanceTracker *balanceTracker // set by clientPool.connect, used and removed by ProtocolManager.handle
+	fcClient *flowcontrol.ClientNode // nil if the peer is server only
+	fcServer *flowcontrol.ServerNode // nil if the peer is client only
+	fcParams flowcontrol.ServerParams
+	fcCosts  requestCostTable
 
 	trusted                 bool
 	onlyAnnounce            bool

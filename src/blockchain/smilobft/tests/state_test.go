@@ -19,7 +19,9 @@ package tests
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmd/utils"
 	"reflect"
 	"testing"
 
@@ -69,15 +71,20 @@ func TestState(t *testing.T) {
 // Transactions with gasLimit above this value will not get a VM trace on failure.
 const traceErrorLimit = 400000
 
+// The VM config for state tests that accepts --vm.* command line arguments.
+var testVMConfig = func() vm.Config {
+	vmconfig := vm.Config{}
+	flag.StringVar(&vmconfig.EVMInterpreter, utils.EVMInterpreterFlag.Name, utils.EVMInterpreterFlag.Value, utils.EVMInterpreterFlag.Usage)
+	flag.StringVar(&vmconfig.EWASMInterpreter, utils.EWASMInterpreterFlag.Name, utils.EWASMInterpreterFlag.Value, utils.EWASMInterpreterFlag.Usage)
+	flag.Parse()
+	return vmconfig
+}()
+
 func withTrace(t *testing.T, gasLimit uint64, test func(vm.Config) error) {
-	// Use config from command line arguments.
-	config := vm.Config{EVMInterpreter: *testEVM, EWASMInterpreter: *testEWASM}
-	err := test(config)
+	err := test(testVMConfig)
 	if err == nil {
 		return
 	}
-
-	// Test failed, re-run with tracing enabled.
 	t.Error(err)
 	if gasLimit > traceErrorLimit {
 		t.Log("gas limit too high for EVM trace")
@@ -86,8 +93,7 @@ func withTrace(t *testing.T, gasLimit uint64, test func(vm.Config) error) {
 	buf := new(bytes.Buffer)
 	w := bufio.NewWriter(buf)
 	tracer := vm.NewJSONLogger(&vm.LogConfig{DisableMemory: true}, w)
-	config.Debug, config.Tracer = true, tracer
-	err2 := test(config)
+	err2 := test(vm.Config{Debug: true, Tracer: tracer})
 	if !reflect.DeepEqual(err, err2) {
 		t.Errorf("different error for second run: %v", err2)
 	}

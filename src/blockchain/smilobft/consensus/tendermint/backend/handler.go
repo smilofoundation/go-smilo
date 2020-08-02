@@ -74,14 +74,15 @@ func (sb *Backend) HandleUnhandledMsgs(ctx context.Context) {
 
 // HandleMsg implements consensus.Handler.HandleMsg
 func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
+	if msg.Code != tendermintMsg && msg.Code != tendermintSyncMsg {
+		return false, nil
+	}
+
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
 
-	//if msg.Code != tendermintMsg && msg.Code != tendermintSyncMsg {
-	//	return false, nil
-	//}
-
-	if msg.Code == tendermintMsg {
+	switch msg.Code {
+	case tendermintMsg:
 		if !sb.coreStarted {
 			buffer := new(bytes.Buffer)
 			if _, err := io.Copy(buffer, msg.Payload); err != nil {

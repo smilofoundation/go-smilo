@@ -28,7 +28,6 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
@@ -313,14 +312,8 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		p.Log().Error("Light Ethereum peer registration failed", "err", err)
 		return err
 	}
-	if !pm.client && p.balanceTracker == nil {
-		// add dummy balance tracker for tests
-		p.balanceTracker = &balanceTracker{}
-		p.balanceTracker.init(&mclock.System{}, 1)
-	}
 	connectedAt := time.Now()
 	defer func() {
-		p.balanceTracker = nil
 		pm.removePeer(p.id)
 		connectionTimer.UpdateSince(connectedAt)
 	}()
@@ -415,7 +408,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	defer msg.Discard()
 
 	var deliverMsg *Msg
-	balanceTracker := p.balanceTracker
 
 	sendResponse := func(reqID, amount uint64, reply *reply, servingTime uint64) {
 		p.responseLock.Lock()
@@ -434,7 +426,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			realCost = pm.server.costTracker.realCost(servingTime, msg.Size, replySize)
 			if amount != 0 {
 				pm.server.costTracker.updateStats(msg.Code, amount, servingTime, realCost)
-				balanceTracker.requestCost(realCost)
 			}
 		} else {
 			realCost = maxCost
@@ -1137,7 +1128,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		p.freezeServer(true)
 		pm.retriever.frozen(p)
-		p.Log().Debug("Service stopped")
+		p.Log().Warn("Service stopped")
 
 	case ResumeMsg:
 		if pm.odr == nil {
@@ -1149,7 +1140,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		p.fcServer.ResumeFreeze(bv)
 		p.freezeServer(false)
-		p.Log().Debug("Service resumed")
+		p.Log().Warn("Service resumed")
 
 	default:
 		p.Log().Trace("Received unknown message", "code", msg.Code)
