@@ -764,9 +764,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:39ebcc2b11457b703ae9ee2e8cca0f68df21969c6102cb3b705f76cca0ea0239"
+  digest = "1:39485a034b89a9f2892b9c0cc24e2330e1c9981794c35281c2febfcc55b90a34"
   name = "golang.org/x/sync"
-  packages = ["errgroup"]
+  packages = [
+    "errgroup",
+    "syncmap",
+  ]
   pruneopts = "UT"
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
@@ -1071,6 +1074,7 @@
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/websocket",
     "golang.org/x/sync/errgroup",
+    "golang.org/x/sync/syncmap",
     "golang.org/x/text/unicode/norm",
     "google.golang.org/grpc",
     "google.golang.org/grpc/codes",
