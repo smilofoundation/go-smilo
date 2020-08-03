@@ -556,7 +556,7 @@ func (c *Client) dispatch(codec ServerCodec) {
 			conn.close(err, lastOp)
 			reading = false
 
-		// Reconnect:
+		// Reconnect:RPC connection read error
 		case newcodec := <-c.reconnected:
 			log.Debug("RPC client reconnected", "reading", reading, "conn", newcodec.RemoteAddr())
 			if reading {

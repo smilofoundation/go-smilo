@@ -357,7 +357,7 @@ func (t *discoverTask) Do(srv *Server) {
 	// event loop spins too fast.
 	next := srv.lastLookup.Add(lookupInterval)
 	if now := time.Now(); now.Before(next) {
-		sleep(next.Sub(now), srv)
+		time.Sleep(next.Sub(now))
 	}
 	srv.lastLookup = time.Now()
 	t.results = srv.ntab.LookupRandom()
@@ -371,21 +371,9 @@ func (t *discoverTask) String() string {
 	return s
 }
 
-func (t waitExpireTask) Do(srv *Server) {
-	sleep(t.Duration, srv)
+func (t waitExpireTask) Do(*Server) {
+	time.Sleep(t.Duration)
 }
 func (t waitExpireTask) String() string {
 	return fmt.Sprintf("wait for dial hist expire (%v)", t.Duration)
-}
-
-func sleep(d time.Duration, srv *Server) {
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-	//nothing to do
-	case <-srv.quit:
-		return
-	}
 }

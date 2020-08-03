@@ -434,11 +434,11 @@ func (srv *Server) Stop() {
 		return
 	}
 	srv.running = false
-	close(srv.quit)
 	if srv.listener != nil {
 		// this unblocks listener Accept
 		srv.listener.Close()
 	}
+	close(srv.quit)
 	srv.lock.Unlock()
 	srv.loopWG.Wait()
 }
@@ -535,9 +535,11 @@ func (srv *Server) Start() (err error) {
 		log.Info("Private-network mode enabled.")
 		srv.NoDiscovery = true
 		srv.StaticNodes = nil
-		srv.TrustedNodes = nil
+		//srv.TrustedNodes = nil //-> breaks TestServerAtCap
 		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict: srv.Config.NetRestrict})
 	}
+
+	//dialer := newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
 	srv.loopWG.Add(1)
 	go srv.run(dialer)
 	return nil

@@ -31,6 +31,7 @@ var customGenesisTests = []struct {
 	query   string
 	result  string
 }{
+	// Plain genesis file without anything extra
 	{
 		name: "Plain genesis file without anything extra",
 		genesis: `{
@@ -48,6 +49,7 @@ var customGenesisTests = []struct {
 		query:  "eth.getBlock(0).nonce",
 		result: "0x0000000000000042",
 	},
+	// Genesis file with an empty chain configuration (ensure missing fields work)
 	{
 		name: "Genesis file with an empty chain configuration (ensure missing fields work)",
 		genesis: `{
@@ -65,6 +67,7 @@ var customGenesisTests = []struct {
 		query:  "eth.getBlock(0).nonce",
 		result: "0x0000000000000042",
 	},
+	// Genesis file with specific chain configurations
 	{
 		name: "Genesis file with specific chain configurations",
 		genesis: `{

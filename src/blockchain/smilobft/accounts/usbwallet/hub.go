@@ -193,7 +193,7 @@ func (hub *Hub) refreshWallets() {
 
 	var (
 		wallets = make([]accounts.Wallet, 0, len(devices))
-		events  = make([]accounts.WalletEvent, 0, len(devices))
+		events  []accounts.WalletEvent
 	)
 
 	for _, device := range devices {
@@ -278,8 +278,4 @@ func (hub *Hub) updater() {
 		}
 		hub.stateLock.Unlock()
 	}
-}
-
-func (hub *Hub) Close() {
-	close(hub.quit)
 }

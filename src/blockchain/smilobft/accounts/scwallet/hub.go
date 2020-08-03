@@ -301,7 +301,3 @@ func (hub *Hub) updater() {
 		hub.stateLock.Unlock()
 	}
 }
-
-func (hub *Hub) Close() {
-	close(hub.quit)
-}

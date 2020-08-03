@@ -22,7 +22,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
-	"math"
 	"math/big"
 	"reflect"
 	"sort"
@@ -646,7 +645,7 @@ func newBlockChain(n int) (*core.BlockChain, *Backend) {
 	//c := tendermintCore.New(b, cfg)
 
 	genesis.MustCommit(memDB)
-	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil, core.NewTxSenderCacher())
+	blockchain, err := core.NewBlockChain(memDB, nil, genesis.Config, b, vm.Config{}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -681,12 +680,16 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey) {
 	for i := 0; i < n; i++ {
 		nodeKeys[i], _ = crypto.GenerateKey()
 		addrs[i] = crypto.PubkeyToAddress(nodeKeys[i].PublicKey)
-		genesis.Alloc[addrs[i]] = core.GenesisAccount{Balance: new(big.Int).SetUint64(uint64(math.Pow10(18)))}
+		genesis.Alloc[addrs[i]] = core.GenesisAccount{
+			Balance: new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil),
+		}
 	}
 
 	// generate genesis block
-
 	genesis.Config = params.TestChainConfig
+	genesis.Config.IsSmilo = true
+	genesis.Config.IsGas = true
+	genesis.Config.IsGasRefunded = true
 	genesis.GasLimit = 10000000
 	genesis.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
 	// force enable Istanbul engine
@@ -778,7 +781,8 @@ func makeBlockWithoutSeal(chain *core.BlockChain, engine *Backend, parent *types
 	}
 
 	//add a few txs
-	txs := make(types.Transactions, 5)
+	//TODO: figure out why txs fail with not enough gas here
+	txs := make(types.Transactions, 0)
 	nonce := state.GetNonce(engine.address)
 	gasPrice := new(big.Int).SetUint64(1000000)
 	gasPool := new(core.GasPool).AddGas(header.GasLimit)
@@ -799,6 +803,9 @@ func makeBlockWithoutSeal(chain *core.BlockChain, engine *Backend, parent *types
 		receipts = append(receipts, receipt)
 	}
 	block, err := engine.Finalize(chain, header, state, txs, nil, receipts)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -356,7 +356,7 @@ func TestVoting(t *testing.T) {
 				config.Epoch = tt.epoch
 			}
 			engine := New(config, accounts.accounts[tt.fullnodes[0]], db).(*backend)
-			chain, err := core.NewBlockChain(db, nil, genesis.Config, engine, vm.Config{}, nil, core.NewTxSenderCacher())
+			chain, err := core.NewBlockChain(db, nil, genesis.Config, engine, vm.Config{}, nil)
 
 			// Assemble a chain of headers from the cast votes
 			headers := make([]*types.Header, len(tt.votes))

@@ -51,8 +51,8 @@ var (
 	// two256 is a big integer representing 2^256
 	two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
 
-	// sharedEthashOnce is a full instance that can be shared between multiple users.
-	sharedEthashOnce = &sync.Once{}
+	// sharedEthash is a full instance that can be shared between multiple users.
+	sharedEthash = New(Config{"", 3, 0, "", 1, 0, ModeNormal}, nil, false)
 
 	// algorithmRevision is the data structure version used for file naming.
 	algorithmRevision = 23
@@ -390,6 +390,7 @@ type Mode uint
 
 const (
 	ModeNormal Mode = iota
+	ModeShared
 	ModeTest
 	ModeFake
 	ModeFullFake
@@ -490,9 +491,9 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 		workCh:       make(chan *sealTask),
 		fetchWorkCh:  make(chan *sealWork),
 		submitWorkCh: make(chan *mineResult),
-		fetchRateCh:  make(chan chan uint64, 1),
+		fetchRateCh:  make(chan chan uint64),
 		submitRateCh: make(chan *hashrate),
-		exitCh:       make(chan chan error, 1),
+		exitCh:       make(chan chan error),
 	}
 	go ethash.remote(notify, noverify)
 	return ethash
@@ -512,7 +513,7 @@ func NewTester(notify []string, noverify bool) *Ethash {
 		submitWorkCh: make(chan *mineResult),
 		fetchRateCh:  make(chan chan uint64),
 		submitRateCh: make(chan *hashrate),
-		exitCh:       make(chan chan error, 1),
+		exitCh:       make(chan chan error),
 	}
 	go ethash.remote(notify, noverify)
 	return ethash
@@ -563,15 +564,9 @@ func NewFullFaker() *Ethash {
 	}
 }
 
-var sharedEthash *Ethash
-
 // NewShared creates a full sized ethash PoW shared between all requesters running
 // in the same process.
 func NewShared() *Ethash {
-	sharedEthashOnce.Do(func() {
-		sharedEthash = New(Config{"", 3, 0, "", 1, 0, ModeNormal}, nil, false)
-	})
-
 	return &Ethash{shared: sharedEthash}
 }
 

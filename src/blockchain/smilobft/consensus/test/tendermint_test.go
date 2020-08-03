@@ -462,7 +462,7 @@ func TestTendermintStartStopSingleNode(t *testing.T) {
 		{
 			name:      "one node stops for 5 seconds",
 			numPeers:  5,
-			numBlocks: 20,
+			numBlocks: 10,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				4: hookStopNode(4, 5),
@@ -475,7 +475,7 @@ func TestTendermintStartStopSingleNode(t *testing.T) {
 		{
 			name:      "one node stops for 10 seconds",
 			numPeers:  5,
-			numBlocks: 20,
+			numBlocks: 10,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				4: hookStopNode(4, 5),
@@ -488,7 +488,7 @@ func TestTendermintStartStopSingleNode(t *testing.T) {
 		{
 			name:      "one node stops for 20 seconds",
 			numPeers:  5,
-			numBlocks: 30,
+			numBlocks: 20,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				4: hookStopNode(4, 5),
@@ -517,7 +517,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 5 seconds at the same block",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -532,7 +532,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 5 seconds at different blocks",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -547,7 +547,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 10 seconds at the same block",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -562,7 +562,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 10 seconds at different blocks",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -577,7 +577,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 20 seconds at the same block",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -592,7 +592,7 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 		{
 			name:      "f nodes stop for 20 seconds at different blocks",
 			numPeers:  7,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -623,7 +623,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 5 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -638,7 +638,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 5 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -653,7 +653,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 10 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -668,7 +668,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 10 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -683,7 +683,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 20 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -698,7 +698,7 @@ func TestTendermintStartStopFPlusOneNodes(t *testing.T) {
 		{
 			name:      "f+1 nodes stop for 20 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				3: hookStopNode(3, 5),
@@ -729,7 +729,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 5 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 5),
@@ -746,7 +746,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 5 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 4),
@@ -763,7 +763,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 10 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 5),
@@ -780,7 +780,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 10 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 4),
@@ -797,7 +797,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 20 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 5),
@@ -814,7 +814,7 @@ func TestTendermintStartStopFPlusTwoNodes(t *testing.T) {
 		{
 			name:      "f+2 nodes stop for 20 seconds at different blocks",
 			numPeers:  5,
-			numBlocks: 40,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				2: hookStopNode(2, 4),
@@ -847,7 +847,7 @@ func TestTendermintStartStopAllNodes(t *testing.T) {
 		{
 			name:      "all nodes stop for 60 seconds at different blocks(2+2+1)",
 			numPeers:  5,
-			numBlocks: 50,
+			numBlocks: 30,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				0: hookStopNode(0, 3),
@@ -889,7 +889,7 @@ func TestTendermintStartStopAllNodes(t *testing.T) {
 		{
 			name:      "all nodes stop for 30 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 50,
+			numBlocks: 10,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				0: hookStopNode(0, 3),
@@ -910,7 +910,7 @@ func TestTendermintStartStopAllNodes(t *testing.T) {
 		{
 			name:      "all nodes stop for 60 seconds at the same block",
 			numPeers:  5,
-			numBlocks: 50,
+			numBlocks: 10,
 			txPerPeer: 1,
 			beforeHooks: map[int]hook{
 				0: hookStopNode(0, 3),
@@ -1122,11 +1122,12 @@ func runTest(t *testing.T, test *testCase) {
 					return nil
 				}
 
-				errInner := validatorInner.node.Close()
+				errInner := validatorInner.node.Stop()
 				if errInner != nil {
 					return fmt.Errorf("error on node close %v", err)
 				}
 
+				//TODO: is this right ?
 				validatorInner.node.Wait()
 
 				return nil
@@ -1218,6 +1219,7 @@ func (validator *testNode) startNode() error {
 
 	validator.node.ResetEventMux()
 
+	// start
 	if err := validator.node.Start(); err != nil {
 		return fmt.Errorf("cannot start a node %s", err)
 	}
