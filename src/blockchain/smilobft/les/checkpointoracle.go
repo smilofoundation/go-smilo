@@ -20,13 +20,12 @@ import (
 	"encoding/binary"
 	"sync/atomic"
 
-	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
-	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle"
-	"go-smilo/src/blockchain/smilobft/params"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
+	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle"
+	"go-smilo/src/blockchain/smilobft/params"
 )
 
 // checkpointOracle is responsible for offering the latest stable checkpoint
@@ -36,11 +35,8 @@ type checkpointOracle struct {
 	config   *params.CheckpointOracleConfig
 	contract *checkpointoracle.CheckpointOracle
 
-	// Whether the contract backend is set.
-	running int32
-
-	getLocal     func(uint64) params.TrustedCheckpoint // Function used to retrieve local checkpoint
-	syncDoneHook func()                                // Function used to notify that light syncing has completed.
+	running  int32                                 // Flag whether the contract backend is set or not
+	getLocal func(uint64) params.TrustedCheckpoint // Function used to retrieve local checkpoint
 }
 
 // newCheckpointOracle returns a checkpoint registrar handler.

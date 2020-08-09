@@ -35,9 +35,9 @@ var DefaultRootDerivationPath = DerivationPath{0x80000000 + 44, 0x80000000 + 200
 // at m/44'/20080914'/0'/0/1, etc.
 var DefaultBaseDerivationPath = DerivationPath{0x80000000 + 44, 0x80000000 + 20080914, 0x80000000 + 0, 0, 0}
 
-// LegacyLedgerBaseDerivationPath is the base path from which custom derivation endpoints
-// are incremented. As such, the first account will be at m/44'/20080914'/0'/0, the second
-// at m/44'/20080914'/0'/1, etc.
+// LegacyLedgerBaseDerivationPath is the legacy base path from which custom derivation endpoints
+// endpoints are incremented. As such, the first account will be at m/44'/20080914'/0'/0, the
+// second at m/44'/20080914'/0'/1, etc.
 var LegacyLedgerBaseDerivationPath = DerivationPath{0x80000000 + 44, 0x80000000 + 20080914, 0x80000000 + 0, 0}
 
 // DerivationPath represents the computer friendly version of a hierarchical
