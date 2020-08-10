@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"io/ioutil"
 	"os"
 	"testing"

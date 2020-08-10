@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/math"
@@ -79,7 +80,7 @@ func ParseV4(rawurl string) (*Node, error) {
 		}
 		return NewV4(id, nil, 0, 0), nil
 	}
-	return parseComplete(rawurl)
+	return parseComplete(rawurl, false)
 }
 
 func parseV4(rawurl string, resolve bool) (*Node, error) {
@@ -91,7 +92,7 @@ func parseV4(rawurl string, resolve bool) (*Node, error) {
 		return NewV4(id, nil, 0, 0), nil
 	}
 
-	return parseComplete(rawurl)
+	return parseComplete(rawurl, resolve)
 }
 
 func GetParseV4WithResolveMaxTry(maxTry int, wait time.Duration) func(rawurl string) (*Node, error) {
@@ -126,12 +127,6 @@ func NewV4(pubkey *ecdsa.PublicKey, ip net.IP, tcp, udp int) *Node {
 	if len(ip) > 0 {
 		r.Set(enr.IP(ip))
 	}
-	return newV4(pubkey, r, tcp, udp)
-}
-
-// broken out from `func NewV4` (above) same in upstream go-ethereum, but taken out
-// to avoid code duplication b/t NewV4 and NewV4Hostname
-func newV4(pubkey *ecdsa.PublicKey, r enr.Record, tcp, udp int) *Node {
 	if udp != 0 {
 		r.Set(enr.UDP(udp))
 	}
@@ -152,7 +147,7 @@ func isNewV4(n *Node) bool {
 	return n.r.IdentityScheme() == "" && n.r.Load(&k) == nil && len(n.r.Signature()) == 0
 }
 
-func parseComplete(rawurl string) (*Node, error) {
+func parseComplete(rawurl string, resolve bool) (*Node, error) {
 	var (
 		id               *ecdsa.PublicKey
 		ip               net.IP
@@ -172,27 +167,35 @@ func parseComplete(rawurl string) (*Node, error) {
 	if id, err = parsePubkey(u.User.String()); err != nil {
 		return nil, fmt.Errorf("invalid public key (%v)", err)
 	}
-	// move qv up to here
-	qv := u.Query()
+	if strings.LastIndex(u.Host, ":") == -1 {
+		//set default port
+		u.Host += defaultPort
+	}
 	// Parse the IP address.
-	ips, err := net.LookupIP(u.Hostname())
+	host, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
-		// Quorum: if IP look up fail don't return error for raft url
-		if qv.Get("raftport") == "" {
-			return nil, err
+		return nil, fmt.Errorf("invalid host: %v", err)
+	}
+	if ip = net.ParseIP(host); ip == nil {
+		if !resolve {
+			return nil, errors.New("invalid IP address")
 		}
-	} else {
-		ip = ips[0]
-		// Ensure the IP is 4 bytes long for IPv4 addresses.
-		if ipv4 := ip.To4(); ipv4 != nil {
-			ip = ipv4
+		// if host is not IPV4/6, resolve host is a domain
+
+		hostIPs, err := net.LookupIP(host)
+		if err != nil {
+			return NewV4(id, nil, 0, 0), errors.New("invalid domain or IP address")
+		}
+		if len(hostIPs) > 0 {
+			ip = hostIPs[len(hostIPs)-1]
 		}
 	}
 	// Parse the port numbers.
-	if tcpPort, err = strconv.ParseUint(u.Port(), 10, 16); err != nil {
+	if tcpPort, err = strconv.ParseUint(port, 10, 16); err != nil {
 		return nil, errors.New("invalid port")
 	}
 	udpPort = tcpPort
+	qv := u.Query()
 	if qv.Get("discport") != "" {
 		udpPort, err = strconv.ParseUint(qv.Get("discport"), 10, 16)
 		if err != nil {
@@ -200,14 +203,6 @@ func parseComplete(rawurl string) (*Node, error) {
 		}
 	}
 	return NewV4(id, ip, int(tcpPort), int(udpPort)), nil
-}
-
-func HexPubkey(h string) (*ecdsa.PublicKey, error) {
-	k, err := parsePubkey(h)
-	if err != nil {
-		return nil, err
-	}
-	return k, err
 }
 
 // parsePubkey parses a hex-encoded secp256k1 public key.
@@ -240,14 +235,9 @@ func (n *Node) URLv4() string {
 	if n.Incomplete() {
 		u.Host = nodeid
 	} else {
+		addr := net.TCPAddr{IP: n.IP(), Port: n.TCP()}
 		u.User = url.User(nodeid)
-		if n.Host() != "" && net.ParseIP(n.Host()) == nil {
-			// Quorum
-			u.Host = net.JoinHostPort(n.Host(), strconv.Itoa(n.TCP()))
-		} else {
-			addr := net.TCPAddr{IP: n.IP(), Port: n.TCP()}
-			u.Host = addr.String()
-		}
+		u.Host = addr.String()
 		if n.UDP() != n.TCP() {
 			u.RawQuery = "discport=" + strconv.Itoa(n.UDP())
 		}

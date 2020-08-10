@@ -20,7 +20,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net"
-	"reflect"
 	"sort"
 	"testing"
 

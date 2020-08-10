@@ -18,17 +18,17 @@ package rules
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
+	"go-smilo/src/blockchain/smilobft/signer/core"
+	"go-smilo/src/blockchain/smilobft/signer/storage"
 	"math/big"
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/signer/core"
-	"github.com/ethereum/go-ethereum/signer/storage"
 )
 
 const JS = `

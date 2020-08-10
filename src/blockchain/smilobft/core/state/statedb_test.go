@@ -535,7 +535,7 @@ func TestCopyCommitCopy(t *testing.T) {
 	skey := common.HexToHash("aaa")
 	sval := common.HexToHash("bbb")
 
-	state.SetBalance(addr, big.NewInt(42)) // Change the account trie
+	state.SetBalance(addr, big.NewInt(42), common.Big0) // Change the account trie
 	state.SetCode(addr, []byte("hello"))   // Change an external metadata
 	state.SetState(addr, skey, sval)       // Change the storage trie
 
@@ -607,7 +607,7 @@ func TestCopyCopyCommitCopy(t *testing.T) {
 	skey := common.HexToHash("aaa")
 	sval := common.HexToHash("bbb")
 
-	state.SetBalance(addr, big.NewInt(42)) // Change the account trie
+	state.SetBalance(addr, big.NewInt(42), common.Big0) // Change the account trie
 	state.SetCode(addr, []byte("hello"))   // Change an external metadata
 	state.SetState(addr, skey, sval)       // Change the storage trie
 
@@ -693,7 +693,7 @@ func TestDeleteCreateRevert(t *testing.T) {
 	state, _ := New(common.Hash{}, NewDatabase(rawdb.NewMemoryDatabase()))
 
 	addr := toAddr([]byte("so"))
-	state.SetBalance(addr, big.NewInt(1))
+	state.SetBalance(addr, big.NewInt(1), common.Big0)
 
 	root, _ := state.Commit(false)
 	state.Reset(root)
@@ -703,7 +703,7 @@ func TestDeleteCreateRevert(t *testing.T) {
 	state.Finalise(true)
 
 	id := state.Snapshot()
-	state.SetBalance(addr, big.NewInt(2))
+	state.SetBalance(addr, big.NewInt(2), common.Big0)
 	state.RevertToSnapshot(id)
 
 	// Commit the entire state and make sure we don't crash and have the correct state

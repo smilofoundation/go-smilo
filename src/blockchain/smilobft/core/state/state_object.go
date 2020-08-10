@@ -118,9 +118,10 @@ func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
 	}
-	if data.Root == (common.Hash{}) {
-		data.Root = emptyRoot
-	}
+	//FIXME: this code leads to err: failed to commit transition state: can't create storage trie: missing trie node c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 (path )
+	//if data.Root == (common.Hash{}) {
+	//	data.Root = emptyRoot
+	//}
 	if data.SmiloPay == nil {
 		data.SmiloPay = new(big.Int)
 	}

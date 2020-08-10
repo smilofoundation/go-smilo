@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/rand"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -69,11 +70,15 @@ var genesis = `{
 // Tests that a node embedded within a console can be started up properly and
 // then terminated by closing the input stream.
 func TestConsoleWelcome(t *testing.T) {
-	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
+	defer SetResetPrivateConfig("ignore")()
+	coinbase := "0x491937757d1b26e29c507b8d4c0b233c2747e68d"
+
+	datadir := setupIstanbul(t)
+	defer os.RemoveAll(datadir)
 
 	// Start a geth console, make sure it's cleaned up and terminate the console
 	geth := runGeth(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--datadir", datadir, "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--etherbase", coinbase, "--shh",
 		"console")
 
@@ -102,20 +107,24 @@ at block: 0 ({{niltime}})
 
 // Tests that a console can be attached to a running node via various means.
 func TestIPCAttachWelcome(t *testing.T) {
+	defer SetResetPrivateConfig("ignore")()
 	// Configure the instance for IPC attachement
 	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
 	var ipc string
+
+	datadir := setupIstanbul(t)
+	defer os.RemoveAll(datadir)
+
 	if runtime.GOOS == "windows" {
 		ipc = `\\.\pipe\geth` + strconv.Itoa(trulyRandInt(100000, 999999))
 	} else {
-		ws := tmpdir(t)
-		defer os.RemoveAll(ws)
-		ipc = filepath.Join(ws, "geth.ipc")
+		ipc = filepath.Join(datadir, "geth.ipc")
 	}
+
 	// Note: we need --shh because testAttachWelcome checks for default
 	// list of ipc modules and shh is included there.
 	geth := runGeth(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--datadir", datadir, "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--etherbase", coinbase, "--shh", "--ipcpath", ipc)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
@@ -126,29 +135,41 @@ func TestIPCAttachWelcome(t *testing.T) {
 }
 
 func TestHTTPAttachWelcome(t *testing.T) {
-	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
+	defer SetResetPrivateConfig("ignore")()
+	coinbase := "0x491937757d1b26e29c507b8d4c0b233c2747e68d"
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
-	geth := runGeth(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--rpc", "--rpcport", port)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
-	testAttachWelcome(t, geth, "http://localhost:"+port, httpAPIs)
+	datadir := setupIstanbul(t)
+	defer os.RemoveAll(datadir)
+
+	geth := runGeth(t,
+		"--datadir", datadir, "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--etherbase", coinbase, "--rpc", "--rpcport", port, "--rpcapi", "admin,eth,net,web3")
+
+	endpoint := "http://127.0.0.1:" + port
+	waitForEndpoint(t, endpoint, 3*time.Second)
+	testAttachWelcome(t, geth, endpoint, httpAPIs)
 
 	geth.Interrupt()
 	geth.ExpectExit()
 }
 
 func TestWSAttachWelcome(t *testing.T) {
+	defer SetResetPrivateConfig("ignore")()
+
 	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 
-	geth := runGeth(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--etherbase", coinbase, "--ws", "--wsport", port)
+	datadir := setupIstanbul(t)
+	defer os.RemoveAll(datadir)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
-	testAttachWelcome(t, geth, "ws://localhost:"+port, httpAPIs)
+	geth := runGeth(t,
+		"--datadir", datadir, "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--etherbase", coinbase, "--ws", "--wsport", port, "--wsapi", "admin,eth,net,web3")
+
+	endpoint := "ws://127.0.0.1:" + port
+	waitForEndpoint(t, endpoint, 3*time.Second)
+	testAttachWelcome(t, geth, endpoint, httpAPIs)
 
 	geth.Interrupt()
 	geth.ExpectExit()
@@ -191,4 +212,35 @@ at block: 0 ({{niltime}}){{if ipc}}
 func trulyRandInt(lo, hi int) int {
 	num, _ := rand.Int(rand.Reader, big.NewInt(int64(hi-lo)))
 	return int(num.Int64()) + lo
+}
+
+// setupIstanbul creates a temporary directory and copies nodekey and genesis.json.
+// It initializes istanbul by calling geth init
+func setupIstanbul(t *testing.T) string {
+	datadir := tmpdir(t)
+	gethPath := filepath.Join(datadir, "geth")
+	os.Mkdir(gethPath, 0700)
+
+	// Initialize the data directory with the custom genesis block
+	json := filepath.Join(datadir, "genesis.json")
+	if err := ioutil.WriteFile(json, []byte(genesis), 0600); err != nil {
+		t.Fatalf("failed to write genesis file: %v", err)
+	}
+
+	nodeKeyFile := filepath.Join(gethPath, "nodekey")
+	if err := ioutil.WriteFile(nodeKeyFile, []byte(nodeKey), 0600); err != nil {
+		t.Fatalf("failed to write nodekey file: %v", err)
+	}
+
+	runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+
+	return datadir
+}
+
+func SetResetPrivateConfig(value string) func() {
+	existingValue := os.Getenv("PRIVATE_CONFIG")
+	os.Setenv("PRIVATE_CONFIG", value)
+	return func() {
+		os.Setenv("PRIVATE_CONFIG", existingValue)
+	}
 }

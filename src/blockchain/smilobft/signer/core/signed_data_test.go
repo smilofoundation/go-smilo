@@ -20,17 +20,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts/keystore"
+	"go-smilo/src/blockchain/smilobft/signer/core"
 	"io/ioutil"
 	"path"
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/signer/core"
 )
 
 var typesStandard = core.Types{

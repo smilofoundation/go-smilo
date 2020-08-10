@@ -40,13 +40,6 @@ import (
 // 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
 // }
 
-type testTransport struct {
-	rpub *ecdsa.PublicKey
-	*rlpx
-
-	closeErr error
-}
-
 func newTestTransport(rpub *ecdsa.PublicKey, fd net.Conn) transport {
 	wrapped := newRLPX(fd).(*rlpx)
 	wrapped.rw = newRLPXFrameRW(fd, secrets{
@@ -56,20 +49,6 @@ func newTestTransport(rpub *ecdsa.PublicKey, fd net.Conn) transport {
 		EgressMAC:  sha3.NewLegacyKeccak256(),
 	})
 	return &testTransport{rpub: rpub, rlpx: wrapped}
-}
-
-func (c *testTransport) doEncHandshake(prv *ecdsa.PrivateKey, dialDest *ecdsa.PublicKey) (*ecdsa.PublicKey, error) {
-	return c.rpub, nil
-}
-
-func (c *testTransport) doProtoHandshake(our *protoHandshake) (*protoHandshake, error) {
-	pubkey := crypto.FromECDSAPub(c.rpub)[1:]
-	return &protoHandshake{ID: pubkey, Name: "test"}, nil
-}
-
-func (c *testTransport) close(err error) {
-	c.rlpx.fd.Close()
-	c.closeErr = err
 }
 
 func startTestServer(t *testing.T, remoteKey *ecdsa.PublicKey, pf func(*Peer)) *Server {

@@ -16,7 +16,7 @@ func TestQuorumParams(t *testing.T) {
 		"MinGasLimit":                {MinGasLimit, 700000000},
 		"GenesisGasLimit":            {GenesisGasLimit, 800000000},
 		"QuorumMaximumExtraDataSize": {SmiloMaximumExtraDataSize, 65},
-		"QuorumMaxPayloadBufferSize": {SmiloMaxPayloadBufferSize, 128},
+		"QuorumMaxPayloadBufferSize": {QuorumMaxPayloadBufferSize, 128},
 	}
 	for k, v := range testData {
 		assert.Equal(t, v.expected, v.actual, k+" value mismatch")

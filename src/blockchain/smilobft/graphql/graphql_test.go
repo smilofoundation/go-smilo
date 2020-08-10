@@ -17,6 +17,7 @@
 package graphql
 
 import (
+	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -86,6 +87,18 @@ func TestQuorumSchema(t *testing.T) {
 
 type StubPrivateTransactionManager struct {
 	responses map[string][]interface{}
+}
+
+func (spm *StubPrivateTransactionManager) Post(data []byte, from string, to []string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
+func (spm *StubPrivateTransactionManager) PostRawTransaction(data []byte, to []string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
+func (spm *StubPrivateTransactionManager) Get(data []byte) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
 }
 
 func (spm *StubPrivateTransactionManager) Send(data []byte, from string, to []string) ([]byte, error) {

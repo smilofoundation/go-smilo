@@ -166,6 +166,7 @@ Password: {{.InputLine "foobar"}}
 }
 
 func TestGethDoesntStartWithoutPrivateTransactionManagerVariableSet(t *testing.T) {
+	t.Skip("Smilo does not have this requirement")
 	defer SetResetPrivateConfig("")()
 
 	datadir := tmpDatadirWithKeystore(t)

@@ -122,6 +122,10 @@ type StubPrivateTransactionManager struct {
 	responses map[string][]interface{}
 }
 
+func (spm *StubPrivateTransactionManager) StoreRaw(data []byte, from string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
 // Post is equivalent to Send in Quorum
 func (spm *StubPrivateTransactionManager) Post(data []byte, from string, to []string) ([]byte, error) {
 	return nil, fmt.Errorf("to be implemented")

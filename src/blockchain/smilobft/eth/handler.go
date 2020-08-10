@@ -1030,28 +1030,17 @@ type NodeInfo struct {
 	Genesis    common.Hash         `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Config     *params.ChainConfig `json:"config"`     // Chain configuration for the fork rules
 	Head       common.Hash         `json:"head"`       // SHA3 hash of the host's best owned block
-	Consensus  string              `json:"consensus"`  // Consensus mechanism in use
 }
 
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 	currentBlock := pm.blockchain.CurrentBlock()
-	// //Quorum
-	//
-	// changes done to fetch maxCodeSize dynamically based on the
-	// maxCodeSizeConfig changes
-	// /Quorum
-	chainConfig := pm.blockchain.Config()
-	chainConfig.MaxCodeSize = uint64(chainConfig.GetMaxCodeSize(pm.blockchain.CurrentBlock().Number()) / 1024)
-
 	return &NodeInfo{
 		Network:    pm.networkID,
 		Difficulty: pm.blockchain.GetTd(currentBlock.Hash(), currentBlock.NumberU64()),
 		Genesis:    pm.blockchain.Genesis().Hash(),
-		Config:     chainConfig,
+		Config:     pm.blockchain.Config(),
 		Head:       currentBlock.Hash(),
-		// Quorum
-		Consensus:  pm.engine.ProtocolOld().Name,
 	}
 }
 

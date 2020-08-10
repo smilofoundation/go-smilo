@@ -17,6 +17,7 @@
 package simulations
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"

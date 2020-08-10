@@ -18,6 +18,7 @@ package enode
 
 import (
 	"crypto/ecdsa"
+	"github.com/stretchr/testify/require"
 	"net"
 	"reflect"
 	"strings"
@@ -163,10 +164,8 @@ func TestParseNode(t *testing.T) {
 			if err == nil {
 				t.Errorf("test %q:\n  got nil error, expected %#q", test.input, test.wantError)
 				continue
-			} else if !strings.Contains(err.Error(), test.wantError) {
-				t.Errorf("test %q:\n  got error %#q, expected %#q\n%v", test.input, err.Error(), test.wantError, n)
-				continue
 			}
+			require.Contains(t, err.Error(), test.wantError, "test %q:\n  got error %#q, expected %#q", test.input, err.Error(), test.wantError)
 		} else {
 			if err != nil {
 				t.Errorf("test %q:\n  unexpected error: %v", test.input, err)

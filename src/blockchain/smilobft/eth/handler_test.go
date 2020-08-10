@@ -517,6 +517,21 @@ func testCheckpointChallenge(t *testing.T, syncmode downloader.SyncMode, checkpo
 		db     = rawdb.NewMemoryDatabase()
 		config = new(params.ChainConfig)
 	)
+	p2pPeer := newTestP2PPeer("peer")
+	config.AutonityContractConfig = &params.AutonityContractGenesis{
+		Users: []params.User{
+			{
+				Enode: p2pPeer.Info().Enode,
+				Type:  params.UserValidator,
+			},
+		},
+	}
+
+	if err := config.AutonityContractConfig.AddDefault().Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	blockchain, err := core.NewBlockChain(db, nil, config, ethash.NewFaker(), vm.Config{}, nil)
 	(&core.Genesis{Config: config}).MustCommit(db) // Commit genesis block
 	// If checkpointing is enabled, create and inject a fake CHT and the corresponding
 	// chllenge response.
@@ -533,7 +548,7 @@ func testCheckpointChallenge(t *testing.T, syncmode downloader.SyncMode, checkpo
 		}
 	}
 	// Create a checkpoint aware protocol manager
-	blockchain, err := core.NewBlockChain(db, nil, config, ethash.NewFaker(), vm.Config{}, nil)
+	blockchain, err = core.NewBlockChain(db, nil, config, ethash.NewFaker(), vm.Config{}, nil)
 	if err != nil {
 		t.Fatalf("failed to create new blockchain: %v", err)
 	}
@@ -543,7 +558,6 @@ func testCheckpointChallenge(t *testing.T, syncmode downloader.SyncMode, checkpo
 	}
 	pm.Start(1000)
 	defer pm.Stop()
-	p2pPeer := newTestP2PPeer("peer")
 
 	// Connect a new peer and check that we receive the DAO challenge
 	peer, _ := newTestPeer(p2pPeer, eth63, pm, true)
@@ -632,7 +646,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 			params.User{
 				Enode: p2pPeers[i].Info().Enode,
 				Type:  params.UserValidator,
-				Stake: 100,
+				//Stake: 100,
 			},
 		)
 	}
@@ -644,7 +658,9 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	if err != nil {
 		t.Fatalf("failed to create new blockchain: %v", err)
 	}
-	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
+	(&core.Genesis{Config: config}).MustCommit(db) // Commit genesis block
+
+	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, false)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}
@@ -659,7 +675,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 			}
 
 		}()
-		defer peer.close()
+		//defer peer.close()
 		peers = append(peers, peer)
 	}
 	chain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, 1, func(i int, gen *core.BlockGen) {})
