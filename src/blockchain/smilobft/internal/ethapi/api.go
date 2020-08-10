@@ -1,4 +1,3 @@
-// Copyright 2019 The go-smilo Authors
 // Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -20,8 +19,10 @@ package ethapi
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"go-smilo/src/blockchain/smilobft/private"
 	"math/big"
 	"strings"
@@ -57,13 +58,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
 
-	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/tyler-smith/go-bip39"
 )
 
 const (
 	defaultGasPrice = params.GWei
-
 	//Hex-encoded 64 byte array of "17" values
 	maxPrivateIntrinsicDataHex = "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
 )
@@ -372,14 +371,16 @@ func (s *PrivateAccountAPI) signTransaction(ctx context.Context, args *SendTxArg
 	// Assemble the transaction and sign with the wallet
 	tx := args.toTransaction()
 
-	if args.PrivateFor != nil {
+	// Quorum
+	if args.IsPrivate() {
 		tx.SetPrivate()
 	}
-
 	var chainID *big.Int
-	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
+	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) && !tx.IsPrivate() {
 		chainID = config.ChainID
 	}
+	// /Quorum
+
 	return wallet.SignTxWithPassphrase(account, passwd, tx, chainID)
 }
 
@@ -387,50 +388,24 @@ func (s *PrivateAccountAPI) signTransaction(ctx context.Context, args *SendTxArg
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails.
 func (s *PrivateAccountAPI) SendTransaction(ctx context.Context, args SendTxArgs, passwd string) (common.Hash, error) {
-	// Look up the wallet containing the requested signer
-	account := accounts.Account{Address: args.From}
-
-	wallet, err := s.am.Find(account)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
 	if args.Nonce == nil {
 		// Hold the addresse's mutex around signing to prevent concurrent assignment of
 		// the same nonce to multiple accounts.
 		s.nonceLock.LockAddr(args.From)
 		defer s.nonceLock.UnlockAddr(args.From)
 	}
-
-	// Set some sanity defaults and terminate on failure
-	if err := args.setDefaults(ctx, s.b); err != nil {
-		return common.Hash{}, err
-	}
-	// Assemble the transaction and sign with the wallet
-	tx := args.toTransaction()
-
 	isPrivate := args.IsPrivate()
 
-	if isPrivate {
-		data := []byte(*args.Data)
-		if len(data) > 0 {
-			log.Info("sending private tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFrom, "privatefor", args.PrivateFor)
-			data, err = private.VaultInstance.Post(data, args.PrivateFrom, args.PrivateFor)
-			log.Info("sent private tx", "data", fmt.Sprintf("%x", data), "privatefrom", args.PrivateFrom, "privatefor", args.PrivateFor)
-			if err != nil {
-				return common.Hash{}, err
-			}
+	// Quorum
+	if args.IsPrivate() {
+		err := args.setPrivateTransactionHash(true)
+		if err != nil {
+			return common.Hash{}, err
 		}
-		// zekun: HACK
-		d := hexutil.Bytes(data)
-		args.Data = &d
-		tx = args.toTransaction()
-		// set to private before submitting to signer
-		// this sets the v value to 37 temporarily to indicate a private tx, and to choose the correct signer.
-		tx.SetPrivate()
 	}
+	// /Quorum
 
-	signed, err := wallet.SignTxWithPassphrase(account, passwd, tx, s.b.ChainConfig().ChainID)
+	signed, err := s.signTransaction(ctx, &args, passwd)
 	if err != nil {
 		log.Warn("Failed transaction send attempt", "from", args.From, "to", args.To, "value", args.Value.ToInt(), "err", err)
 		return common.Hash{}, err
@@ -489,7 +464,7 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 		log.Warn("Failed data sign attempt", "address", addr, "err", err)
 		return nil, err
 	}
-	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	signature[crypto.RecoveryIDOffset] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
 	return signature, nil
 }
 
@@ -504,13 +479,13 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 //
 // https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_ecRecover
 func (s *PrivateAccountAPI) EcRecover(ctx context.Context, data, sig hexutil.Bytes) (common.Address, error) {
-	if len(sig) != 65 {
-		return common.Address{}, fmt.Errorf("signature must be 65 bytes long")
+	if len(sig) != crypto.SignatureLength {
+		return common.Address{}, fmt.Errorf("signature must be %d bytes long", crypto.SignatureLength)
 	}
-	if sig[64] != 27 && sig[64] != 28 {
+	if sig[crypto.RecoveryIDOffset] != 27 && sig[crypto.RecoveryIDOffset] != 28 {
 		return common.Address{}, fmt.Errorf("invalid Ethereum signature (V is not 27 or 28)")
 	}
-	sig[64] -= 27 // Transform yellow paper V from 27/28 to 0/1
+	sig[crypto.RecoveryIDOffset] -= 27 // Transform yellow paper V from 27/28 to 0/1
 
 	rpk, err := crypto.SigToPub(accounts.TextHash(data), sig)
 	if err != nil {
@@ -596,8 +571,8 @@ func (s *PublicBlockChainAPI) AutonityContract() *autonity.Contract {
 // GetBalance returns the amount of wei for the given address in the state of the
 // given block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
 // block numbers are also allowed.
-func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (*hexutil.Big, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -621,8 +596,8 @@ type StorageResult struct {
 }
 
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
-func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNr rpc.BlockNumber) (*AccountResult, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -778,8 +753,8 @@ func (s *PublicBlockChainAPI) GetUncleCountByBlockHash(ctx context.Context, bloc
 }
 
 // GetCode returns the code stored at the given address in the state for the given block number.
-func (s *PublicBlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+func (s *PublicBlockChainAPI) GetCode(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -790,8 +765,8 @@ func (s *PublicBlockChainAPI) GetCode(ctx context.Context, address common.Addres
 // GetStorageAt returns the storage from the state at the given address, key and
 // block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta block
 // numbers are also allowed.
-func (s *PublicBlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, key string, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+func (s *PublicBlockChainAPI) GetStorageAt(ctx context.Context, address common.Address, key string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -823,10 +798,10 @@ type account struct {
 	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
 }
 
-func DoCall(ctx context.Context, b Backend, args CallArgs, blockNr rpc.BlockNumber, overrides map[common.Address]account, vmCfg vm.Config, timeout time.Duration, globalGasCap *big.Int) ([]byte, uint64, bool, error) {
+func DoCall(ctx context.Context, b Backend, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides map[common.Address]account, vmCfg vm.Config, timeout time.Duration, globalGasCap *big.Int) ([]byte, uint64, bool, error) {
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 
-	state, header, err := b.StateAndHeaderByNumber(ctx, blockNr)
+	state, header, err := b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, 0, false, err
 	}
@@ -841,34 +816,34 @@ func DoCall(ctx context.Context, b Backend, args CallArgs, blockNr rpc.BlockNumb
 	} else {
 		addr = *args.From
 	}
-	//// Override the fields of specified contracts before execution.
-	//for addr, account := range overrides {
-	//	// Override account nonce.
-	//	if account.Nonce != nil {
-	//		state.SetNonce(addr, uint64(*account.Nonce))
-	//	}
-	//	// Override account(contract) code.
-	//	if account.Code != nil {
-	//		state.SetCode(addr, *account.Code)
-	//	}
-	//	// Override account balance.
-	//	if account.Balance != nil {
-	//		state.SetBalance(addr, (*big.Int)(*account.Balance), big.NewInt(0).SetInt64(blockNr.Int64()))
-	//	}
-	//	if account.State != nil && account.StateDiff != nil {
-	//		return nil, 0, false, fmt.Errorf("account %s has both 'state' and 'stateDiff'", addr.Hex())
-	//	}
-	//	// Replace entire state if caller requires.
-	//	if account.State != nil {
-	//		state.SetStorage(addr, *account.State)
-	//	}
-	//	// Apply state diff into specified accounts.
-	//	if account.StateDiff != nil {
-	//		for key, value := range *account.StateDiff {
-	//			state.SetState(addr, key, value)
-	//		}
-	//	}
-	//}
+	// Override the fields of specified contracts before execution.
+	for addr, account := range overrides {
+		// Override account nonce.
+		if account.Nonce != nil {
+			state.SetNonce(addr, uint64(*account.Nonce))
+		}
+		// Override account(contract) code.
+		if account.Code != nil {
+			state.SetCode(addr, *account.Code)
+		}
+		// Override account balance.
+		if account.Balance != nil {
+			state.SetBalance(addr, (*big.Int)(*account.Balance), big.NewInt(0).SetInt64(header.Number.Int64()))
+		}
+		if account.State != nil && account.StateDiff != nil {
+			return nil, 0, false, fmt.Errorf("account %s has both 'state' and 'stateDiff'", addr.Hex())
+		}
+		// Replace entire state if caller requires.
+		if account.State != nil {
+			state.SetStorage(addr, *account.State)
+		}
+		// Apply state diff into specified accounts.
+		if account.StateDiff != nil {
+			for key, value := range *account.StateDiff {
+				state.SetState(addr, key, value)
+			}
+		}
+	}
 	// Set default gas & gas price if none were set
 	gas := uint64(math.MaxUint64 / 2)
 	if args.Gas != nil {
@@ -940,13 +915,21 @@ func DoCall(ctx context.Context, b Backend, args CallArgs, blockNr rpc.BlockNumb
 }
 
 // Call executes the given transaction on the state for the given block number.
-// It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
-func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
-	result, _, _, err := DoCall(ctx, s.b, args, blockNr, nil, vm.Config{}, 5*time.Second, s.b.RPCGasCap())
+//
+// Additionally, the caller can specify a batch of contract for fields overriding.
+//
+// Note, this function doesn't make and changes in the state/blockchain and is
+// useful to execute and retrieve values.
+func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *map[common.Address]account) (hexutil.Bytes, error) {
+	var accounts map[common.Address]account
+	if overrides != nil {
+		accounts = *overrides
+	}
+	result, _, _, err := DoCall(ctx, s.b, args, blockNrOrHash, accounts, vm.Config{}, 5*time.Second, s.b.RPCGasCap())
 	return (hexutil.Bytes)(result), err
 }
 
-func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.BlockNumber, gasCap *big.Int) (hexutil.Uint64, error) {
+func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNrOrHash rpc.BlockNumberOrHash, gasCap *big.Int) (hexutil.Uint64, error) {
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  uint64 = params.TxGas - 1
@@ -957,7 +940,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 		hi = uint64(*args.Gas)
 	} else {
 		// Retrieve the block to act as the gas ceiling
-		block, err := b.BlockByNumber(ctx, blockNr)
+		block, err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
 		if err != nil {
 			return 0, err
 		}
@@ -973,7 +956,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 	executable := func(gas uint64) bool {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
-		_, _, failed, err := DoCall(ctx, b, args, rpc.PendingBlockNumber, nil, vm.Config{EstimateGas: true}, 0, gasCap)
+		_, _, failed, err := DoCall(ctx, b, args, blockNrOrHash, nil, vm.Config{EstimateGas: true}, 0, gasCap)
 		if err != nil || failed {
 			return false
 		}
@@ -1010,16 +993,25 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 	}
 	//if the transaction has a value then it cannot be private, so we can skip this check
 	if value.Cmp(big.NewInt(0)) == 0 {
-		isHomestead := b.ChainConfig().IsHomestead(new(big.Int).SetInt64(int64(rpc.PendingBlockNumber)))
-		intrinsicGasPublic, _ := core.IntrinsicGas(*args.Data, args.To == nil, isHomestead)
-		intrinsicGasPrivate, _ := core.IntrinsicGas(common.Hex2Bytes(maxPrivateIntrinsicDataHex), args.To == nil, isHomestead)
+		homestead := b.ChainConfig().IsHomestead(new(big.Int).SetInt64(int64(rpc.PendingBlockNumber)))
+		istanbul := b.ChainConfig().IsIstanbul(new(big.Int).SetInt64(int64(rpc.PendingBlockNumber)))
+		var data []byte
+		if args.Data == nil {
+			data = nil
+		} else {
+			data = []byte(*args.Data)
+		}
+		intrinsicGasPublic, _ := core.IntrinsicGas(data, args.To == nil, homestead, istanbul)
+		intrinsicGasPrivate, _ := core.IntrinsicGas(common.Hex2Bytes(maxPrivateIntrinsicDataHex), args.To == nil, homestead, istanbul)
+
 		if intrinsicGasPrivate > intrinsicGasPublic {
 			if math.MaxUint64-hi < intrinsicGasPrivate-intrinsicGasPublic {
-				log.Debug("Reject vault transactions that have intrinsic gas bigger than public intrinsic gas allowed", "args.Value", args.Value, "intrinsicGasPrivate", intrinsicGasPrivate, "intrinsicGasPublic", intrinsicGasPublic, " math.MaxUint64-hi", math.MaxUint64-hi, "hi", hi)
+				log.Debug("Reject transactions that have intrinsic gas bigger than public intrinsic gas allowed", "args.Value", args.Value, "intrinsicGasPrivate", intrinsicGasPrivate, "intrinsicGasPublic", intrinsicGasPublic, " math.MaxUint64-hi", math.MaxUint64-hi, "hi", hi)
 				return 0, fmt.Errorf("private intrinsic gas addition exceeds allowance")
 			}
 			return hexutil.Uint64(hi + (intrinsicGasPrivate - intrinsicGasPublic)), nil
 		}
+
 	}
 
 	//END QUORUM
@@ -1030,7 +1022,8 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 // EstimateGas returns an estimate of the amount of gas needed to execute the
 // given transaction against the current pending block.
 func (s *PublicBlockChainAPI) EstimateGas(ctx context.Context, args CallArgs) (hexutil.Uint64, error) {
-	return DoEstimateGas(ctx, s.b, args, rpc.PendingBlockNumber, s.b.RPCGasCap())
+	blockNrOrHash := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
+	return DoEstimateGas(ctx, s.b, args, blockNrOrHash, s.b.RPCGasCap())
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM
@@ -1193,7 +1186,7 @@ type RPCTransaction struct {
 // newRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *RPCTransaction {
-	var signer types.Signer = types.FrontierSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	// joel: this is one of the two places we used a wrong signer to print txes
 	if tx.Protected() && !tx.IsPrivate() {
 		signer = types.NewEIP155Signer(tx.ChainId())
@@ -1318,9 +1311,9 @@ func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockHashAndIndex(ctx cont
 }
 
 // GetTransactionCount returns the number of transactions the given address has sent for the given block number
-func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (*hexutil.Uint64, error) {
+func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
 	// Ask transaction pool for the nonce which includes pending transactions
-	if blockNr == rpc.PendingBlockNumber {
+	if blockNr, ok := blockNrOrHash.Number(); ok && blockNr == rpc.PendingBlockNumber {
 		nonce, err := s.b.GetPoolNonce(ctx, address)
 		if err != nil {
 			return nil, err
@@ -1328,7 +1321,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, addr
 		return (*hexutil.Uint64)(&nonce), nil
 	}
 	// Resolve block number and use its state to ask for the nonce
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1387,7 +1380,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	}
 	receipt := receipts[index]
 
-	var signer types.Signer = types.FrontierSigner{}
+	var signer types.Signer = types.HomesteadSigner{}
 	if tx.Protected() && !tx.IsPrivate() {
 		signer = types.NewEIP155Signer(tx.ChainId())
 	}
@@ -1423,7 +1416,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	return fields, nil
 }
 
-// quorum: if signing a private TX set with tx.SetPrivate() before calling this method.
+// Quorum: if signing a private TX, set with tx.SetPrivate() before calling this method.
 // sign is a helper function that signs a transaction with the private key of the given address.
 func (s *PublicTransactionPoolAPI) sign(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 	// Look up the wallet containing the requested signer
@@ -1433,11 +1426,15 @@ func (s *PublicTransactionPoolAPI) sign(addr common.Address, tx *types.Transacti
 	if err != nil {
 		return nil, err
 	}
-	// Request the wallet to sign the transaction
+
+	// Quorum
 	var chainID *big.Int
 	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) && !tx.IsPrivate() {
 		chainID = config.ChainID
 	}
+	// /Quorum
+
+	// Request the wallet to sign the transaction
 	return wallet.SignTx(account, tx, chainID)
 }
 
@@ -1508,15 +1505,6 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 			return errors.New(`contract creation without any data provided`)
 		}
 	}
-	//Quorum
-	if args.PrivateTxType == "" {
-		args.PrivateTxType = "restricted"
-	}
-
-	if len(args.PrivateFor) > 0 && args.Value.ToInt().Sign() != 0 {
-		return vm.ErrReadOnlyValueTransfer
-	}
-
 	// Estimate the gas usage if necessary.
 	if args.Gas == nil {
 		// For backwards-compatibility reason, we try both input and data
@@ -1532,14 +1520,18 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 			Value:    args.Value,
 			Data:     input,
 		}
-		estimated, err := DoEstimateGas(ctx, b, callArgs, rpc.PendingBlockNumber, b.RPCGasCap())
+		pendingBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
+		estimated, err := DoEstimateGas(ctx, b, callArgs, pendingBlockNr, b.RPCGasCap())
 		if err != nil {
 			return err
 		}
 		args.Gas = &estimated
 		log.Trace("Estimate gas usage automatically", "gas", args.Gas)
 	}
-
+	//Quorum
+	if args.PrivateTxType == "" {
+		args.PrivateTxType = "restricted"
+	}
 	//End-Quorum
 	return nil
 }
@@ -1557,15 +1549,45 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 	return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 }
 
+// setPrivateTransactionHash send the actual private transaction payload to Tessera and returns the tm hash
+func (args *SendTxArgs) setPrivateTransactionHash(sendTxn bool) error {
+	var input []byte
+	if args.Input != nil {
+		input = []byte(*args.Input)
+	} else if args.Data != nil {
+		input = []byte(*args.Data)
+	} else {
+		log.Info("nil args.input & args.data")
+	}
+
+	if len(input) > 0 {
+		var data []byte
+		var err error
+		if sendTxn {
+			//Send private transaction to local Constellation node
+			log.Debug("sending private tx", "privatefrom", args.PrivateFrom, "privatefor", args.PrivateFor)
+			data, err = private.VaultInstance.Post(input, args.PrivateFrom, args.PrivateFor)
+			log.Debug("sent private tx", "privatefrom", args.PrivateFrom, "privatefor", args.PrivateFor)
+		} else {
+			log.Debug("storing private tx", "privatefrom", args.PrivateFrom)
+			data, err = private.VaultInstance.StoreRaw(input, args.PrivateFrom)
+			log.Debug("stored private tx", "privatefrom", args.PrivateFrom)
+		}
+
+		if err != nil {
+			return err
+		}
+		d := hexutil.Bytes(data)
+		args.Data = &d
+	}
+	return nil
+}
+
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction, IsPrivate bool) (common.Hash, error) {
 	if IsPrivate {
 		tx.SetPrivate()
 	}
-	if IsPrivate && tx.Value() != nil && tx.Value().Sign() != 0 {
-		return common.Hash{}, vm.ErrReadOnlyValueTransfer
-	}
-
 	if err := b.SendTx(ctx, tx); err != nil {
 		return common.Hash{}, err
 	}
@@ -1581,7 +1603,7 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction, Is
 			return common.Hash{}, err
 		}
 		addr := crypto.CreateAddress(from, tx.Nonce())
-		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
+		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "to", addr.Hex())
 	} else {
 		log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
 	}
@@ -1607,39 +1629,71 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	}
 
 	isPrivate := args.IsPrivate()
-	if isPrivate {
-		// avoid private smart contracts with value to reach evm
-		if isPrivate && args.Value != nil && args.Value.ToInt().Sign() != 0 {
-			return common.Hash{}, vm.ErrReadOnlyValueTransfer
-		}
-		d, err := SendVaultTransactionWithExtraCheck(args)
-		if err != nil {
-			return common.Hash{}, err
-		}
-		args.Data = &d
-	}
-
 	// Set some sanity defaults and terminate on failure
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return common.Hash{}, err
 	}
 
-	// Assemble the transaction and sign with the wallet
-	tx := args.toTransaction()
-
-	var chainID *big.Int
-	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) && !isPrivate {
-		chainID = config.ChainID
-	}
-
+	// Quorum
 	if isPrivate {
+		err = args.setPrivateTransactionHash(true)
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+	// /Quorum
+
+	// Assemble the transaction and sign with the wallet
+	var tx *types.Transaction
+	tx = args.toTransaction()
+
+	if args.IsPrivate() {
 		tx.SetPrivate()
 	}
+
+	var chainID *big.Int
+	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) && !tx.IsPrivate() {
+		chainID = config.ChainID
+	}
+	// /Quorum
+
 	signed, err := wallet.SignTx(account, tx, chainID)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	return SubmitTransaction(ctx, s.b, signed, isPrivate)
+}
+
+
+// FillTransaction fills the defaults (nonce, gas, gasPrice) on a given unsigned transaction,
+// and returns it to the caller for further processing (signing + broadcast)
+func (s *PublicTransactionPoolAPI) FillTransaction(ctx context.Context, args SendTxArgs) (*SignTransactionResult, error) {
+	// Set some sanity defaults and terminate on failure
+	if err := args.setDefaults(ctx, s.b); err != nil {
+		return nil, err
+	}
+	// Assemble the transaction and obtain rlp
+	// Quorum
+	if args.IsPrivate() {
+		err := args.setPrivateTransactionHash(false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// /Quorum
+	tx := args.toTransaction()
+
+	// Quorum
+	if args.IsPrivate() {
+		tx.SetPrivate()
+	}
+	// /Quorum
+
+	data, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &SignTransactionResult{data, tx}, nil
 }
 
 // SendRawTransaction will add the signed transaction to the transaction pool.
@@ -1696,16 +1750,24 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Sen
 	if args.Nonce == nil {
 		return nil, fmt.Errorf("nonce not specified")
 	}
+	// Quorum
+	// setDefaults calls DoEstimateGas in ethereum1.9.0, private transaction is not supported for that feature
+	// set gas to constant if nil
+	if args.IsPrivate() && args.Gas == nil {
+		gas := (hexutil.Uint64)(90000)
+		args.Gas = (*hexutil.Uint64)(&gas)
+	}
+	// /Quorum
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
-
+	// Quorum
 	toSign := args.toTransaction()
 
-	if args.PrivateFor != nil {
+	if args.IsPrivate() {
 		toSign.SetPrivate()
 	}
-
+	// /Quorum
 	tx, err := s.sign(args.From, toSign)
 	if err != nil {
 		return nil, err
@@ -1750,6 +1812,12 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 	if sendArgs.Nonce == nil {
 		return common.Hash{}, fmt.Errorf("missing transaction nonce in transaction spec")
 	}
+	// setDefaults calls DoEstimateGas in ethereum1.9.0, private transaction is not supported for that feature
+	// set gas to constant if nil
+	if sendArgs.IsPrivate() && sendArgs.Gas == nil {
+		gas := (hexutil.Uint64)(90000)
+		sendArgs.Gas = (*hexutil.Uint64)(&gas)
+	}
 	if err := sendArgs.setDefaults(ctx, s.b); err != nil {
 		return common.Hash{}, err
 	}
@@ -1778,7 +1846,7 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 			}
 			newTx := sendArgs.toTransaction()
 			// set v param to 37 to indicate private tx before submitting to the signer.
-			if sendArgs.PrivateFor != nil {
+			if sendArgs.IsPrivate() {
 				newTx.SetPrivate()
 			}
 			signedTx, err := s.sign(sendArgs.From, newTx)
@@ -1826,37 +1894,37 @@ func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (stri
 // This is a temporary method to debug the externalsigner integration,
 // TODO: Remove this method when the integration is mature
 func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address common.Address, number uint64) (common.Address, error) {
-	//block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
-	//if block == nil {
-	//	return common.Address{}, fmt.Errorf("block #%d not found", number)
-	//}
-	//header := block.Header()
-	//header.Extra = make([]byte, 32+65)
-	//encoded := clique.CliqueRLP(header)
-	//
-	//// Look up the wallet containing the requested signer
-	//account := accounts.Account{Address: address}
-	//wallet, err := api.b.AccountManager().Find(account)
-	//if err != nil {
-	//	return common.Address{}, err
-	//}
-	//
-	//signature, err := wallet.SignData(account, accounts.MimetypeClique, encoded)
-	//if err != nil {
-	//	return common.Address{}, err
-	//}
-	//sealHash := clique.SealHash(header).Bytes()
-	//log.Info("test signing of clique block",
-	//	"Sealhash", fmt.Sprintf("%x", sealHash),
-	//	"signature", fmt.Sprintf("%x", signature))
-	//pubkey, err := crypto.Ecrecover(sealHash, signature)
-	//if err != nil {
-	//	return common.Address{}, err
-	//}
-	//var signer common.Address
-	//copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
+	if block == nil {
+		return common.Address{}, fmt.Errorf("block #%d not found", number)
+	}
+	header := block.Header()
+	header.Extra = make([]byte, 32+65)
+	encoded := clique.CliqueRLP(header)
 
-	return common.Address{}, nil
+	// Look up the wallet containing the requested signer
+	account := accounts.Account{Address: address}
+	wallet, err := api.b.AccountManager().Find(account)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	signature, err := wallet.SignData(account, accounts.MimetypeClique, encoded)
+	if err != nil {
+		return common.Address{}, err
+	}
+	sealHash := clique.SealHash(header).Bytes()
+	log.Info("test signing of clique block",
+		"Sealhash", fmt.Sprintf("%x", sealHash),
+		"signature", fmt.Sprintf("%x", signature))
+	pubkey, err := crypto.Ecrecover(sealHash, signature)
+	if err != nil {
+		return common.Address{}, err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+
+	return signer, nil
 }
 
 // PrintBlock retrieves a block and returns its pretty printed form.
@@ -1889,20 +1957,14 @@ func NewPrivateDebugAPI(b Backend) *PrivateDebugAPI {
 	return &PrivateDebugAPI{b: b}
 }
 
-// ChaindbProperty returns leveldb properties of the chain database.
+// ChaindbProperty returns leveldb properties of the key-value database.
 func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
-	ldb, ok := api.b.ChainDb().(interface {
-		LDB() *leveldb.DB
-	})
-	if !ok {
-		return "", fmt.Errorf("chaindbProperty does not work for memory databases")
-	}
 	if property == "" {
 		property = "leveldb.stats"
 	} else if !strings.HasPrefix(property, "leveldb.") {
 		property = "leveldb." + property
 	}
-	return ldb.LDB().GetProperty(property)
+	return api.b.ChainDb().Stat(property)
 }
 
 // ChaindbCompact flattens the entire key-value database into a single level,
@@ -2040,3 +2102,30 @@ func (s *PublicTransactionPoolAPI) SendTransactionAsync(ctx context.Context, arg
 		return common.Hash{}, errors.New("too many concurrent requests")
 	}
 }
+
+// GetQuorumPayload returns the contents of a private transaction
+func (s *PublicBlockChainAPI) GetQuorumPayload(digestHex string) (string, error) {
+	if private.VaultInstance == nil {
+		return "", fmt.Errorf("PrivateTransactionManager is not enabled")
+	}
+	if len(digestHex) < 3 {
+		return "", fmt.Errorf("invalid digest hex")
+	}
+	if digestHex[:2] == "0x" {
+		digestHex = digestHex[2:]
+	}
+	b, err := hex.DecodeString(digestHex)
+	if err != nil {
+		return "", err
+	}
+	if len(b) != 64 {
+		return "", fmt.Errorf("expected a Quorum digest of length 64, but got %d", len(b))
+	}
+	data, err := private.VaultInstance.Get(b)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("0x%x", data), nil
+}
+
+//End-Quorum

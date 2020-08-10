@@ -26,7 +26,8 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/state"
 )
 
-// SmiloAPIState, used for the Smilo specific StateDB overrides
+// Smilo uses a cut-down StateDB, MinimalApiState. We leave the methods in StateDB commented out so they'll produce a
+// conflict when upstream changes.
 type SmiloAPIState interface {
 	SubBalance(common.Address, *big.Int, *big.Int)
 	AddBalance(common.Address, *big.Int, *big.Int)

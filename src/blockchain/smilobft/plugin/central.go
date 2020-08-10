@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"io"
 	"io/ioutil"
 	"net"
@@ -42,7 +43,7 @@ func (cc *CentralClient) getNewSecureDialer() Dialer {
 		if cc.config.CertFingerprint != "" {
 			conState := c.ConnectionState()
 			for _, peercert := range conState.PeerCertificates {
-				if bytes.Equal(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) {
+				if bytes.Compare(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) == 0 {
 					return c, nil
 				}
 			}
@@ -55,6 +56,7 @@ func (cc *CentralClient) getNewSecureDialer() Dialer {
 // Get the public key from central
 func (cc *CentralClient) PublicKey() ([]byte, error) {
 	target := fmt.Sprintf("%s/%s", cc.config.BaseURL, cc.config.PublicKeyURI)
+	log.Debug("downloading public key", "url", target)
 	readCloser, err := cc.get(target)
 	if err != nil {
 		return nil, err
@@ -68,6 +70,7 @@ func (cc *CentralClient) PublicKey() ([]byte, error) {
 // retrieve plugin signature
 func (cc *CentralClient) PluginSignature(definition *PluginDefinition) ([]byte, error) {
 	target := fmt.Sprintf("%s/%s/%s", cc.config.BaseURL, definition.RemotePath(), definition.SignatureFileName())
+	log.Debug("downloading plugin signature file", "url", target)
 	readCloser, err := cc.get(target)
 	if err != nil {
 		return nil, err
@@ -81,6 +84,7 @@ func (cc *CentralClient) PluginSignature(definition *PluginDefinition) ([]byte, 
 // retrieve plugin distribution file
 func (cc *CentralClient) PluginDistribution(definition *PluginDefinition, outFilePath string) error {
 	target := fmt.Sprintf("%s/%s/%s", cc.config.BaseURL, definition.RemotePath(), definition.DistFileName())
+	log.Debug("downloading plugin zip file", "url", target)
 	outFile, err := os.Create(outFilePath)
 	if err != nil {
 		return err

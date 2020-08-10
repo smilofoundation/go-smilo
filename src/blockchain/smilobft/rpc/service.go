@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/params"
 	"reflect"
 	"runtime"
 	"strings"
@@ -198,7 +199,7 @@ func (c *callback) call(ctx context.Context, method string, args []reflect.Value
 	// Catch panic while running the callback.
 	defer func() {
 		if err := recover(); err != nil {
-			const size = 64 << 10
+			const size = params.QuorumMaxPayloadBufferSize << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
 			log.Error("RPC method " + method + " crashed: " + fmt.Sprintf("%v\n%s", err, buf))

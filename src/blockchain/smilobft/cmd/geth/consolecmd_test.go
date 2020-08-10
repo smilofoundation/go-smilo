@@ -31,9 +31,40 @@ import (
 )
 
 const (
-	ipcAPIs  = "admin:1.0 debug:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 web3:1.0"
-	httpAPIs = "eth:1.0 net:1.0 rpc:1.0 web3:1.0"
+	ipcAPIs  = "admin:1.0 debug:1.0 eth:1.0 istanbul:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 web3:1.0"
+	httpAPIs = "admin:1.0 eth:1.0 net:1.0 rpc:1.0 web3:1.0"
+	nodeKey  = "b68c0338aa4b266bf38ebe84c6199ae9fac8b29f32998b3ed2fbeafebe8d65c9"
 )
+
+var genesis = `{
+    "config": {
+        "chainId": 2017,
+        "homesteadBlock": 1,
+        "eip150Block": 2,
+        "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "eip155Block": 3,
+        "eip158Block": 3,
+        "istanbul": {
+            "epoch": 30000,
+            "policy": 0
+        }
+    },
+    "nonce": "0x0",
+    "timestamp": "0x0",
+    "gasLimit": "0x47b760",
+    "difficulty": "0x1",
+    "mixHash": "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365",
+    "coinbase": "0x0000000000000000000000000000000000000000",
+    "alloc": {
+        "491937757d1b26e29c507b8d4c0b233c2747e68d": {
+            "balance": "0x446c3b15f9926687d2c40534fdb564000000000000"
+        }
+    },
+    "number": "0x0",
+    "gasUsed": "0x0",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+}
+`
 
 // Tests that a node embedded within a console can be started up properly and
 // then terminated by closing the input stream.

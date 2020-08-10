@@ -28,6 +28,11 @@ const (
 	NewBlockMsg = 0x07
 )
 
+const (
+	eth63 = 63
+	eth64 = 64
+)
+
 var (
 	// errDecodeFailed is returned when decode message fails
 	errDecodeFailed = errors.New("fail to decode smilobft message")
@@ -42,7 +47,7 @@ func (sb *Backend) Protocol() (protocolName string, extraMsgCodes uint64) {
 func (sb *Backend) ProtocolOld() consensus.Protocol {
 	return consensus.Protocol{
 		Name:     "smilobftdao",
-		Versions: []uint{64},
-		Lengths:  []uint64{18},
+		Versions: []uint{eth64, eth63},
+		Lengths:  map[uint]uint64{eth64: 18, eth63: 18},
 	}
 }

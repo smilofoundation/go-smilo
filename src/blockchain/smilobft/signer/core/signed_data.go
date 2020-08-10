@@ -21,6 +21,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
+	"go-smilo/src/blockchain/smilobft/consensus/clique"
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"mime"
 	"reflect"
@@ -29,10 +33,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
-	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -306,8 +306,8 @@ func cliqueHeaderHashAndRlp(header *types.Header) (hash, rlp []byte, err error) 
 		err = fmt.Errorf("clique header extradata too short, %d < 65", len(header.Extra))
 		return
 	}
-	//rlp = clique.CliqueRLP(header)
-	//hash = clique.SealHash(header).Bytes()
+	rlp = clique.CliqueRLP(header)
+	hash = clique.SealHash(header).Bytes()
 	return hash, rlp, err
 }
 
@@ -483,8 +483,8 @@ func (typedData *TypedData) EncodeData(primaryType string, data map[string]inter
 }
 
 func parseInteger(encType string, encValue interface{}) (*big.Int, error) {
-	var length int
 	var (
+		length int
 		signed = strings.HasPrefix(encType, "int")
 		b      *big.Int
 	)

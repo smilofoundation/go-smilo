@@ -31,9 +31,10 @@ import (
 
 // Tests the go-ethereum to Aleth chainspec conversion for the Stureby testnet.
 func TestAlethSturebyConverter(t *testing.T) {
-	// TODO: fix test
-	t.SkipNow()
+	// //Quorum - skip this test as MinGasLimit and GasLimitBoundDivisor has been overriden for quorum
+	t.Skipf("skipping this test as MinGasLimit and GasLimitBoundDivisor has been overriden for quorum")
 
+	// /Quorum
 	blob, err := ioutil.ReadFile("testdata/stureby_geth.json")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
@@ -65,7 +66,7 @@ func TestAlethSturebyConverter(t *testing.T) {
 		got := strings.Split(c.Sdump(spec), "\n")
 		for i := 0; i < len(exp) && i < len(got); i++ {
 			if exp[i] != got[i] {
-				fmt.Printf("got: %v\nexp: %v\n", exp[i], got[i])
+				t.Logf("got: %v\nexp: %v\n", exp[i], got[i])
 			}
 		}
 	}
@@ -73,7 +74,10 @@ func TestAlethSturebyConverter(t *testing.T) {
 
 // Tests the go-ethereum to Parity chainspec conversion for the Stureby testnet.
 func TestParitySturebyConverter(t *testing.T) {
-	t.SkipNow()
+	// //Quorum - skip this test as MinGasLimit and GasLimitBoundDivisor has been overriden for quorum
+	t.Skipf("skipping this test as MinGasLimit and GasLimitBoundDivisor has been overriden for quorum")
+
+	// /Quorum
 	blob, err := ioutil.ReadFile("testdata/stureby_geth.json")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
@@ -82,7 +86,7 @@ func TestParitySturebyConverter(t *testing.T) {
 	if err := json.Unmarshal(blob, &genesis); err != nil {
 		t.Fatalf("failed parsing genesis: %v", err)
 	}
-	spec, err := newParityChainSpec("Stureby", &genesis, []string{})
+	spec, err := newParityChainSpec("stureby", &genesis, []string{})
 	if err != nil {
 		t.Fatalf("failed creating chainspec: %v", err)
 	}
@@ -107,7 +111,7 @@ func TestParitySturebyConverter(t *testing.T) {
 		got := strings.Split(c.Sdump(spec), "\n")
 		for i := 0; i < len(exp) && i < len(got); i++ {
 			if exp[i] != got[i] {
-				fmt.Printf("got: %v\nexp: %v\n", exp[i], got[i])
+				t.Logf("got: %v\nexp: %v\n", exp[i], got[i])
 			}
 		}
 	}

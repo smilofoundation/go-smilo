@@ -2,9 +2,11 @@ package p2p
 
 import (
 	"encoding/json"
+	"go-smilo/src/blockchain/smilobft/params"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -12,35 +14,41 @@ import (
 )
 
 const (
-	NODE_NAME_LENGTH    = 32
-	PERMISSIONED_CONFIG = "permissioned-nodes.json"
+	NODE_NAME_LENGTH = 32
 )
 
+//TODO update this based on permission changes
 // check if a given node is permissioned to connect to the change
-func IsNodePermissioned(nodeID string, currentNode string, datadir string, direction string) bool {
-
+func isNodePermissioned(nodename string, currentNode string, datadir string, direction string) bool {
 	var permissionedList []string
 	nodes := ParsePermissionedNodes(datadir)
 	for _, v := range nodes {
 		permissionedList = append(permissionedList, v.ID().String())
 	}
 
-	log.Trace("isNodePermissioned", "permissionedList", permissionedList)
+	log.Debug("isNodePermissioned", "permissionedList", permissionedList)
 	for _, v := range permissionedList {
-		if v == nodeID {
-			log.Debug("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "ALLOWED-BY", currentNode[:NODE_NAME_LENGTH])
+		if v == nodename {
+			log.Debug("isNodePermissioned", "connection", direction, "nodename", nodename[:NODE_NAME_LENGTH], "ALLOWED-BY", currentNode[:NODE_NAME_LENGTH])
+			// check if the node is blacklisted
+			if isNodeBlackListed(nodename, datadir) {
+				return false
+			}
 			return true
 		}
 	}
-	log.Warn("isNodePermissioned", "connection", direction, "nodename", nodeID[:NODE_NAME_LENGTH], "DENIED-BY", currentNode[:NODE_NAME_LENGTH])
+	log.Debug("isNodePermissioned", "connection", direction, "nodename", nodename[:NODE_NAME_LENGTH], "DENIED-BY", currentNode[:NODE_NAME_LENGTH])
 	return false
 }
 
+//this is a shameless copy from the config.go. It is a duplication of the code
+//for the timebeing to allow reload of the permissioned nodes while the server is running
+
 func ParsePermissionedNodes(DataDir string) []*enode.Node {
 
-	log.Trace("parsePermissionedNodes", "DataDir", DataDir, "file", PERMISSIONED_CONFIG)
+	log.Debug("parsePermissionedNodes", "DataDir", DataDir, "file", params.PERMISSIONED_CONFIG)
 
-	path := filepath.Join(DataDir, PERMISSIONED_CONFIG)
+	path := filepath.Join(DataDir, params.PERMISSIONED_CONFIG)
 	if _, err := os.Stat(path); err != nil {
 		log.Error("Read Error for permissioned-nodes.json file. This is because 'permissioned' flag is specified but no permissioned-nodes.json file is present.", "err", err)
 		return nil
@@ -72,4 +80,34 @@ func ParsePermissionedNodes(DataDir string) []*enode.Node {
 		nodes = append(nodes, node)
 	}
 	return nodes
+}
+
+// This function checks if the node is black-listed
+func isNodeBlackListed(nodeName, dataDir string) bool {
+	log.Debug("isNodeBlackListed", "DataDir", dataDir, "file", params.BLACKLIST_CONFIG)
+
+	path := filepath.Join(dataDir, params.BLACKLIST_CONFIG)
+	if _, err := os.Stat(path); err != nil {
+		log.Debug("Read Error for disallowed-nodes.json file. disallowed-nodes.json file is not present.", "err", err)
+		return false
+	}
+	// Load the nodes from the config file
+	blob, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Debug("isNodeBlackListed: Failed to access nodes", "err", err)
+		return true
+	}
+
+	nodelist := []string{}
+	if err := json.Unmarshal(blob, &nodelist); err != nil {
+		log.Debug("parsePermissionedNodes: Failed to load nodes", "err", err)
+		return true
+	}
+
+	for _, v := range nodelist {
+		if strings.Contains(v, nodeName) {
+			return true
+		}
+	}
+	return false
 }

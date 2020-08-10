@@ -240,11 +240,11 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	}
 	// Assemble the Ethereum light client protocol
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		cfg := &eth.DefaultConfig
+		cfg := eth.DefaultConfig
 		cfg.SyncMode = downloader.LightSync
 		cfg.NetworkId = network
 		cfg.Genesis = genesis
-		return les.New(ctx, cfg)
+		return les.New(ctx, &cfg)
 	}); err != nil {
 		return nil, err
 	}
@@ -509,7 +509,10 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 				Time:    time.Now(),
 				Tx:      signed,
 			})
-			f.timeouts[username] = time.Now().Add(time.Duration(*minutesFlag*int(math.Pow(3, float64(msg.Tier)))) * time.Minute)
+			timeout := time.Duration(*minutesFlag*int(math.Pow(3, float64(msg.Tier)))) * time.Minute
+			grace := timeout / 288 // 24h timeout => 5m grace
+
+			f.timeouts[username] = time.Now().Add(timeout - grace)
 			fund = true
 		}
 		f.lock.Unlock()

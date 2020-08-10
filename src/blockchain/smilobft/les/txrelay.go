@@ -18,12 +18,10 @@ package les
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/rlp"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/ethereum/go-ethereum/common"
-
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 

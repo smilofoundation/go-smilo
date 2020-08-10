@@ -99,6 +99,8 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	if !cfg.JumpTable[STOP].valid {
 		var jt JumpTable
 		switch {
+		case evm.chainRules.IsIstanbul:
+			jt = istanbulInstructionSet
 		case evm.chainRules.IsConstantinople:
 			jt = constantinopleInstructionSet
 		case evm.chainRules.IsByzantium:
@@ -128,21 +130,21 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	}
 }
 
-func (in *EVMInterpreter) enforceRestrictions(op OpCode, operation operation, stack *Stack) error {
-	if in.evm.chainRules.IsByzantium {
-		if in.readOnly {
-			// If the interpreter is operating in readonly mode, make sure no
-			// state-modifying operation is performed. The 3rd stack item
-			// for a call operation is the value. Transferring value from one
-			// account to the others means the state is modified and should also
-			// return with an error.
-			if operation.writes || (op == CALL && stack.Back(2).BitLen() > 0) {
-				return errWriteProtection
-			}
-		}
-	}
-	return nil
-}
+//func (in *EVMInterpreter) enforceRestrictions(op OpCode, operation operation, stack *Stack) error {
+//	if in.evm.chainRules.IsByzantium {
+//		if in.readOnly {
+//			// If the interpreter is operating in readonly mode, make sure no
+//			// state-modifying operation is performed. The 3rd stack item
+//			// for a call operation is the value. Transferring value from one
+//			// account to the others means the state is modified and should also
+//			// return with an error.
+//			if operation.writes || (op == CALL && stack.Back(2).BitLen() > 0) {
+//				return errWriteProtection
+//			}
+//		}
+//	}
+//	return nil
+//}
 
 // Run loops and evaluates the contract's code with the given input data and returns
 // the return byte-slice and an error if one occurred.
@@ -215,13 +217,13 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly, IsPriv
 	// the execution of one of the operations or until the done flag is set by the
 	// parent context.
 	for atomic.LoadInt32(&in.evm.abort) == 0 {
-		// Get the memory location of pc
-		op = contract.GetOp(pc)
-
-		if !in.cfg.EstimateGas && in.evm.smiloReadOnly && op.isMutating() {
-			log.Error("ERROR: interpreter, ErrReadOnlyMutateOpcode, ", "in.evm.smiloReadOnly", in.evm.smiloReadOnly, "op.isMutating", op.isMutating(), "in.readOnly ", in.readOnly, "IsPrivate", IsPrivate, "env.readOnlyDepth", in.evm.readOnlyDepth, "currentStateDepth", in.evm.currentStateDepth)
-			return nil, ErrReadOnlyMutateOpcode
-		}
+		//// Get the memory location of pc
+		//op = contract.GetOp(pc)
+		//
+		//if !in.cfg.EstimateGas && in.evm.smiloReadOnly && op.isMutating() {
+		//	log.Error("ERROR: interpreter, ErrReadOnlyMutateOpcode, ", "in.evm.smiloReadOnly", in.evm.smiloReadOnly, "op.isMutating", op.isMutating(), "in.readOnly ", in.readOnly, "IsPrivate", IsPrivate, "env.readOnlyDepth", in.evm.readOnlyDepth, "currentStateDepth", in.evm.currentStateDepth)
+		//	return nil, ErrReadOnlyMutateOpcode
+		//}
 
 		if in.cfg.Debug {
 			// Capture pre-execution values for tracing.
@@ -241,6 +243,11 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly, IsPriv
 		} else if sLen > operation.maxStack {
 			return nil, fmt.Errorf("stack limit reached %d (%d)", sLen, operation.maxStack)
 		}
+
+		if !in.cfg.EstimateGas && in.evm.smiloReadOnly && operation.writes {
+			return nil, fmt.Errorf("VM in read-only mode. Mutating opcode prohibited")
+		}
+
 		// If the operation is valid, enforce and write restrictions
 		if in.readOnly && in.evm.chainRules.IsByzantium {
 			// If the interpreter is operating in readonly mode, make sure no

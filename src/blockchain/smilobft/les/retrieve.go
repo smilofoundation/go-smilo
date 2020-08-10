@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
-
 	"go-smilo/src/blockchain/smilobft/light"
 )
 

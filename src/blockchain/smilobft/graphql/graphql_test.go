@@ -17,6 +17,11 @@
 package graphql
 
 import (
+	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"go-smilo/src/blockchain/smilobft/private"
+	"math/big"
 	"testing"
 )
 
@@ -25,4 +30,83 @@ func TestBuildSchema(t *testing.T) {
 	if _, err := newHandler(nil); err != nil {
 		t.Errorf("Could not construct GraphQL handler: %v", err)
 	}
+}
+
+// Quorum
+// Test Quorum specific GraphQL schema for private transaction
+func TestQuorumSchema(t *testing.T) {
+	saved := private.VaultInstance
+	defer func() {
+		private.VaultInstance = saved
+	}()
+	private.VaultInstance = &StubPrivateTransactionManager{
+		responses: map[string][]interface{}{
+			"key": {
+				[]byte("private payload"), // equals to 0x70726976617465207061796c6f6164 after converting to bytes
+				nil,
+			},
+		},
+	}
+	// Test private transaction
+	privateTx := types.NewTransaction(0, common.Address{}, big.NewInt(0), 0, big.NewInt(0), []byte("key"))
+	privateTx.SetPrivate()
+	privateTxQuery := &Transaction{tx: privateTx}
+	isPrivate, err := privateTxQuery.IsPrivate(context.Background())
+	if err != nil {
+		t.Fatalf("Expect no error: %v", err)
+	}
+	if !*isPrivate {
+		t.Fatalf("Expect isPrivate to be true for private TX")
+	}
+	privateInputData, err := privateTxQuery.PrivateInputData(context.Background())
+	if err != nil {
+		t.Fatalf("Expect no error: %v", err)
+	}
+	if privateInputData.String() != "0x70726976617465207061796c6f6164" {
+		t.Fatalf("Expect privateInputData to be: \"0x70726976617465207061796c6f6164\" for private TX, actual: %v", privateInputData.String())
+	}
+	// Test public transaction
+	publicTx := types.NewTransaction(0, common.Address{}, big.NewInt(0), 0, big.NewInt(0), []byte("key"))
+	publicTxQuery := &Transaction{tx: publicTx}
+	isPrivate, err = publicTxQuery.IsPrivate(context.Background())
+	if err != nil {
+		t.Fatalf("Expect no error: %v", err)
+	}
+	if *isPrivate {
+		t.Fatalf("Expect isPrivate to be false for public TX")
+	}
+	privateInputData, err = publicTxQuery.PrivateInputData(context.Background())
+	if err != nil {
+		t.Fatalf("Expect no error: %v", err)
+	}
+	if privateInputData.String() != "0x" {
+		t.Fatalf("Expect privateInputData to be: \"0x\" for public TX, actual: %v", privateInputData.String())
+	}
+}
+
+type StubPrivateTransactionManager struct {
+	responses map[string][]interface{}
+}
+
+func (spm *StubPrivateTransactionManager) Send(data []byte, from string, to []string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
+func (spm *StubPrivateTransactionManager) StoreRaw(data []byte, from string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
+func (spm *StubPrivateTransactionManager) SendSignedTx(data []byte, to []string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
+func (spm *StubPrivateTransactionManager) Receive(data []byte) ([]byte, error) {
+	res := spm.responses[string(data)]
+	if err, ok := res[1].(error); ok {
+		return nil, err
+	}
+	if ret, ok := res[0].([]byte); ok {
+		return ret, nil
+	}
+	return nil, nil
 }

@@ -132,6 +132,10 @@ func (spm *StubPrivateTransactionManager) PostRawTransaction(data []byte, to []s
 	return nil, fmt.Errorf("to be implemented")
 }
 
+func (spm *StubPrivateTransactionManager) SendSignedTx(data []byte, to []string) ([]byte, error) {
+	return nil, fmt.Errorf("to be implemented")
+}
+
 // Get is equivalent to Receive in Quorum
 func (spm *StubPrivateTransactionManager) Get(data []byte) ([]byte, error) {
 	res := spm.responses["Get"]

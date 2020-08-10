@@ -231,7 +231,7 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 			}
 		}
 		// If the contract surely has code (or code is not needed), estimate the transaction
-		msg := smilobft.CallMsg{From: opts.From, To: contract, Value: value, Data: input}
+		msg := smilobft.CallMsg{From: opts.From, To: contract, GasPrice: gasPrice, Value: value, Data: input}
 		gasLimit, err = c.transactor.EstimateGas(ensureContext(opts.Context), msg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate gas needed: %v", err)
@@ -245,6 +245,7 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		rawTx = types.NewTransaction(nonce, c.address, value, gasLimit, gasPrice, input)
 	}
 
+	// Quorum
 	// If this transaction is private, we need to substitute the data payload
 	// with the hash of the transaction from tessera/constellation/blackbox.
 	if opts.PrivateFor != nil {
@@ -260,6 +261,13 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 	if opts.Signer == nil {
 		return nil, errors.New("no signer to authorize the transaction with")
 	}
+	// FIXME: Quorum requires QuorumPrivateTxSigner
+	//var signedTx *types.Transaction
+	//if rawTx.IsPrivate() {
+	//	signedTx, err = opts.Signer(types.QuorumPrivateTxSigner{}, opts.From, rawTx)
+	//} else {
+	//	signedTx, err = opts.Signer(types.HomesteadSigner{}, opts.From, rawTx)
+	//}
 	signedTx, err := opts.Signer(types.HomesteadSigner{}, opts.From, rawTx)
 	if err != nil {
 		return nil, err

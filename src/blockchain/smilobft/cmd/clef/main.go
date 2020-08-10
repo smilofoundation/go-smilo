@@ -407,6 +407,27 @@ func initialize(c *cli.Context) error {
 	return nil
 }
 
+// ipcEndpoint resolves an IPC endpoint based on a configured value, taking into
+// account the set data folders as well as the designated platform we're currently
+// running on.
+func ipcEndpoint(ipcPath, datadir string) string {
+	// On windows we can only use plain top-level pipes
+	if runtime.GOOS == "windows" {
+		if strings.HasPrefix(ipcPath, `\\.\pipe\`) {
+			return ipcPath
+		}
+		return `\\.\pipe\` + ipcPath
+	}
+	// Resolve names into the data directory full paths otherwise
+	if filepath.Base(ipcPath) == ipcPath {
+		if datadir == "" {
+			return filepath.Join(os.TempDir(), ipcPath)
+		}
+		return filepath.Join(datadir, ipcPath)
+	}
+	return ipcPath
+}
+
 func signer(c *cli.Context) error {
 	// If we have some unrecognized command, bail out
 	if args := c.Args(); len(args) > 0 {
@@ -535,12 +556,8 @@ func signer(c *cli.Context) error {
 		}()
 	}
 	if !c.GlobalBool(utils.IPCDisabledFlag.Name) {
-		if c.IsSet(utils.IPCPathFlag.Name) {
-			ipcapiURL = c.GlobalString(utils.IPCPathFlag.Name)
-		} else {
-			ipcapiURL = filepath.Join(configDir, "clef.ipc")
-		}
-
+		givenPath := c.GlobalString(utils.IPCPathFlag.Name)
+		ipcapiURL = ipcEndpoint(filepath.Join(givenPath, "clef.ipc"), configDir)
 		listener, _, err := rpc.StartIPCEndpoint(ipcapiURL, rpcAPI)
 		if err != nil {
 			utils.Fatalf("Could not start IPC api: %v", err)
@@ -550,7 +567,6 @@ func signer(c *cli.Context) error {
 			listener.Close()
 			log.Info("IPC endpoint closed", "url", ipcapiURL)
 		}()
-
 	}
 
 	if c.GlobalBool(testFlag.Name) {
@@ -747,19 +763,21 @@ func testExternalUI(api *core.SignerAPI) {
 		api.UI.ShowInfo("Please approve the next request for signing a clique header")
 		time.Sleep(delay)
 		cliqueHeader := types.Header{
-			ParentHash:  common.HexToHash("0000H45H"),
-			UncleHash:   common.HexToHash("0000H45H"),
-			Coinbase:    common.HexToAddress("0000H45H"),
-			Root:        common.HexToHash("0000H00H"),
-			TxHash:      common.HexToHash("0000H45H"),
-			ReceiptHash: common.HexToHash("0000H45H"),
-			Difficulty:  big.NewInt(1337),
-			Number:      big.NewInt(1337),
-			GasLimit:    1338,
-			GasUsed:     1338,
-			Time:        1338,
-			Extra:       []byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
-			MixDigest:   common.HexToHash("0x0000H45H"),
+			common.HexToHash("0000H45H"),
+			common.HexToHash("0000H45H"),
+			common.HexToAddress("0000H45H"),
+			common.HexToHash("0000H00H"),
+			common.HexToHash("0000H45H"),
+			common.HexToHash("0000H45H"),
+			types.Bloom{},
+			big.NewInt(1337),
+			big.NewInt(1337),
+			1338,
+			1338,
+			1338,
+			[]byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
+			common.HexToHash("0x0000H45H"),
+			types.BlockNonce{},
 		}
 		cliqueRlp, err := rlp.EncodeToBytes(cliqueHeader)
 		if err != nil {
@@ -923,7 +941,7 @@ func GenDoc(ctx *cli.Context) {
 			"of the work in canonicalizing and making sense of the data, and it's up to the UI to present" +
 			"the user with the contents of the `message`"
 		sighash, msg := accounts.TextAndHash([]byte("hello world"))
-		messages := []*core.NameValueType{{Name: "message", Value: msg, Typ: accounts.MimetypeTextPlain}}
+		messages := []*core.NameValueType{{"message", msg, accounts.MimetypeTextPlain}}
 
 		add("SignDataRequest", desc, &core.SignDataRequest{
 			Address:     common.NewMixedcaseAddress(a),
@@ -954,8 +972,8 @@ func GenDoc(ctx *cli.Context) {
 		add("SignTxRequest", desc, &core.SignTxRequest{
 			Meta: meta,
 			Callinfo: []core.ValidationInfo{
-				{Typ: "Warning", Message: "Something looks odd, show this message as a warning"},
-				{Typ: "Info", Message: "User should see this as well"},
+				{"Warning", "Something looks odd, show this message as a warning"},
+				{"Info", "User should see this aswell"},
 			},
 			Transaction: core.SendTxArgs{
 				Data:     &data,
@@ -1021,21 +1039,16 @@ func GenDoc(ctx *cli.Context) {
 			&core.ListRequest{
 				Meta: meta,
 				Accounts: []accounts.Account{
-					{Address: a, URL: accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/a"}},
-					{Address: b, URL: accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/b"}}},
+					{a, accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/a"}},
+					{b, accounts.URL{Scheme: "keystore", Path: "/path/to/keyfile/b"}}},
 			})
 
 		add("ListResponse", "Response to list request. The response contains a list of all addresses to show to the caller. "+
 			"Note: the UI is free to respond with any address the caller, regardless of whether it exists or not",
 			&core.ListResponse{
 				Accounts: []accounts.Account{
-					{
-						Address: common.HexToAddress("0xcowbeef000000cowbeef00000000000000000c0w"),
-						URL:     accounts.URL{Path: ".. ignored .."},
-					},
-					{
-						Address: common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff"),
-					},
+					{common.HexToAddress("0xcowbeef000000cowbeef00000000000000000c0w"), accounts.URL{Path: ".. ignored .."}},
+					{common.HexToAddress("0xffffffffffffffffffffffffffffffffffffffff"), accounts.URL{}},
 				}})
 	}
 

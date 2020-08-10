@@ -168,8 +168,6 @@ type Config struct {
 	// private APIs to untrusted users is a major security risk.
 	WSExposeAll bool `toml:",omitempty"`
 
-	Plugins *plugin.Settings `toml:",omitempty"`
-
 	// GraphQLHost is the host interface on which to start the GraphQL server. If this
 	// field is empty, no GraphQL API endpoint will be started.
 	GraphQLHost string `toml:",omitempty"`
@@ -193,13 +191,15 @@ type Config struct {
 	// Requests using ip address directly are not affected
 	GraphQLVirtualHosts []string `toml:",omitempty"`
 
-	EnableNodePermissionFlag bool `toml:",omitempty"`
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
 
 	staticNodesWarning     bool
 	trustedNodesWarning    bool
 	oldGethResourceWarning bool
+	Plugins *plugin.Settings `toml:",omitempty"`
+	// Quorum: EnableNodePermission comes from EnableNodePermissionFlag --permissioned.
+	EnableNodePermissionFlag bool `toml:",omitempty"`
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into

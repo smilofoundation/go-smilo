@@ -1,4 +1,3 @@
-// Copyright 2019 The go-smilo Authors
 // Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -45,6 +44,7 @@ func TestDefaultGenesisBlock(t *testing.T) {
 }
 
 func TestSetupGenesis(t *testing.T) {
+	// Quorum: customized test cases for quorum
 	var (
 		customghash = common.HexToHash("0x908ba6a9d2fd4a243e12747bfcf3f5a28aaa51a792561b66ba5642e3ae246bdc")
 		customg     = Genesis{

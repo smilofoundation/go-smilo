@@ -54,7 +54,7 @@ var DefaultConfig = Config{
 	NetworkId:          20080914,
 	LightPeers:         100,
 	UltraLightFraction: 75,
-	DatabaseCache:      512,
+	DatabaseCache:      768,
 	TrieCleanCache:     256,
 	TrieDirtyCache:     256,
 	TrieTimeout:        60 * time.Minute,
@@ -163,6 +163,7 @@ type Config struct {
 
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
+	AllowedFutureBlockTime uint64 //Quorum
 
 	// Type of the EWASM interpreter ("" for default)
 	EWASMInterpreter string
@@ -182,6 +183,9 @@ type Config struct {
 	PowMode               Mode
 	SolcPath              string
 	SmiloCodeAnalysisPath string
+
+	// Istanbul block override (TODO: remove after the fork)
+	OverrideIstanbul *big.Int
 }
 
 type Mode uint

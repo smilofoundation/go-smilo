@@ -28,6 +28,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/mattn/go-colorable"
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/eth"
 	"go-smilo/src/blockchain/smilobft/eth/downloader"
@@ -37,11 +41,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/simulations"
 	"go-smilo/src/blockchain/smilobft/p2p/simulations/adapters"
 	"go-smilo/src/blockchain/smilobft/rpc"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/mattn/go-colorable"
 )
 
 // Additional command line flags for the test binary.
@@ -93,18 +92,15 @@ func TestCapacityAPI10(t *testing.T) {
 // while connected and going back and forth between free and priority mode with
 // the supplied API calls is also thoroughly tested.
 func testCapacityAPI(t *testing.T, clientCount int) {
+	// Skip test if no data dir specified
 	if testServerDataDir == "" {
-		// Skip test if no data dir specified
 		return
 	}
-
 	for !testSim(t, 1, clientCount, []string{testServerDataDir}, nil, func(ctx context.Context, net *simulations.Network, servers []*simulations.Node, clients []*simulations.Node) bool {
 		if len(servers) != 1 {
 			t.Fatalf("Invalid number of servers: %d", len(servers))
 		}
 		server := servers[0]
-
-		clientRpcClients := make([]*rpc.Client, len(clients))
 
 		serverRpcClient, err := server.Client()
 		if err != nil {
@@ -120,13 +116,13 @@ func testCapacityAPI(t *testing.T, clientCount int) {
 		}
 		freeIdx := rand.Intn(len(clients))
 
+		clientRpcClients := make([]*rpc.Client, len(clients))
 		for i, client := range clients {
 			var err error
 			clientRpcClients[i], err = client.Client()
 			if err != nil {
 				t.Fatalf("Failed to obtain rpc client: %v", err)
 			}
-
 			t.Log("connecting client", i)
 			if i != freeIdx {
 				setCapacity(ctx, t, serverRpcClient, client.ID(), testCap/uint64(len(clients)))
@@ -153,10 +149,13 @@ func testCapacityAPI(t *testing.T, clientCount int) {
 
 		reqCount := make([]uint64, len(clientRpcClients))
 
+		// Send light request like crazy.
 		for i, c := range clientRpcClients {
 			wg.Add(1)
 			i, c := i, c
 			go func() {
+				defer wg.Done()
+
 				queue := make(chan struct{}, 100)
 				reqCount[i] = 0
 				for {
@@ -164,10 +163,8 @@ func testCapacityAPI(t *testing.T, clientCount int) {
 					case queue <- struct{}{}:
 						select {
 						case <-stop:
-							wg.Done()
 							return
 						case <-ctx.Done():
-							wg.Done()
 							return
 						default:
 							wg.Add(1)
@@ -184,10 +181,8 @@ func testCapacityAPI(t *testing.T, clientCount int) {
 							}()
 						}
 					case <-stop:
-						wg.Done()
 						return
 					case <-ctx.Done():
-						wg.Done()
 						return
 					}
 				}
@@ -328,12 +323,10 @@ func getHead(ctx context.Context, t *testing.T, client *rpc.Client) (uint64, com
 }
 
 func testRequest(ctx context.Context, t *testing.T, client *rpc.Client) bool {
-	//res := make(map[string]interface{})
 	var res string
 	var addr common.Address
 	rand.Read(addr[:])
 	c, _ := context.WithTimeout(ctx, time.Second*12)
-	//	if err := client.CallContext(ctx, &res, "eth_getProof", addr, nil, "latest"); err != nil {
 	err := client.CallContext(c, &res, "eth_getBalance", addr, "latest")
 	if err != nil {
 		t.Log("request error:", err)
@@ -417,7 +410,6 @@ func NewNetwork() (*simulations.Network, func(), error) {
 		adapterTeardown()
 		net.Shutdown()
 	}
-
 	return net, teardown, nil
 }
 
@@ -500,23 +492,22 @@ func testSim(t *testing.T, serverCount, clientCount int, serverDir, clientDir []
 }
 
 func newLesClientService(ctx *adapters.ServiceContext) (node.Service, error) {
-	config := &eth.DefaultConfig
+	config := eth.DefaultConfig
 	config.SyncMode = downloader.LightSync
 	config.Ethash.PowMode = ethash.ModeFake
-	return New(ctx.NodeContext, config)
+	return New(ctx.NodeContext, &config)
 }
 
 func newLesServerService(ctx *adapters.ServiceContext) (node.Service, error) {
-	config := &eth.DefaultConfig
+	config := eth.DefaultConfig
 	config.SyncMode = downloader.FullSync
 	config.LightServ = testServerCapacity
 	config.LightPeers = testMaxClients
-	ethereum, err := eth.New(ctx.NodeContext, config, nil)
+	ethereum, err := eth.New(ctx.NodeContext, &config, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	server, err := NewLesServer(ethereum, config)
+	server, err := NewLesServer(ethereum, &config)
 	if err != nil {
 		return nil, err
 	}

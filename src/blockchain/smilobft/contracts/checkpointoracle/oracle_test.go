@@ -180,6 +180,7 @@ func TestCheckpointRegister(t *testing.T) {
 	defer contractBackend.Close()
 
 	transactOpts := bind.NewKeyedTransactor(accounts[0].key)
+
 	// 3 trusted signers, threshold 2
 	contractAddr, _, c, err := contract.DeployCheckpointOracle(transactOpts, contractBackend, []common.Address{accounts[0].addr, accounts[1].addr, accounts[2].addr}, sectionSize, processConfirms, big.NewInt(2))
 	if err != nil {

@@ -165,7 +165,7 @@ func TestPendingStateAndBlockClique(t *testing.T) {
 }
 
 func testPendingStateAndBlock(t *testing.T, chainConfig *params.ChainConfig, engine consensus.Engine) {
-	//defer engine.Close()
+	defer engine.Close()
 
 	w, b := newTestWorker(t, chainConfig, engine, 0)
 	//defer w.close()

@@ -117,7 +117,7 @@ be gzipped.`,
 		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
-	The import-preimages command imports hash preimages from an RLP encoded stream.`,
+The import-preimages command imports hash preimages from an RLP encoded stream.`,
 	}
 	exportPreimagesCommand = cli.Command{
 		Action:    utils.MigrateFlags(exportPreimages),
@@ -199,6 +199,9 @@ Use "ethereum dump 0" to dump the genesis block.`,
 	}
 )
 
+// In the regular Genesis / ChainConfig struct, due to the way go deserializes
+// json, IsQuorum defaults to false (when not specified). Here we specify it as
+// a pointer so we can make the distinction and default unspecified to true.
 func getIsSmilo(file io.Reader) (isSmilo, isGas, isGasRefunded bool) {
 	targetStruct := new(struct {
 		Config *struct {
@@ -260,6 +263,13 @@ func initGenesis(ctx *cli.Context) error {
 	} else {
 		log.Warn("$$$$$$$$$$ Init, Smart contract governance not defined !")
 		//panic("$$$$$$$$$$ Init, Smart contract governance not defined !")
+	}
+
+	// check the data given as a part of newMaxConfigData to ensure that
+	// its in expected order
+	err = genesis.Config.CheckMaxCodeConfigData()
+	if err != nil {
+		utils.Fatalf("maxCodeSize data invalid: %v", err)
 	}
 
 	setupBFTDefaults(genesis)
@@ -338,7 +348,7 @@ func importChain(ctx *cli.Context) error {
 	stack := makeFullNode(ctx)
 	defer stack.Close()
 
-	chain, db := utils.MakeChain(ctx, stack)
+	chain, db := utils.MakeChain(ctx, stack, true)
 	defer db.Close()
 
 	// Start periodically gathering memory profiles
@@ -428,7 +438,7 @@ func exportChain(ctx *cli.Context) error {
 	stack := makeFullNode(ctx)
 	defer stack.Close()
 
-	chain, _ := utils.MakeChain(ctx, stack)
+	chain, _ := utils.MakeChain(ctx, stack, true)
 	start := time.Now()
 
 	var err error
@@ -503,7 +513,7 @@ func copyDb(ctx *cli.Context) error {
 	stack := makeFullNode(ctx)
 	defer stack.Close()
 
-	chain, chainDb := utils.MakeChain(ctx, stack)
+	chain, chainDb := utils.MakeChain(ctx, stack, false)
 	syncMode := *utils.GlobalTextMarshaler(ctx, utils.SyncModeFlag.Name).(*downloader.SyncMode)
 
 	var syncBloom *trie.SyncBloom
@@ -611,7 +621,7 @@ func dump(ctx *cli.Context) error {
 	stack := makeFullNode(ctx)
 	defer stack.Close()
 
-	chain, chainDb := utils.MakeChain(ctx, stack)
+	chain, chainDb := utils.MakeChain(ctx, stack, false)
 	defer chainDb.Close()
 	for _, arg := range ctx.Args() {
 		var block *types.Block
@@ -650,7 +660,7 @@ func inspect(ctx *cli.Context) error {
 	node, _ := makeConfigNode(ctx)
 	defer node.Close()
 
-	_, chainDb := utils.MakeChain(ctx, node)
+	_, chainDb := utils.MakeChain(ctx, node, false)
 	defer chainDb.Close()
 
 	return rawdb.InspectDatabase(chainDb)

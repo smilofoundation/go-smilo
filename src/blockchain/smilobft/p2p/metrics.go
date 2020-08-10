@@ -47,7 +47,7 @@ var (
 	ingressTrafficMeter = metrics.NewRegisteredMeter(MetricsInboundTraffic, nil)   // Meter metering the cumulative ingress traffic
 	egressConnectMeter  = metrics.NewRegisteredMeter(MetricsOutboundConnects, nil) // Meter counting the egress connections
 	egressTrafficMeter  = metrics.NewRegisteredMeter(MetricsOutboundTraffic, nil)  // Meter metering the cumulative egress traffic
-	activePeerCounter   = metrics.NewRegisteredCounter("p2p/peers", nil)           // Gauge tracking the current peer count
+	activePeerGauge     = metrics.NewRegisteredGauge("p2p/peers", nil)             // Gauge tracking the current peer count
 
 	PeerIngressRegistry = metrics.NewPrefixedChildRegistry(metrics.EphemeralRegistry, MetricsInboundTraffic+"/")  // Registry containing the peer ingress
 	PeerEgressRegistry  = metrics.NewPrefixedChildRegistry(metrics.EphemeralRegistry, MetricsOutboundTraffic+"/") // Registry containing the peer egress
@@ -126,7 +126,7 @@ func newMeteredConn(conn net.Conn, ingress bool, ip net.IP) net.Conn {
 	} else {
 		egressConnectMeter.Mark(1)
 	}
-	activePeerCounter.Inc(1)
+	activePeerGauge.Inc(1)
 
 	return &meteredConn{
 		Conn:      conn,
@@ -202,7 +202,7 @@ func (c *meteredConn) Close() error {
 			IP:      c.ip,
 			Elapsed: time.Since(c.connected),
 		})
-		activePeerCounter.Dec(1)
+		activePeerGauge.Dec(1)
 		return err
 	}
 	id := c.id
@@ -214,7 +214,7 @@ func (c *meteredConn) Close() error {
 			IP:   c.ip,
 			ID:   id,
 		})
-		activePeerCounter.Dec(1)
+		activePeerGauge.Dec(1)
 		return err
 	}
 	ingress, egress := uint64(c.ingressMeter.Count()), uint64(c.egressMeter.Count())
@@ -235,6 +235,6 @@ func (c *meteredConn) Close() error {
 		Ingress: ingress,
 		Egress:  egress,
 	})
-	activePeerCounter.Dec(1)
+	activePeerGauge.Dec(1)
 	return err
 }

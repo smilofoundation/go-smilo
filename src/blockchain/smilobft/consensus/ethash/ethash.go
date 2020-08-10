@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -45,8 +46,8 @@ import (
 var ErrInvalidDumpMagic = errors.New("invalid dump magic")
 
 var (
-	// maxUint256 is a big integer representing 2^256-1
-	maxUint256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
+	// two256 is a big integer representing 2^256
+	two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
 
 	// sharedEthash is a full instance that can be shared between multiple users.
 	sharedEthash = New(Config{"", 3, 0, "", 1, 0, ModeNormal})
@@ -281,6 +282,7 @@ type dataset struct {
 	mmap    mmap.MMap // Memory map itself to unmap before releasing
 	dataset []uint32  // The actual cache data content
 	once    sync.Once // Ensures the cache is generated only once
+	done    uint32    // Atomic flag to determine generation status
 }
 
 // newDataset creates a new ethash mining dataset and returns it as a plain Go
@@ -292,6 +294,9 @@ func newDataset(epoch uint64) interface{} {
 // generate ensures that the dataset content is generated before use.
 func (d *dataset) generate(dir string, limit int, test bool) {
 	d.once.Do(func() {
+		// Mark the dataset generated after we're done. This is needed for remote
+		defer atomic.StoreUint32(&d.done, 1)
+
 		csize := cacheSize(d.epoch*epochLength + 1)
 		dsize := datasetSize(d.epoch*epochLength + 1)
 		seed := seedHash(d.epoch*epochLength + 1)
@@ -306,6 +311,8 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 
 			d.dataset = make([]uint32, dsize/4)
 			generateDataset(d.dataset, d.epoch, cache)
+
+			return
 		}
 		// Disk storage is needed, this will get fancy
 		var endian string
@@ -346,6 +353,13 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 			os.Remove(path)
 		}
 	})
+}
+
+// generated returns whether this particular dataset finished generating already
+// or not (it may not have been started at all). This is useful for remote miners
+// to default to verification caches instead of blocking on DAG generations.
+func (d *dataset) generated() bool {
+	return atomic.LoadUint32(&d.done) == 1
 }
 
 // finalizer closes any file handlers and memory maps open.
@@ -573,10 +587,24 @@ func (ethash *Ethash) Hashrate() float64 {
 	return ethash.hashrate.Rate1()
 }
 
-// APIs implements consensus.Engine, returning the user facing RPC APIs. Currently
-// that is empty.
+// APIs implements consensus.Engine, returning the user facing RPC APIs.
 func (ethash *Ethash) APIs(chain consensus.ChainReader) []rpc.API {
-	return nil
+	// In order to ensure backward compatibility, we exposes ethash RPC APIs
+	// to both eth and ethash namespaces.
+	return []rpc.API{
+		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   &API{ethash},
+			Public:    true,
+		},
+		{
+			Namespace: "ethash",
+			Version:   "1.0",
+			Service:   &API{ethash},
+			Public:    true,
+		},
+	}
 }
 
 // SeedHash is the seed to use for generating a verification cache and the mining

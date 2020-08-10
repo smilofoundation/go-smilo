@@ -18,8 +18,10 @@ package main
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"go-smilo/src/blockchain/smilobft/internal/debug"
 	"go-smilo/src/blockchain/smilobft/params"
@@ -58,12 +60,39 @@ func init() {
 	app.Commands = []cli.Command{
 		enrdumpCommand,
 		discv4Command,
+		dnsCommand,
+		nodesetCommand,
 	}
 }
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	exit(app.Run(os.Args))
+}
+
+// commandHasFlag returns true if the current command supports the given flag.
+func commandHasFlag(ctx *cli.Context, flag cli.Flag) bool {
+	flags := ctx.FlagNames()
+	sort.Strings(flags)
+	i := sort.SearchStrings(flags, flag.GetName())
+	return i != len(flags) && flags[i] == flag.GetName()
+}
+
+// getNodeArg handles the common case of a single node descriptor argument.
+func getNodeArg(ctx *cli.Context) *enode.Node {
+	if ctx.NArg() != 1 {
+		exit("missing node as command-line argument")
 	}
+	n, err := parseNode(ctx.Args()[0])
+	if err != nil {
+		exit(err)
+	}
+	return n
+}
+
+func exit(err interface{}) {
+	if err == nil {
+		os.Exit(0)
+	}
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }

@@ -69,6 +69,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:ccd27c8487469a07d84343b64d8400472d8fb7504c6b72254bdc0c08cb326c3e"
+  name = "github.com/cloudflare/cloudflare-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "15c4e87dbf40493a3dae93eaeffbf7028b63896c"
+  version = "v0.13.0"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -112,7 +120,7 @@
   version = "v0.10.5"
 
 [[projects]]
-  digest = "1:4e8b2bfffe1da477607a589cccf673e4e5fad980a748343e214a8a60900a71f3"
+  digest = "1:d6b58b6d57ea5d24f38442efb9daf39ef3624f6ff38642e054f569a389b16141"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -136,6 +144,7 @@
     "consensus/clique",
     "consensus/ethash",
     "consensus/misc",
+    "console",
     "core",
     "core/bloombits",
     "core/rawdb",
@@ -143,6 +152,7 @@
     "core/types",
     "core/vm",
     "crypto",
+    "crypto/blake2b",
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
@@ -159,6 +169,9 @@
     "ethdb/memorydb",
     "event",
     "internal/ethapi",
+    "internal/jsre",
+    "internal/jsre/deps",
+    "internal/web3ext",
     "log",
     "metrics",
     "metrics/exp",
@@ -180,7 +193,7 @@
   ]
   pruneopts = "UT"
   revision = ""
-  version = "v1.9.2"
+  version = "v1.9.7"
 
 [[projects]]
   digest = "1:865079840386857c809b72ce300be7580cb50d3d3129ce11bf9aa6ca2bc1934a"
@@ -536,12 +549,12 @@
   revision = "139c2bcc12642b31177520310eab65eb9dca555c"
 
 [[projects]]
-  digest = "1:8186cc518f5dcea736d7725e284632937971fdf29fa2953fdfa53f631e21a799"
+  digest = "1:face2cf57b3cfe6f892b047d73431cf1150fc9dd8a5d45fa644d5f03c6b5bbb2"
   name = "github.com/oschwald/maxminddb-golang"
   packages = ["."]
   pruneopts = "UT"
-  revision = "2905694a1b00c5574f1418a7dbf8a22a7d247559"
-  version = "v1.3.1"
+  revision = "2e4624cc0c4105b1df1d0643ac3aadb53824dc7d"
+  version = "v1.7.0"
 
 [[projects]]
   digest = "1:808cdddf087fb64baeae67b8dfaee2069034d9704923a3cb8bd96a995421a625"
@@ -660,7 +673,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f2ffd421680b0a3f7887501b3c6974bcf19217ecd301d0e2c9b681940ec363d5"
+  digest = "1:88803f2b5bb57a26a190f1c95b4acc6c178eaf3a1e0cb327a693bc6dc6ec939c"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -677,7 +690,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "ae2bd5eed72d46b28834ec3f60db3a3ebedd8dbd"
+  revision = "166222840a9a83a65c1e314fda00121fb6719c99"
 
 [[projects]]
   branch = "master"
@@ -821,6 +834,14 @@
   pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:9a12483c63e8328a477280cd6855689af0f584eb580b66c0d113a1f5fe7791b0"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "UT"
+  revision = "3af7569d3a1e776fc2a3c1cec133b43105ea9c2e"
 
 [[projects]]
   branch = "master"
@@ -978,6 +999,7 @@
     "github.com/allegro/bigcache",
     "github.com/apilayer/freegeoip",
     "github.com/cespare/cp",
+    "github.com/cloudflare/cloudflare-go",
     "github.com/davecgh/go-spew/spew",
     "github.com/deckarep/golang-set",
     "github.com/docker/docker/pkg/reexec",
@@ -992,6 +1014,7 @@
     "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/common/mclock",
     "github.com/ethereum/go-ethereum/common/prque",
+    "github.com/ethereum/go-ethereum/console",
     "github.com/ethereum/go-ethereum/crypto",
     "github.com/ethereum/go-ethereum/crypto/bn256",
     "github.com/ethereum/go-ethereum/crypto/ecies",
@@ -1001,6 +1024,7 @@
     "github.com/ethereum/go-ethereum/metrics",
     "github.com/ethereum/go-ethereum/metrics/exp",
     "github.com/ethereum/go-ethereum/metrics/influxdb",
+    "github.com/ethereum/go-ethereum/p2p/enode",
     "github.com/ethereum/go-ethereum/rlp",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/fatih/color",

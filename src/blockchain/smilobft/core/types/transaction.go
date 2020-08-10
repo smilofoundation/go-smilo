@@ -40,6 +40,7 @@ var (
 
 // deriveSigner makes a *best* guess about which signer to use.
 func deriveSigner(V *big.Int) Signer {
+	// joel: this is one of the two places we used a wrong signer to print txes
 	if V.Sign() != 0 && isProtectedV(V) {
 		return NewEIP155Signer(deriveChainId(V))
 	} else {
@@ -129,6 +130,7 @@ func (tx *Transaction) Protected() bool {
 func isProtectedV(V *big.Int) bool {
 	if V.BitLen() <= 8 {
 		v := V.Uint64()
+		// 27 / 28 are pre eip 155 -- ie unprotected.
 		return !(v == 27 || v == 28)
 	}
 	// anything not 27 or 28 is considered protected
@@ -199,6 +201,15 @@ func (tx *Transaction) To() *common.Address {
 	}
 	to := *tx.data.Recipient
 	return &to
+}
+
+// From returns the address sender of the transaction.
+func (tx *Transaction) From() common.Address {
+	signer := deriveSigner(tx.data.V)
+	if from, err := Sender(signer, tx); err == nil {
+		return from
+	}
+	return common.Address{}
 }
 
 // Hash hashes the RLP encoding of tx.
@@ -515,6 +526,14 @@ func (tx *Transaction) IsPrivate() bool {
 	return tx.data.V.Uint64() == 37 || tx.data.V.Uint64() == 38
 }
 
+/*
+ * Indicates that a transaction is private, but doesn't necessarily set the correct v value, as it can be called on
+ * an unsigned transaction.
+ * pre homestead signer, all v values were v=27 or v=28, with EIP155Signer that change,
+ * but SetPrivate() is also used on unsigned transactions to temporarily set the v value to indicate
+ * the transaction is intended to be private, and so that the correct signer can be selected. The signer will correctly
+ * set the valid v value (37 or 38): This helps minimize changes vs upstream go-ethereum code.
+ */
 func (tx *Transaction) SetPrivate() {
 	if tx.IsPrivate() {
 		return

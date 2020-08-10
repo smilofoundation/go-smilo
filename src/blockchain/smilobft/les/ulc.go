@@ -19,9 +19,8 @@ package les
 import (
 	"errors"
 
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-
 	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
 )
 
 type ulc struct {

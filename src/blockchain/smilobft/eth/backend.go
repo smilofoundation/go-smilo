@@ -161,12 +161,14 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if err != nil {
 		return nil, err
 	}
-	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideIstanbul)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
 	log.Info("Initialised chain configuration", "config", chainConfig, "config", config)
 
+	// changes to manipulate the chain id for migration from 2.0.2 and below version to 2.0.3
+	// version of Quorum  - this is applicable for v2.0.3 onwards
 	if chainConfig.IsSmilo {
 		if (chainConfig.ChainID != nil && chainConfig.ChainID.Int64() == 1) || config.NetworkId == 1 {
 			return nil, errors.New("cannot have chain id or network id as 1")
@@ -211,6 +213,13 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		glienickeCh:    make(chan core.WhitelistEvent),
 	}
+
+	//// Quorum: Set protocol Name/Version
+	//if chainConfig.IsSmilo {
+	//	quorumProtocol := eth.engine.Protocol()
+	//	protocolName = quorumProtocol.Name
+	//	ProtocolVersions = quorumProtocol.Versions
+	//}
 
 	// force to set the etherbase to node key address
 	if chainConfig.Istanbul != nil || chainConfig.SportDAO != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
@@ -293,7 +302,8 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		return nil, err
 	}
 
-	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil}
+	hexNodeId := fmt.Sprintf("%x", crypto.FromECDSAPub(&ctx.NodeKey().PublicKey)[1:]) // Quorum
+	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil, hexNodeId}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.Miner.GasPrice
@@ -326,6 +336,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
+		chainConfig.Clique.AllowedFutureBlockTime = config.AllowedFutureBlockTime //Quorum
 		log.Warn("$$$ Clique is requested, set it up", "chainConfig", chainConfig)
 		return clique.New(chainConfig.Clique, db)
 	}
@@ -649,9 +660,9 @@ func (s *Smilo) Protocols() []p2p.Protocol {
 	//	protos[i] = s.protocolManager.makeProtocol(vsn)
 	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
 	//}
-	//if s.lesServer != nil {
-	//	protos = append(protos, s.lesServer.Protocols()...)
-	//}
+	if s.lesServer != nil {
+		protos = append(protos, s.lesServer.Protocols()...)
+	}
 
 	protos = append(protos, s.protocolManager.SubProtocols...)
 
@@ -753,4 +764,8 @@ func (s *Smilo) Stop() error {
 	s.chainDb.Close()
 	close(s.shutdownChan)
 	return nil
+}
+
+func (s *Smilo) CalcGasLimit(block *types.Block) uint64 {
+	return core.CalcGasLimit(block, s.config.Miner.GasFloor, s.config.Miner.GasCeil)
 }

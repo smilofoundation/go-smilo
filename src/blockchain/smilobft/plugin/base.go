@@ -140,7 +140,9 @@ func (bp *basePlugin) Start() (err error) {
 }
 
 func (bp *basePlugin) Stop() error {
-	bp.client.Kill()
+	if bp.client != nil {
+		bp.client.Kill()
+	}
 	if bp.pluginWorkspace == "" {
 		return nil
 	}

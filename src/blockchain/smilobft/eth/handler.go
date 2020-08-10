@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"math"
 	"math/big"
 	"sync"
@@ -77,7 +78,8 @@ func errResp(code errCode, format string, v ...interface{}) error {
 }
 
 type ProtocolManager struct {
-	networkID uint64
+	networkID  uint64
+	forkFilter forkid.Filter // Fork ID filter, constant across the lifetime of the node
 
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
@@ -128,6 +130,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:                networkID,
+		forkFilter:               forkid.NewFilter(blockchain),
 		eventMux:                 mux,
 		txpool:                   txpool,
 		blockchain:               blockchain,
@@ -143,10 +146,12 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		whitelistCh:              make(chan core.WhitelistEvent, 64),
 	}
 
+	// Quorum
 	if handler, ok := manager.engine.(consensus.Handler); ok {
 		log.Debug("NewProtocolManager, Going to setup broadcaster into handler")
 		handler.SetBroadcaster(manager)
 	}
+	// /Quorum
 
 	if mode == downloader.FullSync {
 		// The database seems empty as the current block is the genesis. Yet the fast
@@ -191,7 +196,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		manager.SubProtocols = append(manager.SubProtocols, p2p.Protocol{
 			Name:    protocol.Name,
 			Version: version,
-			Length:  protocol.Lengths[i],
+			Length:  uint64(i),
 			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 				peer := manager.newPeer(int(version), p, rw)
 				select {
@@ -242,6 +247,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		// the propagated block if the head is too old. Unfortunately there is a corner
 		// case when starting new networks, where the genesis might be ancient (0 unix)
 		// which would prevent full nodes from accepting it.
+		//FIXME: why do we need it ?
 		//if manager.blockchain.CurrentBlock().NumberU64() < manager.checkpointNumber {
 		//	log.Warn("Unsynced yet, discarded propagated block", "blocks[0].number", blocks[0].Number(), "blocks[0].hash", blocks[0].Hash(), "manager.blockchain.CurrentBlock.NumberU64",manager.blockchain.CurrentBlock().NumberU64(), "manager.checkpointNumber", manager.checkpointNumber)
 		//	return 0, nil
@@ -276,6 +282,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 }
 
 func (pm *ProtocolManager) makeProtocol(version uint) p2p.Protocol {
+	// Quorum: Set p2p.Protocol info from engine.Protocol()
 	length, ok := protocolLengths[version]
 	if !ok {
 		panic("makeProtocol for unknown version")
@@ -428,7 +435,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		number  = head.Number.Uint64()
 		td      = pm.blockchain.GetTd(hash, number)
 	)
-	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
+	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash(), forkid.NewID(pm.blockchain), pm.forkFilter); err != nil {
 		p.Log().Debug("Ethereum handshake failed", "err", err)
 		return err
 	}
@@ -544,6 +551,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	}
 	defer msg.Discard()
 
+	// Quorum
 	if handler, ok := pm.engine.(consensus.Handler); ok {
 		pubKey := p.Node().Pubkey()
 		if pubKey == nil {
@@ -558,6 +566,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return err
 		}
 	}
+	// /Quorum
 
 	// Handle the message depending on its contents
 	switch {
@@ -925,6 +934,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	return nil
 }
 
+// Quorum
 func (pm *ProtocolManager) Enqueue(id string, block *types.Block) {
 	pm.fetcher.Enqueue(id, block)
 }
@@ -1020,17 +1030,28 @@ type NodeInfo struct {
 	Genesis    common.Hash         `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Config     *params.ChainConfig `json:"config"`     // Chain configuration for the fork rules
 	Head       common.Hash         `json:"head"`       // SHA3 hash of the host's best owned block
+	Consensus  string              `json:"consensus"`  // Consensus mechanism in use
 }
 
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 	currentBlock := pm.blockchain.CurrentBlock()
+	// //Quorum
+	//
+	// changes done to fetch maxCodeSize dynamically based on the
+	// maxCodeSizeConfig changes
+	// /Quorum
+	chainConfig := pm.blockchain.Config()
+	chainConfig.MaxCodeSize = uint64(chainConfig.GetMaxCodeSize(pm.blockchain.CurrentBlock().Number()) / 1024)
+
 	return &NodeInfo{
 		Network:    pm.networkID,
 		Difficulty: pm.blockchain.GetTd(currentBlock.Hash(), currentBlock.NumberU64()),
 		Genesis:    pm.blockchain.Genesis().Hash(),
-		Config:     pm.blockchain.Config(),
+		Config:     chainConfig,
 		Head:       currentBlock.Hash(),
+		// Quorum
+		Consensus:  pm.engine.ProtocolOld().Name,
 	}
 }
 

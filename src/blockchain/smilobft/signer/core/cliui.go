@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 	"os"
 	"strings"
 	"sync"
@@ -27,8 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"golang.org/x/crypto/ssh/terminal"
-
-	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 )
 
 type CommandlineUI struct {
