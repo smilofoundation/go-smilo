@@ -655,14 +655,15 @@ func (s *Smilo) ArchiveMode() bool                  { return s.config.NoPruning 
 // network protocols to start.
 func (s *Smilo) Protocols() []p2p.Protocol {
 	var protos []p2p.Protocol
+	//protos := make([]p2p.Protocol, len(ProtocolVersions))
 	//
 	//for i, vsn := range ProtocolVersions {
 	//	protos[i] = s.protocolManager.makeProtocol(vsn)
 	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
 	//}
-	if s.lesServer != nil {
-		protos = append(protos, s.lesServer.Protocols()...)
-	}
+	//if s.lesServer != nil {
+	//	protos = append(protos, s.lesServer.Protocols()...)
+	//}
 
 	protos = append(protos, s.protocolManager.SubProtocols...)
 
