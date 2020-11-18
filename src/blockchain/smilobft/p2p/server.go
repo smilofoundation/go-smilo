@@ -530,12 +530,27 @@ func (srv *Server) Start() (err error) {
 			return err
 		}
 	}
-	if err := srv.setupDiscovery(); err != nil {
-		return err
-	}
 
 	dynPeers := srv.maxDialedConns()
-	dialer := newDialState(srv.localnode.ID(), dynPeers, &srv.Config)
+
+	var dialer *dialstate
+	if !srv.EnableNodePermissionFlag {
+		if err := srv.setupDiscovery(); err != nil {
+			return err
+		}
+		dialer = newDialState(srv.localnode.ID(), dynPeers, &srv.Config)
+		log.Info("EnableNodePermissionFlag false, NetRestrict mode disabled.", "srv.localnode.ID()", srv.localnode.ID(), "srv.ntab", srv.ntab, "dynPeers", dynPeers, "&srv.Config", &srv.Config)
+	} else {
+		// Discovery protocol is disabled for consortium chains.
+		// Bootnodes are disabled.
+		// Static nodes logic is used to handle returned Whitelist and will be populated via the eth service.
+		log.Info("Private-network mode enabled.")
+		srv.NoDiscovery = true
+		srv.StaticNodes = nil
+		//srv.TrustedNodes = nil //-> breaks TestServerAtCap
+		dialer = newDialState(srv.localnode.ID(),  0, &Config{NetRestrict: srv.Config.NetRestrict})
+	}
+
 	srv.loopWG.Add(1)
 	go srv.run(dialer)
 	return nil

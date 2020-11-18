@@ -88,7 +88,7 @@ func TestEIP2200(t *testing.T) {
 
 		vmctx := Context{
 			CanTransfer: func(StateDB, common.Address, *big.Int) bool { return true },
-			Transfer:    func(StateDB, common.Address, common.Address, *big.Int) {},
+			Transfer:    func(StateDB, common.Address, common.Address, *big.Int, *big.Int) {},
 		}
 		vmenv := NewEVM(vmctx, statedb, statedb, params.AllEthashProtocolChanges, Config{ExtraEips: []int{2200}})
 

@@ -633,7 +633,6 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 		db     = rawdb.NewMemoryDatabase()
 		config = &params.ChainConfig{}
 		gspec  = &core.Genesis{Config: config}
-		genesis = gspec.MustCommit(db)
 	)
 	config.AutonityContractConfig = &params.AutonityContractGenesis{}
 	config.Istanbul = &params.IstanbulConfig{}
@@ -646,7 +645,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 			params.User{
 				Enode: p2pPeers[i].Info().Enode,
 				Type:  params.UserValidator,
-				//Stake: 100,
+				Stake: 100,
 			},
 		)
 	}
@@ -654,13 +653,13 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 		t.Fatal(err)
 	}
 
+	genesis := gspec.MustCommit(db)
+
 	blockchain, err := core.NewBlockChain(db, nil, config, pow, vm.Config{}, nil)
 	if err != nil {
 		t.Fatalf("failed to create new blockchain: %v", err)
 	}
-	(&core.Genesis{Config: config}).MustCommit(db) // Commit genesis block
-
-	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, false)
+	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}
@@ -675,7 +674,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 			}
 
 		}()
-		//defer peer.close()
+		defer peer.close()
 		peers = append(peers, peer)
 	}
 	chain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, 1, func(i int, gen *core.BlockGen) {})
@@ -686,7 +685,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	for _, peer := range peers {
 		go func(p *testPeer) {
 			if expectErr := p2p.ExpectMsg(p.app, NewBlockMsg, &newBlockData{Block: chain[0], TD: new(big.Int).Add(genesis.Difficulty(), chain[0].Difficulty())}); expectErr != nil {
-				//t.Log("eth/handler_test.go:635 p2p.ExpectMsg err", expectErr)
+				t.Log("eth/handler_test.go:688 p2p.ExpectMsg err", expectErr)
 				errCh <- expectErr
 			} else {
 				doneCh <- struct{}{}

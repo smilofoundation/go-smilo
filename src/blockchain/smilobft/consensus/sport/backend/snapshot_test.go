@@ -20,6 +20,7 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"reflect"
 	"testing"
@@ -58,14 +59,14 @@ func newTesterAccountPool() *testerAccountPool {
 	}
 }
 
-func (ap *testerAccountPool) sign(header *types.Header, fullnode string) {
-	// Ensure we have a persistent key for the fullnode
-	if ap.accounts[fullnode] == nil {
-		ap.accounts[fullnode], _ = crypto.GenerateKey()
+func (ap *testerAccountPool) sign(header *types.Header, validator string) {
+	// Ensure we have a persistent key for the validator
+	if ap.accounts[validator] == nil {
+		ap.accounts[validator], _ = crypto.GenerateKey()
 	}
 	// Sign the header and embed the signature in extra data
 	hashData := crypto.Keccak256([]byte(sigHash(header).Bytes()))
-	sig, _ := crypto.Sign(hashData, ap.accounts[fullnode])
+	sig, _ := crypto.Sign(hashData, ap.accounts[validator])
 
 	writeSeal(header, sig)
 }
@@ -83,20 +84,20 @@ func (ap *testerAccountPool) address(account string) common.Address {
 func TestVoting(t *testing.T) {
 	// Define the various voting scenarios to test
 	tests := []struct {
-		name      string
-		epoch     uint64
-		fullnodes []string
-		votes     []testerVote
-		results   []string
+		name       string
+		epoch      uint64
+		validators []string
+		votes      []testerVote
+		results    []string
 	}{
 		{
-			name:      "Single fullnode, no votes cast",
-			fullnodes: []string{"A"},
-			votes:     []testerVote{{fullnode: "A"}},
-			results:   []string{"A"},
+			name:       "Single fullnode, no votes cast",
+			validators: []string{"A"},
+			votes:      []testerVote{{fullnode: "A"}},
+			results:    []string{"A"},
 		}, {
-			name:      "Single fullnode, voting to add two others (only accept first, second needs 2 votes)",
-			fullnodes: []string{"A"},
+			name:       "Single fullnode, voting to add two others (only accept first, second needs 2 votes)",
+			validators: []string{"A"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "B", auth: true},
 				{fullnode: "B"},
@@ -104,8 +105,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Two fullnodes, voting to add three others (only accept first two, third needs 3 votes already)",
-			fullnodes: []string{"A", "B"},
+			name:       "Two validators, voting to add three others (only accept first two, third needs 3 votes already)",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: true},
 				{fullnode: "B", voted: "C", auth: true},
@@ -117,46 +118,46 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B", "C", "D"},
 		}, {
-			name:      "Single fullnode, dropping itself (weird, but one less cornercase by explicitly allowing this)",
-			fullnodes: []string{"A"},
+			name:       "Single fullnode, dropping itself (weird, but one less cornercase by explicitly allowing this)",
+			validators: []string{"A"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "A", auth: false},
 			},
 			results: []string{},
 		}, {
-			name:      "Two fullnodes, actually needing mutual consent to drop either of them (not fulfilled)",
-			fullnodes: []string{"A", "B"},
+			name:       "Two validators, actually needing mutual consent to drop either of them (not fulfilled)",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "B", auth: false},
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Two fullnodes, actually needing mutual consent to drop either of them (fulfilled)",
-			fullnodes: []string{"A", "B"},
+			name:       "Two validators, actually needing mutual consent to drop either of them (fulfilled)",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "B", auth: false},
 				{fullnode: "B", voted: "B", auth: false},
 			},
 			results: []string{"A"},
 		}, {
-			name:      "Three fullnodes, two of them deciding to drop the third",
-			fullnodes: []string{"A", "B", "C"},
+			name:       "Three validators, two of them deciding to drop the third",
+			validators: []string{"A", "B", "C"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B", voted: "C", auth: false},
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Four fullnodes, consensus of two not being enough to drop anyone",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Four validators, consensus of two not being enough to drop anyone",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B", voted: "C", auth: false},
 			},
 			results: []string{"A", "B", "C", "D"},
 		}, {
-			name:      "Four fullnodes, consensus of three already being enough to drop someone",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Four validators, consensus of three already being enough to drop someone",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "D", auth: false},
 				{fullnode: "B", voted: "D", auth: false},
@@ -164,8 +165,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B", "C"},
 		}, {
-			name:      "Authorizations are counted once per fullnode per target",
-			fullnodes: []string{"A", "B"},
+			name:       "Authorizations are counted once per fullnode per target",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: true},
 				{fullnode: "B"},
@@ -175,8 +176,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Authorizing multiple accounts concurrently is permitted",
-			fullnodes: []string{"A", "B"},
+			name:       "Authorizing multiple accounts concurrently is permitted",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: true},
 				{fullnode: "B"},
@@ -189,8 +190,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B", "C", "D"},
 		}, {
-			name:      "Deauthorizations are counted once per fullnode per target",
-			fullnodes: []string{"A", "B"},
+			name:       "Deauthorizations are counted once per fullnode per target",
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "B", auth: false},
 				{fullnode: "B"},
@@ -200,8 +201,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Deauthorizing multiple accounts concurrently is permitted",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Deauthorizing multiple accounts concurrently is permitted",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B"},
@@ -217,8 +218,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Votes from deauthorized fullnodes are discarded immediately (deauth votes)",
-			fullnodes: []string{"A", "B", "C"},
+			name:       "Votes from deauthorized validators are discarded immediately (deauth votes)",
+			validators: []string{"A", "B", "C"},
 			votes: []testerVote{
 				{fullnode: "C", voted: "B", auth: false},
 				{fullnode: "A", voted: "C", auth: false},
@@ -227,8 +228,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Votes from deauthorized fullnodes are discarded immediately (auth votes)",
-			fullnodes: []string{"A", "B", "C"},
+			name:       "Votes from deauthorized validators are discarded immediately (auth votes)",
+			validators: []string{"A", "B", "C"},
 			votes: []testerVote{
 				{fullnode: "C", voted: "B", auth: false},
 				{fullnode: "A", voted: "C", auth: false},
@@ -237,8 +238,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Cascading changes are not allowed, only the the account being voted on may change",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Cascading changes are not allowed, only the the account being voted on may change",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B"},
@@ -252,8 +253,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B", "C"},
 		}, {
-			name:      "Changes reaching consensus out of bounds (via a deauth) execute on touch",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Changes reaching consensus out of bounds (via a deauth) execute on touch",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B"},
@@ -269,8 +270,8 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"A", "B"},
 		}, {
-			name:      "Changes reaching consensus out of bounds (via a deauth) may go out of consensus on first touch",
-			fullnodes: []string{"A", "B", "C", "D"},
+			name:       "Changes reaching consensus out of bounds (via a deauth) may go out of consensus on first touch",
+			validators: []string{"A", "B", "C", "D"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: false},
 				{fullnode: "B"},
@@ -291,7 +292,7 @@ func TestVoting(t *testing.T) {
 			// readded (or the inverse), while one of the original voters dropped. If a
 			// past vote is left cached in the system somewhere, this will interfere with
 			// the final fullnode outcome.
-			fullnodes: []string{"A", "B", "C", "D", "E"},
+			validators: []string{"A", "B", "C", "D", "E"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "F", auth: true}, // Authorize F, 3 votes needed
 				{fullnode: "B", voted: "F", auth: true},
@@ -309,9 +310,9 @@ func TestVoting(t *testing.T) {
 			},
 			results: []string{"B", "C", "D", "E", "F"},
 		}, {
-			name:      "Epoch transitions reset all votes to allow chain checkpointing",
-			epoch:     3,
-			fullnodes: []string{"A", "B"},
+			name:       "Epoch transitions reset all votes to allow chain checkpointing",
+			epoch:      3,
+			validators: []string{"A", "B"},
 			votes: []testerVote{
 				{fullnode: "A", voted: "C", auth: true},
 				{fullnode: "B"},
@@ -325,27 +326,28 @@ func TestVoting(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			// Create the account pool and generate the initial set of fullnodes
+			// Create the account pool and generate the initial set of validators
 			accounts := newTesterAccountPool()
 
-			fullnodes := make([]common.Address, len(tt.fullnodes))
-			for j, fullnode := range tt.fullnodes {
-				fullnodes[j] = accounts.address(fullnode)
+			validators := make([]common.Address, len(tt.validators))
+			for j, fullnode := range tt.validators {
+				validators[j] = accounts.address(fullnode)
 			}
-			for j := 0; j < len(fullnodes); j++ {
-				for k := j + 1; k < len(fullnodes); k++ {
-					if bytes.Compare(fullnodes[j][:], fullnodes[k][:]) > 0 {
-						fullnodes[j], fullnodes[k] = fullnodes[k], fullnodes[j]
+			for j := 0; j < len(validators); j++ {
+				for k := j + 1; k < len(validators); k++ {
+					if bytes.Compare(validators[j][:], validators[k][:]) > 0 {
+						validators[j], validators[k] = validators[k], validators[j]
 					}
 				}
 			}
-			// Create the genesis block with the initial set of fullnodes
+			// Create the genesis block with the initial set of validators
 			genesis := &core.Genesis{
 				Difficulty: defaultDifficulty,
 				Mixhash:    types.SportDigest,
+				Config:     params.TestChainConfig,
 			}
 			b := genesis.ToBlock(nil)
-			extra, _ := prepareExtra(b.Header(), fullnodes)
+			extra, _ := prepareExtra(b.Header(), validators)
 			genesis.ExtraData = extra
 			// Create a pristine blockchain with the genesis injected
 			db := rawdb.NewMemoryDatabase()
@@ -355,7 +357,7 @@ func TestVoting(t *testing.T) {
 			if tt.epoch != 0 {
 				config.Epoch = tt.epoch
 			}
-			engine := New(config, accounts.accounts[tt.fullnodes[0]], db).(*backend)
+			engine := New(config, accounts.accounts[tt.validators[0]], db).(*backend)
 			chain, err := core.NewBlockChain(db, nil, genesis.Config, engine, vm.Config{}, nil)
 
 			// Assemble a chain of headers from the cast votes
@@ -368,7 +370,7 @@ func TestVoting(t *testing.T) {
 					Difficulty: defaultDifficulty,
 					MixDigest:  types.SportDigest,
 				}
-				extra, _ := prepareExtra(headers[j], fullnodes)
+				extra, _ := prepareExtra(headers[j], validators)
 				headers[j].Extra = extra
 				if j > 0 {
 					headers[j].ParentHash = headers[j-1].Hash()
@@ -387,26 +389,26 @@ func TestVoting(t *testing.T) {
 				t.Errorf("test %d: failed to create voting snapshot: %v", i, err)
 				return
 			}
-			// Verify the final list of fullnodes against the expected ones
-			fullnodes = make([]common.Address, len(tt.results))
+			// Verify the final list of validators against the expected ones
+			validators = make([]common.Address, len(tt.results))
 			for j, fullnode := range tt.results {
-				fullnodes[j] = accounts.address(fullnode)
+				validators[j] = accounts.address(fullnode)
 			}
-			for j := 0; j < len(fullnodes); j++ {
-				for k := j + 1; k < len(fullnodes); k++ {
-					if bytes.Compare(fullnodes[j][:], fullnodes[k][:]) > 0 {
-						fullnodes[j], fullnodes[k] = fullnodes[k], fullnodes[j]
+			for j := 0; j < len(validators); j++ {
+				for k := j + 1; k < len(validators); k++ {
+					if bytes.Compare(validators[j][:], validators[k][:]) > 0 {
+						validators[j], validators[k] = validators[k], validators[j]
 					}
 				}
 			}
 			result := snap.fullnodes()
-			if len(result) != len(fullnodes) {
-				t.Errorf("test %d: fullnodes mismatch: have %x, want %x", i, result, fullnodes)
+			if len(result) != len(validators) {
+				t.Errorf("test %d: validators mismatch: have %x, want %x", i, result, validators)
 				return
 			}
 			for j := 0; j < len(result); j++ {
-				if !bytes.Equal(result[j][:], fullnodes[j][:]) {
-					t.Errorf("test %d, fullnode %d: fullnode mismatch: have %x, want %x", i, j, result[j], fullnodes[j])
+				if !bytes.Equal(result[j][:], validators[j][:]) {
+					t.Errorf("test %d, fullnode %d: fullnode mismatch: have %x, want %x", i, j, result[j], validators[j])
 				}
 			}
 		})

@@ -220,22 +220,22 @@ func (p *testPeer) handshake(t *testing.T, td *big.Int, head common.Hash, genesi
 	var msg interface{}
 	switch {
 	case p.version == eth63:
-		msg = &statusData63{
+		msg = &statusData{
 			ProtocolVersion: uint32(p.version),
 			NetworkId:       DefaultConfig.NetworkId,
 			TD:              td,
 			CurrentBlock:    head,
 			GenesisBlock:    genesis,
 		}
-	case p.version == eth64:
-		msg = &statusData{
-			ProtocolVersion: uint32(p.version),
-			NetworkID:       DefaultConfig.NetworkId,
-			TD:              td,
-			Head:            head,
-			Genesis:         genesis,
-			ForkID:          forkID,
-		}
+	//case p.version == eth64:
+	//	msg = &statusData{
+	//		ProtocolVersion: uint32(p.version),
+	//		NetworkID:       DefaultConfig.NetworkId,
+	//		TD:              td,
+	//		Head:            head,
+	//		Genesis:         genesis,
+	//		ForkID:          forkID,
+	//	}
 	default:
 		panic(fmt.Sprintf("unsupported eth protocol version: %d", p.version))
 	}

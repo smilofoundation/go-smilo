@@ -147,7 +147,7 @@ func TestSetupGenesis(t *testing.T) {
 				customg.Config.CustomTransactionSizeLimit = 100000
 				return SetupGenesisBlock(db, &customg)
 			},
-			wantErr:    errors.New("custom transaction size limit must be bigger than 32 and lower than 128"),
+			wantErr:    errors.New("Genesis transaction size limit must be between 32 and 128"),
 			wantConfig: customg.Config,
 		},
 	}

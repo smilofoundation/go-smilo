@@ -20,6 +20,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"io"
 	"math/big"
 	mrand "math/rand"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
@@ -71,6 +71,8 @@ var (
 	blockValidationTimer = metrics.NewRegisteredTimer("chain/validation", nil)
 	blockExecutionTimer  = metrics.NewRegisteredTimer("chain/execution", nil)
 	blockWriteTimer      = metrics.NewRegisteredTimer("chain/write", nil)
+	blockReorgAddMeter   = metrics.NewRegisteredMeter("chain/reorg/drop", nil)
+	blockReorgDropMeter  = metrics.NewRegisteredMeter("chain/reorg/add", nil)
 
 	blockPrefetchExecuteTimer   = metrics.NewRegisteredTimer("chain/prefetch/executes", nil)
 	blockPrefetchInterruptMeter = metrics.NewRegisteredMeter("chain/prefetch/interrupts", nil)
@@ -185,9 +187,9 @@ type BlockChain struct {
 
 	badBlocks         *lru.Cache                     // Bad block cache
 	shouldPreserve    func(*types.Block) bool        // Function used to determine whether should preserve the given block.
-	privateStateCache state.Database                 // Vault state database to reuse between imports (contains state cache)
 	terminateInsert   func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
+	privateStateCache state.Database                 // Private state database to reuse between imports (contains state cache)
 	autonityContract *autonity.Contract
 }
 
@@ -242,6 +244,11 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	if bc.genesisBlock == nil {
 		return nil, ErrNoGenesis
 	}
+
+	var nilBlock *types.Block
+	bc.currentBlock.Store(nilBlock)
+	bc.currentFastBlock.Store(nilBlock)
+
 	// Initialize the chain with ancient data if it isn't empty.
 	if bc.empty() {
 		rawdb.InitDatabaseFromFreezer(bc.db)
@@ -369,12 +376,9 @@ func (bc *BlockChain) loadLastState() error {
 	}
 
 	// Quorum
-	if _, err := state.New(GetPrivateStateRoot(bc.db, currentBlock.Root()), bc.privateStateCache); err != nil {
-		log.Warn("Head vault state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
-		if err := bc.repair(&currentBlock); err != nil {
-			log.Warn("Could not repar vault state missing with repair method, will reset")
-			return bc.Reset()
-		}
+	if _, err := state.New(rawdb.GetPrivateStateRoot(bc.db, currentBlock.Root()), bc.privateStateCache); err != nil {
+		log.Warn("Head private state missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
+		return bc.Reset()
 	}
 	// /Quorum
 
@@ -484,6 +488,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	bc.bodyRLPCache.Purge()
 	bc.receiptsCache.Purge()
 	bc.blockCache.Purge()
+	bc.txLookupCache.Purge()
 	bc.futureBlocks.Purge()
 
 	return bc.loadLastState()
@@ -582,7 +587,7 @@ func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, *state.StateDB,
 	if publicStateDbErr != nil {
 		return nil, nil, publicStateDbErr
 	}
-	privateStateDb, privateStateDbErr := state.New(GetPrivateStateRoot(bc.db, root), bc.privateStateCache)
+	privateStateDb, privateStateDbErr := state.New(rawdb.GetPrivateStateRoot(bc.db, root), bc.privateStateCache)
 	if privateStateDbErr != nil {
 		return nil, nil, privateStateDbErr
 	}
@@ -1008,6 +1013,7 @@ func (bc *BlockChain) truncateAncient(head uint64) error {
 	bc.bodyRLPCache.Purge()
 	bc.receiptsCache.Purge()
 	bc.blockCache.Purge()
+	bc.txLookupCache.Purge()
 	bc.futureBlocks.Purge()
 
 	log.Info("Rewind ancient data", "number", head)
@@ -2125,12 +2131,16 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	}
 	// Ensure the user sees large reorgs
 	if len(oldChain) > 0 && len(newChain) > 0 {
-		logFn := log.Debug
+		logFn := log.Info
+		msg := "Chain reorg detected"
 		if len(oldChain) > 63 {
+			msg = "Large chain reorg detected"
 			logFn = log.Warn
 		}
-		logFn("Chain split detected", "number", commonBlock.Number(), "hash", commonBlock.Hash(),
+		logFn(msg, "number", commonBlock.Number(), "hash", commonBlock.Hash(),
 			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
+		blockReorgAddMeter.Mark(int64(len(newChain)))
+		blockReorgDropMeter.Mark(int64(len(oldChain)))
 	} else {
 		log.Error("Impossible reorg, please file an issue", "oldnum", oldBlock.Number(), "oldhash", oldBlock.Hash(), "newnum", newBlock.Number(), "newhash", newBlock.Hash())
 	}
@@ -2233,7 +2243,7 @@ func (bc *BlockChain) BadBlocks() []*types.Block {
 	return blocks
 }
 
-// HasBadBlock returns whether the block with the hash is a bad block
+// HasBadBlock returns whether the block with the hash is a bad block. dep: Istanbul
 func (bc *BlockChain) HasBadBlock(hash common.Hash) bool {
 	return bc.badBlocks.Contains(hash)
 }
@@ -2294,7 +2304,6 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 		_, err := bc.hc.WriteHeader(header)
 		return err
 	}
-
 	return bc.hc.InsertHeaderChain(chain, whFunc, start)
 }
 

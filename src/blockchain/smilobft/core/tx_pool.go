@@ -166,8 +166,7 @@ type TxPoolConfig struct {
 
 	// Quorum
 	CustomTransactionSizeLimit uint64 // Maximum size allowed for valid transaction (in KB)
-	MaxCodeSize          uint64 // Maximum size allowed of contract code that can be deployed (in KB)
-
+	MaxCodeSize                uint64 // Maximum size allowed of contract code that can be deployed (in KB)
 	Blacklist                  string // Blacklist of addresses we should refuse transactions from
 }
 
@@ -188,7 +187,7 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	Lifetime: 3 * time.Hour,
 
 	CustomTransactionSizeLimit: 32,
-	MaxCodeSize:          24,
+	MaxCodeSize:                24,
 }
 
 // sanitize checks the provided user configurations and changes anything that's
