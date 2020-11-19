@@ -19,8 +19,6 @@ package node
 import (
 	"bytes"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/plugin"
 	"io/ioutil"
@@ -30,6 +28,9 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -224,7 +225,7 @@ func TestConfig_IsPermissionEnabled_whenTypical(t *testing.T) {
 	}
 	testObject := &Config{
 		EnableNodePermissionFlag: true,
-		DataDir:              tmpdir,
+		DataDir:                  tmpdir,
 	}
 
 	assert.True(t, testObject.IsPermissionEnabled())
@@ -245,7 +246,7 @@ func TestConfig_IsPermissionEnabled_whenPermissionedFlagIsFalse(t *testing.T) {
 func TestConfig_IsPermissionEnabled_whenPermissionConfigIsNotAvailable(t *testing.T) {
 	testObject := &Config{
 		EnableNodePermissionFlag: true,
-		DataDir:              os.TempDir(),
+		DataDir:                  os.TempDir(),
 	}
 
 	assert.False(t, testObject.IsPermissionEnabled())

@@ -449,7 +449,7 @@ func (net *Network) GetNodeIDs(excludeIDs ...enode.ID) []enode.ID {
 }
 
 func (net *Network) getNodeIDs(excludeIDs []enode.ID) []enode.ID {
-	// Get all curent nodeIDs
+	// Get all current nodeIDs
 	nodeIDs := make([]enode.ID, 0, len(net.nodeMap))
 	for id := range net.nodeMap {
 		nodeIDs = append(nodeIDs, id)

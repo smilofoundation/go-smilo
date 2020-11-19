@@ -20,12 +20,13 @@ import (
 	"encoding/binary"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/contracts/checkpointoracle"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // checkpointOracle is responsible for offering the latest stable checkpoint

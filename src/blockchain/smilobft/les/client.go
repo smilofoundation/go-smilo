@@ -21,10 +21,6 @@ import (
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/cmn"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/accounts"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/consensus"
@@ -43,6 +39,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type LightEthereum struct {

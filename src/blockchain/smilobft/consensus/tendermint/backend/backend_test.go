@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"math"
 	"math/big"
 	"reflect"
@@ -30,6 +29,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

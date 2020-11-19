@@ -19,8 +19,6 @@ package clique
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -28,6 +26,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/params"
 	"sort"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // testerAccountPool is a pool to maintain currently active tester accounts,

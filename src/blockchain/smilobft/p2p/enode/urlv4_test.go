@@ -18,11 +18,12 @@ package enode
 
 import (
 	"crypto/ecdsa"
-	"github.com/stretchr/testify/require"
 	"net"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 

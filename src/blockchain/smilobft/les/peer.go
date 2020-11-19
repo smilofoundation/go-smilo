@@ -19,7 +19,6 @@ package les
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"math/rand"
 	"net"
@@ -27,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/eth"
@@ -37,6 +36,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/mclock"
 )
 
 var (

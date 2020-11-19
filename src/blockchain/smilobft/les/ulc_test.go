@@ -23,9 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func TestULCAnnounceThresholdLes2(t *testing.T) { testULCAnnounceThreshold(t, 2) }

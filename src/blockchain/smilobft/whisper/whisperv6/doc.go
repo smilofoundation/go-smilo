@@ -33,8 +33,9 @@ particularly the notion of singular endpoints.
 package whisperv6
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Whisper protocol parameters

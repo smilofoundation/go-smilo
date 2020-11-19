@@ -28,10 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/mattn/go-colorable"
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/eth"
 	"go-smilo/src/blockchain/smilobft/eth/downloader"
@@ -41,6 +37,11 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/simulations"
 	"go-smilo/src/blockchain/smilobft/p2p/simulations/adapters"
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/mattn/go-colorable"
 )
 
 // Additional command line flags for the test binary.

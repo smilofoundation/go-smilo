@@ -18,10 +18,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/p2p/discover"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"

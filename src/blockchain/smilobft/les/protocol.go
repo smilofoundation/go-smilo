@@ -20,13 +20,15 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
 )
 
 // Constants to match up protocol versions and messages

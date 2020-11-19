@@ -420,12 +420,12 @@ func TestCore_Close(t *testing.T) {
 		logger := log.New("backend", "test", "id", 0)
 
 		c := &core{
-			backend:                 backendMock,
-			cancel:                  cancel,
-			isStarting:              new(uint32),
-			isStarted:               new(uint32),
-			isStopping:              new(uint32),
-			isStopped:               new(uint32),
+			backend:    backendMock,
+			cancel:     cancel,
+			isStarting: new(uint32),
+			isStarted:  new(uint32),
+			isStopping: new(uint32),
+			isStopped:  new(uint32),
 			//committedSub:            committedSub,
 			logger:                  log.New("backend", "test", "id", 0),
 			messageEventSub:         messageEventSub,
@@ -469,12 +469,12 @@ func TestCore_Close(t *testing.T) {
 
 		logger := log.New("backend", "test", "id", 0)
 		c := &core{
-			backend:                 backendMock,
-			cancel:                  cancel,
-			isStarting:              new(uint32),
-			isStarted:               new(uint32),
-			isStopping:              new(uint32),
-			isStopped:               new(uint32),
+			backend:    backendMock,
+			cancel:     cancel,
+			isStarting: new(uint32),
+			isStarted:  new(uint32),
+			isStopping: new(uint32),
+			isStopped:  new(uint32),
 			//committedSub:            committedSub,
 			logger:                  logger,
 			messageEventSub:         messageEventSub,

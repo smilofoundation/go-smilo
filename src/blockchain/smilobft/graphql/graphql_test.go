@@ -19,11 +19,12 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/private"
 	"math/big"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestBuildSchema(t *testing.T) {

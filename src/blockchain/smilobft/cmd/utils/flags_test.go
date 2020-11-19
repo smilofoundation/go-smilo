@@ -19,15 +19,16 @@ package utils
 
 import (
 	"flag"
-	"github.com/stretchr/testify/assert"
 	"go-smilo/src/blockchain/smilobft/node"
-	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"os"
 	"path"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/urfave/cli.v1"
 )
 
 func TestSetPlugins_whenPluginsNotEnabled(t *testing.T) {

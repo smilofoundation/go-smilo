@@ -18,19 +18,21 @@ package les
 
 import (
 	"encoding/binary"
-	"github.com/ethereum/go-ethereum/rlp"
 	"io"
 	"math"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
+	"go-smilo/src/blockchain/smilobft/ethdb"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/common/prque"
-	"go-smilo/src/blockchain/smilobft/ethdb"
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (

@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"io"
 	"net/url"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/openpgp"
@@ -109,7 +110,7 @@ func getSha256Checksum(filePath string) (string, error) {
 func unpackPlugin(pluginPath string) (string, *MetaData, error) {
 	// Unpack pluginMeta
 	// Reduce TOC/TOU risk
-	unpackDir := path.Join(os.TempDir(), string(uuid.New()), string(uuid.New()))
+	unpackDir := path.Join(os.TempDir(), uuid.New(), uuid.New())
 
 	err := os.MkdirAll(unpackDir, os.ModePerm)
 	if err != nil {
@@ -139,7 +140,7 @@ func unpackPlugin(pluginPath string) (string, *MetaData, error) {
 		return unpackDir, nil, fmt.Errorf("plugin-meta.json entry point not set")
 	}
 
-	if isCleanEntryPoint(pluginMeta.EntryPoint) == false {
+	if !isCleanEntryPoint(pluginMeta.EntryPoint) {
 		return unpackDir, nil, fmt.Errorf("entrypoint must be only alphanumeric value")
 	}
 	return unpackDir, &pluginMeta, nil

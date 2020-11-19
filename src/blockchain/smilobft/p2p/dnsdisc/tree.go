@@ -26,9 +26,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
+
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 )

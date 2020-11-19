@@ -1644,8 +1644,7 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	// /Quorum
 
 	// Assemble the transaction and sign with the wallet
-	var tx *types.Transaction
-	tx = args.toTransaction()
+	var tx = args.toTransaction()
 
 	if args.IsPrivate() {
 		tx.SetPrivate()
@@ -1663,7 +1662,6 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	}
 	return SubmitTransaction(ctx, s.b, signed, isPrivate)
 }
-
 
 // FillTransaction fills the defaults (nonce, gas, gasPrice) on a given unsigned transaction,
 // and returns it to the caller for further processing (signing + broadcast)
@@ -1755,7 +1753,7 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Sen
 	// set gas to constant if nil
 	if args.IsPrivate() && args.Gas == nil {
 		gas := (hexutil.Uint64)(90000)
-		args.Gas = (*hexutil.Uint64)(&gas)
+		args.Gas = &gas
 	}
 	// /Quorum
 	if err := args.setDefaults(ctx, s.b); err != nil {
@@ -1816,7 +1814,7 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 	// set gas to constant if nil
 	if sendArgs.IsPrivate() && sendArgs.Gas == nil {
 		gas := (hexutil.Uint64)(90000)
-		sendArgs.Gas = (*hexutil.Uint64)(&gas)
+		sendArgs.Gas = &gas
 	}
 	if err := sendArgs.setDefaults(ctx, s.b); err != nil {
 		return common.Hash{}, err

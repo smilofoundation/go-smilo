@@ -100,7 +100,7 @@ func TestStatusMsgErrors63(t *testing.T) {
 }
 
 func TestStatusMsgErrors64(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil,nil)
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, nil)
 	var (
 		genesis = pm.blockchain.Genesis()
 		head    = pm.blockchain.CurrentHeader()
@@ -282,7 +282,7 @@ func TestSendTransactions63(t *testing.T) { testSendTransactions(t, 63) }
 func TestSendTransactions64(t *testing.T) { testSendTransactions(t, 64) }
 
 func testSendTransactions(t *testing.T, protocol int) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil,nil)
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, nil)
 	defer pm.Stop()
 
 	// Fill the pool with big transactions.

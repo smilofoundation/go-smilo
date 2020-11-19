@@ -20,23 +20,25 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/ethereum/go-ethereum/metrics"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/metrics"
+
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/light"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
 	"go-smilo/src/blockchain/smilobft/trie"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const (

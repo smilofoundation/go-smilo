@@ -162,7 +162,7 @@ type Config struct {
 	Sport sport.Config
 
 	// Miscellaneous options
-	DocRoot string `toml:"-"`
+	DocRoot                string `toml:"-"`
 	AllowedFutureBlockTime uint64 //Quorum
 
 	// Type of the EWASM interpreter ("" for default)

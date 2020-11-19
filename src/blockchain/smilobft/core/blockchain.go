@@ -20,13 +20,14 @@ package core
 import (
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"io"
 	"math/big"
 	mrand "math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 
@@ -185,12 +186,12 @@ type BlockChain struct {
 	prefetcher Prefetcher // Block state prefetcher interface
 	vmConfig   vm.Config
 
-	badBlocks         *lru.Cache                     // Bad block cache
-	shouldPreserve    func(*types.Block) bool        // Function used to determine whether should preserve the given block.
-	terminateInsert   func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
+	badBlocks       *lru.Cache                     // Bad block cache
+	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
+	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
-	privateStateCache state.Database                 // Private state database to reuse between imports (contains state cache)
-	autonityContract *autonity.Contract
+	privateStateCache state.Database // Private state database to reuse between imports (contains state cache)
+	autonityContract  *autonity.Contract
 }
 
 // NewBlockChain returns a fully initialised block chain using information

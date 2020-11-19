@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-
 )
 
 // TestDatabaseSuite runs a suite of tests against a KeyValueStore database

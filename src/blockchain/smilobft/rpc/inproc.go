@@ -26,7 +26,6 @@ import (
 //Quorum
 // InProcServerReadyEvent is quorum related
 type InProcServerReadyEvent struct {
-
 }
 
 // DialInProc attaches an in-process connection to the given RPC server.

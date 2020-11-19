@@ -20,8 +20,9 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/ethereum/go-ethereum/crypto/blake2b"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto/blake2b"
 
 	"go-smilo/src/blockchain/smilobft/params"
 

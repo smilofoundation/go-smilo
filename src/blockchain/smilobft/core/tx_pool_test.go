@@ -53,10 +53,10 @@ func init() {
 }
 
 type testBlockChain struct {
-	statedb       *state.StateDB
-	privateStateDb  *state.StateDB
-	gasLimit      uint64
-	chainHeadFeed *event.Feed
+	statedb        *state.StateDB
+	privateStateDb *state.StateDB
+	gasLimit       uint64
+	chainHeadFeed  *event.Feed
 }
 
 func (bc *testBlockChain) CurrentBlock() *types.Block {

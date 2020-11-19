@@ -18,12 +18,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"go-smilo/src/blockchain/smilobft/params"
 	"net"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"gopkg.in/urfave/cli.v1"
 )

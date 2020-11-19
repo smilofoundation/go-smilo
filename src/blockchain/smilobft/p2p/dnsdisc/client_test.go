@@ -24,13 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/internal/testlog"
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/crypto"
-	"go-smilo/src/blockchain/smilobft/internal/testlog"
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 )
 
 const (

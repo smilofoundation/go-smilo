@@ -17,8 +17,6 @@
 package clique
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -26,6 +24,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // This test case is a repro of an annoying bug that took us forever to catch.

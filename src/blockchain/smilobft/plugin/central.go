@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"io"
 	"io/ioutil"
 	"net"
@@ -12,6 +11,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Central https centralClient communicating with Plugin Central
@@ -43,7 +44,7 @@ func (cc *CentralClient) getNewSecureDialer() Dialer {
 		if cc.config.CertFingerprint != "" {
 			conState := c.ConnectionState()
 			for _, peercert := range conState.PeerCertificates {
-				if bytes.Compare(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) == 0 {
+				if bytes.Equal(peercert.Signature[0:], []byte(cc.config.CertFingerprint)) {
 					return c, nil
 				}
 			}

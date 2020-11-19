@@ -27,7 +27,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/metrics"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -35,6 +34,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/metrics"
 
 	"github.com/ethereum/go-ethereum/common/bitutil"
 	"github.com/ethereum/go-ethereum/crypto"

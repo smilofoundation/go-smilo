@@ -19,22 +19,24 @@ package les
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/les/flowcontrol"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // requestBenchmark is an interface for different randomized request generators

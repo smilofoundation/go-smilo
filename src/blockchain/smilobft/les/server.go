@@ -20,8 +20,6 @@ import (
 	"crypto/ecdsa"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/eth"
@@ -33,6 +31,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type LesServer struct {

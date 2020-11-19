@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/private"
 	"go-smilo/src/blockchain/smilobft/private/privatetransactionmanager"
 	"html/template"
@@ -21,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // callmsg is the message type used for call transactions in the private state test

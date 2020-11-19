@@ -296,7 +296,7 @@ func (p *PermissionCtrl) monitorQIP714Block() error {
 		defer stopSubscription.Unsubscribe()
 		for {
 			select {
-			case  head := <-chainHeadCh:
+			case head := <-chainHeadCh:
 				if p.eth.BlockChain().Config().IsQIP714(head.Block.Number()) {
 					types.SetDefaultAccess()
 					return

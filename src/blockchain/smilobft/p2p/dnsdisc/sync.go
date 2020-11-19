@@ -22,8 +22,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
+
+	"github.com/ethereum/go-ethereum/common/mclock"
 )
 
 // clientTree is a full tree being synced.

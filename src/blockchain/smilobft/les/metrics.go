@@ -17,8 +17,9 @@
 package les
 
 import (
-	"github.com/ethereum/go-ethereum/metrics"
 	"go-smilo/src/blockchain/smilobft/p2p"
+
+	"github.com/ethereum/go-ethereum/metrics"
 )
 
 var (

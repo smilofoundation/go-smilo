@@ -20,11 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/crypto"
 

@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -30,6 +29,8 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/trie"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 func TestNodeIterator(t *testing.T) {

@@ -1,11 +1,12 @@
 package core
 
 import (
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
-	"math/big"
-	"testing"
 )
 
 func TestCore_MeasureHeightRoundMetrics(t *testing.T) {

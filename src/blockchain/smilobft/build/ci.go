@@ -46,7 +46,6 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"github.com/cespare/cp"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -58,6 +57,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/cespare/cp"
 
 	"go-smilo/src/blockchain/smilobft/internal/build"
 	"go-smilo/src/blockchain/smilobft/params"
@@ -147,12 +148,14 @@ var (
 	// Note: zesty is unsupported because it was officially deprecated on Launchpad.
 	// Note: artful is unsupported because it was officially deprecated on Launchpad.
 	// Note: cosmic is unsupported because it was officially deprecated on Launchpad.
+	// Note: disco is unsupported because it was officially deprecated on Launchpad.
+	// Note: eoan is unsupported because it was officially deprecated on Launchpad.
 	debDistroGoBoots = map[string]string{
 		"trusty": "golang-1.11",
 		"xenial": "golang-go",
 		"bionic": "golang-go",
-		"disco":  "golang-go",
-		"eoan":   "golang-go",
+		"focal":  "golang-go",
+		"groovy": "golang-go",
 	}
 
 	debGoBootPaths = map[string]string{
@@ -216,16 +219,15 @@ func doInstall(cmdline []string) {
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
 
-	// Check Go version. People regularly open issues about compilation
+	// Check local Go version. People regularly open issues about compilation
 	// failure with outdated Go. This should save them the trouble.
 	if !strings.Contains(runtime.Version(), "devel") {
 		// Figure out the minor version number since we can't textually compare (1.10 < 1.9)
 		var minor int
 		fmt.Sscanf(strings.TrimPrefix(runtime.Version(), "go1."), "%d", &minor)
-
-		if minor < 9 {
+		if minor < 13 {
 			log.Println("You have Go version", runtime.Version())
-			log.Println("go-ethereum requires at least Go version 1.9 and cannot")
+			log.Println("go-ethereum requires at least Go version 1.13 and cannot")
 			log.Println("be compiled with an earlier version. Please upgrade your Go installation.")
 			os.Exit(1)
 		}
@@ -315,16 +317,18 @@ func doRename(rename bool) {
 	}
 }
 
+// buildFlags returns the go tool flags for building.
 func buildFlags(env build.Environment) (flags []string) {
 	var ld []string
 	if env.Commit != "" {
 		ld = append(ld, "-X", "main.gitCommit="+env.Commit)
 		ld = append(ld, "-X", "main.gitDate="+env.Date)
 	}
+	// Strip DWARF on darwin. This used to be required for certain things,
+	// and there is no downside to this, so we just keep doing it.
 	if runtime.GOOS == "darwin" {
 		ld = append(ld, "-s")
 	}
-
 	if len(ld) > 0 {
 		flags = append(flags, "-ldflags", strings.Join(ld, " "))
 	}
@@ -423,7 +427,7 @@ func downloadLinter(cachedir string) string {
 	if err := csdb.DownloadFile(url, archivePath); err != nil {
 		log.Fatal(err)
 	}
-	if err := build.ExtractTarballArchive(archivePath, cachedir); err != nil {
+	if err := build.ExtractArchive(archivePath, cachedir); err != nil {
 		log.Fatal(err)
 	}
 	return filepath.Join(cachedir, base, "golangci-lint")
@@ -529,7 +533,7 @@ func maybeSkipArchive(env build.Environment) {
 // Debian Packaging
 func doDebianSource(cmdline []string) {
 	var (
-		goversion = flag.String("goversion", "1.13.8", `Go version to build with (will be included in the source package)`)
+		goversion = flag.String("goversion", "1.15.5", `Go version to build with (will be included in the source package)`)
 		cachedir  = flag.String("cachedir", "./build/cache", `Filesystem path to cache the downloaded Go bundles at`)
 		signer    = flag.String("signer", "", `Signing key name, also used as package author`)
 		upload    = flag.String("upload", "", `Where to upload the source package (usually "ethereum/ethereum")`)
@@ -560,7 +564,7 @@ func doDebianSource(cmdline []string) {
 			pkgdir := stageDebianSource(*workdir, meta)
 
 			// Add Go source code
-			if err := build.ExtractTarballArchive(gobundle, pkgdir); err != nil {
+			if err := build.ExtractArchive(gobundle, pkgdir); err != nil {
 				log.Fatalf("Failed to extract Go sources: %v", err)
 			}
 			if err := os.Rename(filepath.Join(pkgdir, "go"), filepath.Join(pkgdir, ".go")); err != nil {
@@ -628,7 +632,7 @@ func getenvBase64(variable string) []byte {
 	if err != nil {
 		log.Fatal("invalid base64 " + variable)
 	}
-	return []byte(dec)
+	return dec
 }
 
 func makeWorkdir(wdflag string) string {
@@ -768,7 +772,6 @@ func stageDebianSource(tmpdir string, meta debMetadata) (pkgdir string) {
 	if err := os.Mkdir(pkgdir, 0755); err != nil {
 		log.Fatal(err)
 	}
-
 	// Copy the source code.
 	build.MustRunCommand("git", "checkout-index", "-a", "--prefix", pkgdir+string(filepath.Separator))
 
@@ -886,6 +889,7 @@ func doAndroidArchive(cmdline []string) {
 	if *local {
 		// If we're building locally, copy bundle to build dir and skip Maven
 		os.Rename("geth.aar", filepath.Join(GOBIN, "geth.aar"))
+		os.Rename("geth-sources.jar", filepath.Join(GOBIN, "geth-sources.jar"))
 		return
 	}
 	meta := newMavenMetadata(env)
@@ -929,15 +933,15 @@ func gomobileTool(subcmd string, args ...string) *exec.Cmd {
 	cmd := exec.Command(filepath.Join(GOBIN, "gomobile"), subcmd)
 	cmd.Args = append(cmd.Args, args...)
 	cmd.Env = []string{
-		"GOPATH=" + build.GOPATH(),
 		"PATH=" + GOBIN + string(os.PathListSeparator) + os.Getenv("PATH"),
 	}
 	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "GOPATH=") || strings.HasPrefix(e, "PATH=") {
+		if strings.HasPrefix(e, "GOPATH=") || strings.HasPrefix(e, "PATH=") || strings.HasPrefix(e, "GOBIN=") {
 			continue
 		}
 		cmd.Env = append(cmd.Env, e)
 	}
+	cmd.Env = append(cmd.Env, "GOBIN="+GOBIN)
 	return cmd
 }
 
@@ -1006,7 +1010,7 @@ func doXCodeFramework(cmdline []string) {
 
 	if *local {
 		// If we're building locally, use the build folder and stop afterwards
-		bind.Dir, _ = filepath.Abs(GOBIN)
+		bind.Dir = GOBIN
 		build.MustRun(bind)
 		return
 	}
@@ -1119,7 +1123,6 @@ func xgoTool(args []string) *exec.Cmd {
 	cmd := exec.Command(filepath.Join(GOBIN, "xgo"), args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, []string{
-		"GOPATH=" + build.GOPATH(),
 		"GOBIN=" + GOBIN,
 	}...)
 	return cmd
@@ -1148,6 +1151,8 @@ func doPurge(cmdline []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("Found %d blobs\n", len(blobs))
+
 	// Iterate over the blobs, collect and sort all unstable builds
 	for i := 0; i < len(blobs); i++ {
 		if !strings.Contains(blobs[i].Name, "unstable") {
@@ -1169,6 +1174,7 @@ func doPurge(cmdline []string) {
 			break
 		}
 	}
+	fmt.Printf("Deleting %d blobs\n", len(blobs))
 	// Delete all marked as such and return
 	if err := build.AzureBlobstoreDelete(auth, blobs); err != nil {
 		log.Fatal(err)

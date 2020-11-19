@@ -141,10 +141,10 @@ func TestPrivateTransactionBlackbox(t *testing.T) {
 	}
 
 	var (
-		key, _      = crypto.GenerateKey()
-		helper      = MakeCallHelper()
-		privateState  = helper.PrivateState
-		publicState = helper.PublicState
+		key, _       = crypto.GenerateKey()
+		helper       = MakeCallHelper()
+		privateState = helper.PrivateState
+		publicState  = helper.PublicState
 	)
 
 	blackboxCmd, err := runBlackbox()

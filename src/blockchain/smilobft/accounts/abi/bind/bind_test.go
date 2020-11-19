@@ -18,7 +18,6 @@ package bind
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -27,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var bindTests = []struct {

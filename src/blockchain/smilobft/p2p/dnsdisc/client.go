@@ -25,11 +25,12 @@ import (
 	"strings"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/p2p/enode"
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
+
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"go-smilo/src/blockchain/smilobft/p2p/enode"
-	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	lru "github.com/hashicorp/golang-lru"
 )
 

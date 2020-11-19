@@ -19,13 +19,15 @@ package light
 import (
 	"bytes"
 	"context"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 var sha3Nil = crypto.Keccak256Hash(nil)

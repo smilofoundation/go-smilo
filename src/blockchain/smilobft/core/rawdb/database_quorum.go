@@ -21,9 +21,10 @@
 package rawdb
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var (

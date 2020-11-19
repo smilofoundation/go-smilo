@@ -207,7 +207,7 @@ func TestCopy(t *testing.T) {
 
 		origObj.AddBalance(big.NewInt(2*int64(i)), common.Big0)
 		copyObj.AddBalance(big.NewInt(3*int64(i)), common.Big0)
-		ccopyObj.AddBalance(big.NewInt(4 * int64(i)), common.Big0)
+		ccopyObj.AddBalance(big.NewInt(4*int64(i)), common.Big0)
 
 		orig.updateStateObject(origObj)
 		copy.updateStateObject(copyObj)
@@ -536,8 +536,8 @@ func TestCopyCommitCopy(t *testing.T) {
 	sval := common.HexToHash("bbb")
 
 	state.SetBalance(addr, big.NewInt(42), common.Big0) // Change the account trie
-	state.SetCode(addr, []byte("hello"))   // Change an external metadata
-	state.SetState(addr, skey, sval)       // Change the storage trie
+	state.SetCode(addr, []byte("hello"))                // Change an external metadata
+	state.SetState(addr, skey, sval)                    // Change the storage trie
 
 	if balance := state.GetBalance(addr); balance.Cmp(big.NewInt(42)) != 0 {
 		t.Fatalf("initial balance mismatch: have %v, want %v", balance, 42)
@@ -608,8 +608,8 @@ func TestCopyCopyCommitCopy(t *testing.T) {
 	sval := common.HexToHash("bbb")
 
 	state.SetBalance(addr, big.NewInt(42), common.Big0) // Change the account trie
-	state.SetCode(addr, []byte("hello"))   // Change an external metadata
-	state.SetState(addr, skey, sval)       // Change the storage trie
+	state.SetCode(addr, []byte("hello"))                // Change an external metadata
+	state.SetState(addr, skey, sval)                    // Change the storage trie
 
 	if balance := state.GetBalance(addr); balance.Cmp(big.NewInt(42)) != 0 {
 		t.Fatalf("initial balance mismatch: have %v, want %v", balance, 42)

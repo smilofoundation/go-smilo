@@ -2,8 +2,9 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"path"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Plugin Integrity Verifier.

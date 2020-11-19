@@ -21,7 +21,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -32,6 +31,8 @@ import (
 	"go-smilo/src/blockchain/smilobft/p2p/discv5"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"go-smilo/src/blockchain/smilobft/params"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {

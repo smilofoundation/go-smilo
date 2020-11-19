@@ -277,7 +277,6 @@ func (n EnodeID) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(n[:])), nil
 }
 
-
 // HexID converts a hex string to an ID.
 // The string may be prefixed with 0x.
 // It panics if the string is not a valid ID.

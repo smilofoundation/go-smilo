@@ -24,9 +24,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/event"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/bloombits"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -39,6 +36,10 @@ import (
 	"go-smilo/src/blockchain/smilobft/light"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/rpc"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 type LesApiBackend struct {

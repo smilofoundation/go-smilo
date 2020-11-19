@@ -20,8 +20,9 @@ import (
 	"context"
 	"net"
 
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/p2p/netutil"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // ServeListener accepts connections on l, serving JSON-RPC on them.

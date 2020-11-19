@@ -24,7 +24,7 @@ func TestVaultTransactions(t *testing.T) {
 
 	testCases := []struct {
 		name          string
-		IsPrivate       bool
+		IsPrivate     bool
 		value         *big.Int
 		gasPrice      *big.Int
 		data          []byte
@@ -33,7 +33,7 @@ func TestVaultTransactions(t *testing.T) {
 	}{
 		{
 			name:          "vault signed transfer of value 0 is not allowed due to double spending issues",
-			IsPrivate:       true,
+			IsPrivate:     true,
 			value:         common.Big0,
 			gasPrice:      common.Big0,
 			data:          nil,
@@ -42,7 +42,7 @@ func TestVaultTransactions(t *testing.T) {
 		},
 		{
 			name:          "vault signed transfer of value 3 is not allowed due to double spending issues",
-			IsPrivate:       true,
+			IsPrivate:     true,
 			value:         common.Big3,
 			gasPrice:      common.Big0,
 			data:          nil,

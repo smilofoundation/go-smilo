@@ -22,6 +22,7 @@ package ethash
 type API struct {
 	ethash *Ethash // Make sure the mode of ethash is normal.
 }
+
 //
 //// GetWork returns a work package for external miner.
 ////

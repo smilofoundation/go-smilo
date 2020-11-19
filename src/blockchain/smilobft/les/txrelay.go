@@ -18,11 +18,13 @@ package les
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/rlp"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type ltrInfo struct {

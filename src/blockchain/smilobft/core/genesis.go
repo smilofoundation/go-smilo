@@ -22,10 +22,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"strings"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/core/types"
 
@@ -374,7 +375,6 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		log.Warn(msg, "g.Config", g.Config)
 		//panic(msg)
 	}
-
 
 	g.mu.RLock()
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)

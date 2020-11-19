@@ -2,11 +2,12 @@ package autonity
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/metrics"
 	"math/big"
 	"sync"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/metrics"
 )
 
 const (
