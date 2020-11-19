@@ -60,8 +60,7 @@ type LightEthereum struct {
 	bloomRequests chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
 	bloomIndexer  *core.ChainIndexer             // Bloom indexer operating during block imports
 
-	ApiBackend *LesApiBackend
-
+	ApiBackend     *LesApiBackend
 	eventMux       *cmn.TypeMux
 	engine         consensus.Engine
 	accountManager *accounts.Manager

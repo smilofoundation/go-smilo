@@ -98,7 +98,14 @@ func (spm *StubPrivateTransactionManager) PostRawTransaction(data []byte, to []s
 }
 
 func (spm *StubPrivateTransactionManager) Get(data []byte) ([]byte, error) {
-	return nil, fmt.Errorf("to be implemented")
+	res := spm.responses[string(data)]
+	if err, ok := res[1].(error); ok {
+		return nil, err
+	}
+	if ret, ok := res[0].([]byte); ok {
+		return ret, nil
+	}
+	return nil, nil
 }
 
 func (spm *StubPrivateTransactionManager) Send(data []byte, from string, to []string) ([]byte, error) {

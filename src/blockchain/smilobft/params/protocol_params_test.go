@@ -12,9 +12,9 @@ func TestQuorumParams(t *testing.T) {
 		expected uint64
 	}
 	var testData = map[string]data{
-		"GasLimitBoundDivisor":       {GasLimitBoundDivisor, 4096},
-		"MinGasLimit":                {MinGasLimit, 700000000},
-		"GenesisGasLimit":            {GenesisGasLimit, 800000000},
+		"GasLimitBoundDivisor":       {GasLimitBoundDivisor, 1024},
+		"MinGasLimit":                {MinGasLimit, 180000000},
+		"GenesisGasLimit":            {GenesisGasLimit, 210000000},
 		"QuorumMaximumExtraDataSize": {SmiloMaximumExtraDataSize, 65},
 		"QuorumMaxPayloadBufferSize": {QuorumMaxPayloadBufferSize, 128},
 	}

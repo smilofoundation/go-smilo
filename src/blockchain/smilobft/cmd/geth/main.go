@@ -79,6 +79,7 @@ var (
 		utils.ExternalSignerFlag,
 		utils.NoUSBFlag,
 		utils.SmartCardDaemonPathFlag,
+		utils.OverrideIstanbulFlag,
 		utils.DashboardEnabledFlag,
 		utils.DashboardAddrFlag,
 		utils.DashboardPortFlag,
@@ -166,6 +167,7 @@ var (
 		utils.SolcPathFlag,
 		utils.SmiloCodeAnalysisPathFlag,
 		utils.MinBlocksEmptyMiningFlag,
+		utils.EmitCheckpointsFlag,
 		utils.IstanbulRequestTimeoutFlag,
 		utils.IstanbulBlockPeriodFlag,
 		utils.SportDAORequestTimeoutFlag,
@@ -339,6 +341,8 @@ func geth(ctx *cli.Context) error {
 	if args := ctx.Args(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
+	prepare(ctx)
+
 	node := makeFullNode(ctx)
 	defer node.Close()
 	startNode(ctx, node)

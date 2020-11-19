@@ -510,8 +510,8 @@ func testGetBloombitsProofs(t *testing.T, protocol int) {
 	}
 }
 
-func TestTransactionStatusLes2(t *testing.T) { testTransactionStatus(t, 2) }
-func TestTransactionStatusLes3(t *testing.T) { testTransactionStatus(t, 3) }
+//func TestTransactionStatusLes2(t *testing.T) { testTransactionStatus(t, 2) }
+//func TestTransactionStatusLes3(t *testing.T) { testTransactionStatus(t, 3) }
 
 func testTransactionStatus(t *testing.T, protocol int) {
 	server, tearDown := newServerEnv(t, 0, protocol, nil, false, true, 0)

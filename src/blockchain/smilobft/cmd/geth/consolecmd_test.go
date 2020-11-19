@@ -109,7 +109,7 @@ at block: 0 ({{niltime}})
 func TestIPCAttachWelcome(t *testing.T) {
 	defer SetResetPrivateConfig("ignore")()
 	// Configure the instance for IPC attachement
-	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
+	coinbase := "0x491937757d1b26e29c507b8d4c0b233c2747e68d"
 	var ipc string
 
 	datadir := setupIstanbul(t)
@@ -127,7 +127,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 		"--datadir", datadir, "--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--etherbase", coinbase, "--shh", "--ipcpath", ipc)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
+	waitForEndpoint(t, ipc, 3*time.Second)
 	testAttachWelcome(t, geth, "ipc:"+ipc, ipcAPIs)
 
 	geth.Interrupt()
@@ -156,8 +156,7 @@ func TestHTTPAttachWelcome(t *testing.T) {
 
 func TestWSAttachWelcome(t *testing.T) {
 	defer SetResetPrivateConfig("ignore")()
-
-	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
+	coinbase := "0x491937757d1b26e29c507b8d4c0b233c2747e68d"
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 
 	datadir := setupIstanbul(t)
@@ -188,7 +187,7 @@ func testAttachWelcome(t *testing.T, geth *testgeth, endpoint, apis string) {
 	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithCommit("", "") })
 	attach.SetTemplateFunc("etherbase", func() string { return geth.Etherbase })
 	attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
-	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
+	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") || strings.Contains(apis, "admin") })
 	attach.SetTemplateFunc("datadir", func() string { return geth.Datadir })
 	attach.SetTemplateFunc("apis", func() string { return apis })
 

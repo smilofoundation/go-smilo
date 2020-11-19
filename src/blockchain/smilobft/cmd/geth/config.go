@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"reflect"
 	"unicode"
@@ -178,12 +179,20 @@ func enableWhisper(ctx *cli.Context) bool {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	log.Info("$$$$$$$$$ makeFullNode, will RegisterEthService")
 	stack, cfg := makeConfigNode(ctx)
+	if ctx.GlobalIsSet(utils.OverrideIstanbulFlag.Name) {
+		cfg.Eth.OverrideIstanbul = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideIstanbulFlag.Name))
+	}
+
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	// this must be done first to make sure plugin manager is fully up.
 	// any fatal at this point is safe
 	if cfg.Node.Plugins != nil {
 		utils.RegisterPluginService(stack, &cfg.Node, ctx.Bool(utils.PluginSkipVerifyFlag.Name), ctx.Bool(utils.PluginLocalVerifyFlag.Name), ctx.String(utils.PluginPublicKeyFlag.Name))
+	}
+
+	if cfg.Node.IsPermissionEnabled() {
+		utils.RegisterPermissionService(stack)
 	}
 
 	if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
