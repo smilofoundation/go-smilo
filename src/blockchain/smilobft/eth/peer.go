@@ -367,8 +367,8 @@ func (p *peer) Handshake(network uint64, td *big.Int, head common.Hash, genesis 
 	errc := make(chan error, 2)
 
 	var (
-		status63    statusData63 // safe to read after two values have been received from errc
-		status      statusData   // safe to read after two values have been received from errc
+		status63 statusData63 // safe to read after two values have been received from errc
+		status   statusData   // safe to read after two values have been received from errc
 		//istanbulOld = protocolName == "istanbul" && p.version == consensus.Istanbul64
 		//istanbulNew = protocolName == "istanbul" && p.version == consensus.Istanbul99
 	)

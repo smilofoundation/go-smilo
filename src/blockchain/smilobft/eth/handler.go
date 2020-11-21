@@ -69,8 +69,8 @@ var (
 var (
 	// errIncompatibleConfig is returned if the requested protocols and configs are
 	// not compatible (low protocol version restrictions and high requirements).
-	errIncompatibleConfig = errors.New("incompatible configuration")
-	errUnauthaurizedPeer  = errors.New("peer is not authorized")
+	//errIncompatibleConfig = errors.New("incompatible configuration")
+	errUnauthorizedPeer = errors.New("peer is not authorized")
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {
@@ -423,7 +423,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 					"currentTD", head.Number.Uint64()+1,
 				)
 
-				return errUnauthaurizedPeer
+				return errUnauthorizedPeer
 			}
 			// Todo : pause relaying if not whitelisted until full sync
 		} else {
