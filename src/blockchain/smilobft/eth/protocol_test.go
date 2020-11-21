@@ -19,6 +19,7 @@ package eth
 import (
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
 	"sync"
@@ -66,16 +67,16 @@ func TestStatusMsgErrors63(t *testing.T) {
 			wantError: errResp(ErrNoStatusMsg, "first msg has code 2 (!= 0)"),
 		},
 		{
-			code: StatusMsg, data: statusData{10, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash()},
+			code: StatusMsg, data: statusData63{10, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash()},
 			wantError: errResp(ErrProtocolVersionMismatch, "10 (!= %d)", 63),
 		},
 		{
-			code: StatusMsg, data: statusData{63, 999, td, head.Hash(), genesis.Hash()},
-			wantError: errResp(ErrNetworkIdMismatch, "999 (!= %d)", DefaultConfig.NetworkId),
+			code: StatusMsg, data: statusData63{63, 999, td, head.Hash(), genesis.Hash()},
+			wantError: errResp(ErrNetworkIDMismatch, "999 (!= %d)", DefaultConfig.NetworkId),
 		},
 		{
-			code: StatusMsg, data: statusData{63, DefaultConfig.NetworkId, td, head.Hash(), common.Hash{3}},
-			wantError: errResp(ErrGenesisBlockMismatch, "0300000000000000 (!= %x)", genesis.Hash().Bytes()[:8]),
+			code: StatusMsg, data: statusData63{63, DefaultConfig.NetworkId, td, head.Hash(), common.Hash{3}},
+			wantError: errResp(ErrGenesisMismatch, "0300000000000000 (!= %x)", genesis.Hash().Bytes()[:8]),
 		},
 	}
 	for i, test := range tests {
@@ -105,7 +106,7 @@ func TestStatusMsgErrors64(t *testing.T) {
 		genesis = pm.blockchain.Genesis()
 		head    = pm.blockchain.CurrentHeader()
 		td      = pm.blockchain.GetTd(head.Hash(), head.Number.Uint64())
-		//forkID  = forkid.NewID(pm.blockchain)
+		forkID  = forkid.NewID(pm.blockchain)
 	)
 	defer pm.Stop()
 
@@ -119,21 +120,21 @@ func TestStatusMsgErrors64(t *testing.T) {
 			wantError: errResp(ErrNoStatusMsg, "first msg has code 2 (!= 0)"),
 		},
 		{
-			code: StatusMsg, data: statusData{10, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash()},
+			code: StatusMsg, data: statusData{10, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash(), forkID},
 			wantError: errResp(ErrProtocolVersionMismatch, "10 (!= %d)", 64),
 		},
 		{
-			code: StatusMsg, data: statusData{64, 999, td, head.Hash(), genesis.Hash()},
-			wantError: errResp(ErrNetworkIdMismatch, "999 (!= %d)", DefaultConfig.NetworkId),
+			code: StatusMsg, data: statusData{64, 999, td, head.Hash(), genesis.Hash(), forkID},
+			wantError: errResp(ErrNetworkIDMismatch, "999 (!= %d)", DefaultConfig.NetworkId),
 		},
 		{
-			code: StatusMsg, data: statusData{64, DefaultConfig.NetworkId, td, head.Hash(), common.Hash{3}},
-			wantError: errResp(ErrGenesisBlockMismatch, "0300000000000000000000000000000000000000000000000000000000000000 (!= %x)", genesis.Hash()),
+			code: StatusMsg, data: statusData{64, DefaultConfig.NetworkId, td, head.Hash(), common.Hash{3}, forkID},
+			wantError: errResp(ErrGenesisMismatch, "0300000000000000000000000000000000000000000000000000000000000000 (!= %x)", genesis.Hash()),
 		},
-		//{
-		//	code: StatusMsg, data: statusData{64, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash()},
-		//	wantError: errResp(ErrForkIDRejected, forkid.ErrLocalIncompatibleOrStale.Error()),
-		//},
+		{
+			code: StatusMsg, data: statusData{64, DefaultConfig.NetworkId, td, head.Hash(), genesis.Hash(), forkid.ID{Hash: [4]byte{0x00, 0x01, 0x02, 0x03}}},
+			wantError: errResp(ErrForkIDRejected, forkid.ErrLocalIncompatibleOrStale.Error()),
+		},
 	}
 	for i, test := range tests {
 		p2pPeer := newTestP2PPeer("peer")
@@ -236,14 +237,14 @@ func TestForkIDSplit(t *testing.T) {
 	go func() { errc <- ethNoFork.handle(peerProFork) }()
 	go func() { errc <- ethProFork.handle(peerNoFork) }()
 
-	//select {
-	//case err := <-errc:
-	//	//if want := errResp(ErrForkIDRejected, forkid.ErrLocalIncompatibleOrStale.Error()); err.Error() != want.Error() {
-	//	//	t.Fatalf("fork ID rejection error mismatch: have %v, want %v", err, want)
-	//	//}
-	//case <-time.After(250 * time.Millisecond):
-	//	t.Fatalf("split peers not rejected")
-	//}
+	select {
+	case err := <-errc:
+		if want := errResp(ErrForkIDRejected, forkid.ErrLocalIncompatibleOrStale.Error()); err.Error() != want.Error() {
+			t.Fatalf("fork ID rejection error mismatch: have %v, want %v", err, want)
+		}
+	case <-time.After(250 * time.Millisecond):
+		t.Fatalf("split peers not rejected")
+	}
 }
 
 // This test checks that received transactions are added to the local pool.

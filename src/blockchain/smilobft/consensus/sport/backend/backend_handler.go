@@ -40,9 +40,5 @@ func (sb *backend) Protocol() (protocolName string, extraMsgCodes uint64) {
 
 // Protocol (clique override) implements consensus.Engine.Protocol
 func (sb *backend) ProtocolOld() consensus.Protocol {
-	return consensus.Protocol{
-		Name:     "smilobft",
-		Versions: []uint{64},
-		Lengths:  []uint64{18},
-	}
+	return consensus.SportProtocol
 }

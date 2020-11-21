@@ -128,6 +128,12 @@ func NewV4(pubkey *ecdsa.PublicKey, ip net.IP, tcp, udp int) *Node {
 	if len(ip) > 0 {
 		r.Set(enr.IP(ip))
 	}
+	return newV4(pubkey, r, tcp, udp)
+}
+
+// broken out from `func NewV4` (above) same in upstream go-ethereum, but taken out
+// to avoid code duplication b/t NewV4 and NewV4Hostname
+func newV4(pubkey *ecdsa.PublicKey, r enr.Record, tcp, udp int) *Node {
 	if udp != 0 {
 		r.Set(enr.UDP(udp))
 	}

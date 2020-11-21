@@ -720,7 +720,7 @@ func (c *Clique) APIs(chain consensus.ChainReader) []rpc.API {
 
 // Protocol implements consensus.Engine.Protocol
 func (c *Clique) ProtocolOld() consensus.Protocol {
-	return consensus.EthProtocol
+	return consensus.CliqueProtocol
 }
 
 // SealHash returns the hash of a block prior to it being sealed.

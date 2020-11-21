@@ -1076,6 +1076,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	} else {
 		clog.Trace("Node Permissioning is Disabled.")
 	}
+
 	//END - QUORUM Permissioning
 
 	if conn, ok := c.fd.(*meteredConn); ok {

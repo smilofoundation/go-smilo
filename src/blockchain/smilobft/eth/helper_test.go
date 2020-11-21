@@ -23,13 +23,22 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/clique"
+	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
+	tendermintPackageConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
+	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
+	sportBackend "go-smilo/src/blockchain/smilobft/consensus/sport/backend"
+	sportDAOBackend "go-smilo/src/blockchain/smilobft/consensus/sportdao/backend"
+	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
+	"go-smilo/src/blockchain/smilobft/consensus/sport"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"math/big"
 	"sort"
 	"sync"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 
@@ -104,6 +113,108 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	pm.Start(1000)
 	return pm, db, nil
 }
+
+
+// newTestProtocolManagerConsensus creates a new protocol manager for testing purposes,
+// that uses the specified consensus mechanism.
+func newTestProtocolManagerConsensus(consensusAlgo string,
+	cliqueConfig *params.CliqueConfig,
+	istanbulConfig *params.IstanbulConfig,
+	sportConfig *params.SportConfig,
+	sportDAOConfig *params.SportDAOConfig,
+	tendermintConfig *params.TendermintConfig,
+	) (*ProtocolManager, ethdb.Database, error) {
+
+	var config = params.ChainConfig{}
+
+	var (
+		blocks                  = 0
+		evmux                   = new(cmn.TypeMux)
+		engine consensus.Engine = ethash.NewFaker()
+		db                      = rawdb.NewMemoryDatabase()
+		gspec                   = &core.Genesis{
+			Config: params.TestChainConfig,
+			Alloc:  core.GenesisAlloc{testBank: {Balance: big.NewInt(1000000)}},
+		}
+		genesis       = gspec.MustCommit(db)
+		blockchain, _ = core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{}, nil)
+	)
+	chainConfig, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, blocks, nil)
+	if _, err := blockchain.InsertChain(chainConfig); err != nil {
+		panic(err)
+	}
+
+	switch consensusAlgo {
+	case "istanbul":
+		var istanbul istanbul.Config
+		config.Istanbul = istanbulConfig
+
+		config.Istanbul.Epoch = istanbulConfig.Epoch
+		config.Istanbul.ProposerPolicy = istanbulConfig.ProposerPolicy
+
+		nodeKey, _ := crypto.GenerateKey()
+
+		gspec.Config.Istanbul =  &params.IstanbulConfig{}
+
+		engine = istanbulBackend.New(&istanbul, nodeKey, db, gspec.Config, nil)
+
+	case "smilobft":
+		var smilobft sport.Config
+		config.Sport = sportConfig
+
+		config.Sport.Epoch = sportConfig.Epoch
+		config.Sport.SpeakerPolicy = sportConfig.SpeakerPolicy
+
+		nodeKey, _ := crypto.GenerateKey()
+
+		gspec.Config.Sport =  &params.SportConfig{}
+
+		engine = sportBackend.New(&smilobft, nodeKey, db)
+
+	case "smilobftdao":
+		var smilobftdao sportdao.Config
+		config.SportDAO = sportDAOConfig
+
+		config.SportDAO.Epoch = sportDAOConfig.Epoch
+		config.SportDAO.SpeakerPolicy = sportDAOConfig.SpeakerPolicy
+
+		nodeKey, _ := crypto.GenerateKey()
+
+		gspec.Config.SportDAO =  &params.SportDAOConfig{}
+
+		engine = sportDAOBackend.New(&smilobftdao, nodeKey, db, gspec.Config, nil)
+
+	case "tendermint":
+		var tendermint tendermintPackageConfig.Config
+		config.Tendermint = tendermintConfig
+
+		config.Tendermint.Epoch = tendermintConfig.Epoch
+		config.Tendermint.ProposerPolicy = tendermintConfig.ProposerPolicy
+
+		nodeKey, _ := crypto.GenerateKey()
+
+		gspec.Config.Tendermint =  &params.TendermintConfig{}
+
+
+		engine = tendermintBackend.New(&tendermint, nodeKey, db, gspec.Config, nil)
+
+	case "clique":
+		config.Clique = cliqueConfig
+
+		engine = clique.New(config.Clique, db)
+
+	default:
+		engine = ethash.NewFaker()
+	}
+
+	pm, err := NewProtocolManager(&config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, &testTxPool{added: nil}, engine, blockchain, db, 1, nil, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	pm.Start(1000)
+	return pm, db, nil
+}
+
 
 // newTestProtocolManagerMust creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
@@ -199,7 +310,6 @@ func newTestPeer(p2pPeer *p2p.Peer, version int, pm *ProtocolManager, shake bool
 		)
 		tp.handshake(nil, td, head.Hash(), genesis.Hash(), forkid.NewID(pm.blockchain), forkid.NewFilter(pm.blockchain))
 	}
-
 	return tp, errc
 }
 
@@ -220,22 +330,22 @@ func (p *testPeer) handshake(t *testing.T, td *big.Int, head common.Hash, genesi
 	var msg interface{}
 	switch {
 	case p.version == eth63:
-		msg = &statusData{
+		msg = &statusData63{
 			ProtocolVersion: uint32(p.version),
 			NetworkId:       DefaultConfig.NetworkId,
 			TD:              td,
 			CurrentBlock:    head,
 			GenesisBlock:    genesis,
 		}
-	//case p.version == eth64:
-	//	msg = &statusData{
-	//		ProtocolVersion: uint32(p.version),
-	//		NetworkID:       DefaultConfig.NetworkId,
-	//		TD:              td,
-	//		Head:            head,
-	//		Genesis:         genesis,
-	//		ForkID:          forkID,
-	//	}
+	case p.version == eth64:
+		msg = &statusData{
+			ProtocolVersion: uint32(p.version),
+			NetworkID:       DefaultConfig.NetworkId,
+			TD:              td,
+			Head:            head,
+			Genesis:         genesis,
+			ForkID:          forkID,
+		}
 	default:
 		panic(fmt.Sprintf("unsupported eth protocol version: %d", p.version))
 	}

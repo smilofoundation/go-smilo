@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"math"
 	"math/big"
 	"sync"
@@ -77,7 +78,8 @@ func errResp(code errCode, format string, v ...interface{}) error {
 }
 
 type ProtocolManager struct {
-	networkID uint64
+	networkID  uint64
+	forkFilter forkid.Filter // Fork ID filter, constant across the lifetime of the node
 
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
@@ -128,6 +130,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:                networkID,
+		forkFilter:               forkid.NewFilter(blockchain),
 		eventMux:                 mux,
 		txpool:                   txpool,
 		blockchain:               blockchain,
@@ -177,48 +180,6 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	if checkpoint != nil {
 		manager.checkpointNumber = (checkpoint.SectionIndex+1)*params.CHTFrequency - 1
 		manager.checkpointHash = checkpoint.SectionHead
-	}
-
-	protocol := engine.ProtocolOld()
-	// Initiate a sub-protocol for every implemented version we can handle
-	manager.SubProtocols = make([]p2p.Protocol, 0, len(protocol.Versions))
-	for i, version := range protocol.Versions {
-		// Skip protocol version if incompatible with the mode of operation
-		if mode == downloader.FastSync && version < eth63 {
-			log.Error("&**&*&*&*&*&*&* ERROR: handler, Skip protocol version if incompatible with the mode of operation")
-			continue
-		}
-		// Compatible; initialise the sub-protocol
-		version := version // Closure for the run
-		manager.SubProtocols = append(manager.SubProtocols, p2p.Protocol{
-			Name:    protocol.Name,
-			Version: version,
-			Length:  protocol.Lengths[i],
-			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-				peer := manager.newPeer(int(version), p, rw)
-				select {
-				case manager.newPeerCh <- peer:
-					manager.wg.Add(1)
-					defer manager.wg.Done()
-					return manager.handle(peer)
-				case <-manager.quitSync:
-					return p2p.DiscQuitting
-				}
-			},
-			NodeInfo: func() interface{} {
-				return manager.NodeInfo()
-			},
-			PeerInfo: func(id enode.ID) interface{} {
-				if p := manager.peers.Peer(fmt.Sprintf("%x", id[:8])); p != nil {
-					return p.Info()
-				}
-				return nil
-			},
-		})
-	}
-	if len(manager.SubProtocols) == 0 {
-		log.Error("handler, errIncompatibleConfig", "len(manager.SubProtocols)", len(manager.SubProtocols))
-		return nil, errIncompatibleConfig
 	}
 
 	// Construct the downloader (long sync) and its backing state bloom if fast
@@ -280,13 +241,13 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 
 func (pm *ProtocolManager) makeProtocol(version uint) p2p.Protocol {
 	// Quorum: Set p2p.Protocol info from engine.Protocol()
-	length, ok := protocolLengths[version]
+	length, ok := pm.engine.ProtocolOld().Lengths[version]
 	if !ok {
-		panic("makeProtocol for unknown version")
+		panic(fmt.Sprintf("makeProtocol for unknown version: %d, protocol: %+v", version, pm.engine.ProtocolOld()))
 	}
 
 	return p2p.Protocol{
-		Name:    protocolName,
+		Name:    pm.engine.ProtocolOld().Name,
 		Version: version,
 		Length:  length,
 		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
@@ -432,7 +393,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		number  = head.Number.Uint64()
 		td      = pm.blockchain.GetTd(hash, number)
 	)
-	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
+	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash(), forkid.NewID(pm.blockchain), pm.forkFilter, pm.engine.ProtocolOld().Name); err != nil {
 		p.Log().Debug("Ethereum handshake failed", "err", err)
 		return err
 	}
@@ -492,8 +453,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// after this will be sent via broadcasts.
 	pm.syncTransactions(p)
 
-	if pm.blockchain.Config().Tendermint != nil {
-		syncer := pm.blockchain.Engine().(consensus.Syncer)
+	if syncer, ok := pm.blockchain.Engine().(consensus.Syncer); ok && pm.blockchain.Config().Tendermint != nil {
 		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 		syncer.ResetPeerCache(address)
 		syncer.SyncPeer(address)
@@ -1027,18 +987,34 @@ type NodeInfo struct {
 	Genesis    common.Hash         `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Config     *params.ChainConfig `json:"config"`     // Chain configuration for the fork rules
 	Head       common.Hash         `json:"head"`       // SHA3 hash of the host's best owned block
+	Consensus  string              `json:"consensus"`  // Consensus mechanism in use
 }
 
 // NodeInfo retrieves some protocol metadata about the running host node.
 func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 	currentBlock := pm.blockchain.CurrentBlock()
+	// //Quorum
+	//
+	// changes done to fetch maxCodeSize dynamically based on the
+	// maxCodeSizeConfig changes
+	// /Quorum
+	chainConfig := pm.blockchain.Config()
+	chainConfig.MaxCodeSize = uint64(chainConfig.GetMaxCodeSize(pm.blockchain.CurrentBlock().Number()) / 1024)
+
 	return &NodeInfo{
 		Network:    pm.networkID,
 		Difficulty: pm.blockchain.GetTd(currentBlock.Hash(), currentBlock.NumberU64()),
 		Genesis:    pm.blockchain.Genesis().Hash(),
-		Config:     pm.blockchain.Config(),
+		Config:     chainConfig,
 		Head:       currentBlock.Hash(),
+		Consensus:  pm.getConsensusAlgorithm(),
 	}
+}
+
+// Quorum
+func (pm *ProtocolManager) getConsensusAlgorithm() string {
+	var consensusAlgo = pm.engine.ProtocolOld().Name
+	return consensusAlgo
 }
 
 func (pm *ProtocolManager) FindPeers(targets map[common.Address]struct{}) map[common.Address]consensus.Peer {

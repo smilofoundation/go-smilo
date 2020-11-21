@@ -1639,7 +1639,7 @@ func TestCheckpointEnforcement64Fast(t *testing.T)  { testCheckpointEnforcement(
 func TestCheckpointEnforcement64Light(t *testing.T) { testCheckpointEnforcement(t, 64, LightSync) }
 
 func testCheckpointEnforcement(t *testing.T, protocol int, mode SyncMode) {
-	//t.Parallel()
+	t.Parallel()
 
 	// Create a new tester with a particular hard coded checkpoint block
 	tester := newTester()
