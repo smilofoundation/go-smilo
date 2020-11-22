@@ -23,14 +23,15 @@ import (
 	"testing"
 	"time"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
+	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type testTxRelay struct {

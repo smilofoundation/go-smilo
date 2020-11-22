@@ -246,6 +246,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 			}
 
 			if err != nil {
+				log.Error("&*&*&*&*& state_transition TransitionDb, Got Vault message but Vault failed. Please report to SystemAdmin. ", "st.data", cmn.Bytes2Hex(st.data), "contractCreation", contractCreation, "isPrivate", isPrivate, "len(ret)", len(ret), "st.gasUsed", st.gasUsed(), "st.gasPrice", st.gasPrice, "sender.Address", sender.Address())
 				return nil, 0, false, nil
 			}
 		}

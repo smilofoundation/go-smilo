@@ -242,7 +242,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 	// Fail if we're trying to transfer more than the available balance
 	// transfer is only allowed on publicState, update it here to allow estimateGas to work
-	if !evm.Context.CanTransfer(evm.publicState, caller.Address(), value) {
+	if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
 		log.Debug("EVM.Call, CanTransfer, ErrInsufficientBalance, ", "from", caller.Address().Hex(), "to", addr.Hex(), "gas", gas, "value", value, "input", cmn.Bytes2Hex(input), "evm.smiloReadOnly", evm.smiloReadOnly, "IsPrivate", IsPrivate)
 		return nil, gas, ErrInsufficientBalance
 	}
@@ -278,14 +278,14 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 			}
 			// zero and (not read only or not vault), can transfer
 			// transfer is only allowed on publicState, update it here to allow estimateGas to work
-			evm.Transfer(evm.publicState, caller.Address(), to.Address(), value, evm.BlockNumber)
+			evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value, evm.BlockNumber)
 			log.Trace("EVM.Call, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		} else {
 			log.Trace("EVM.Call, Transfer, IGNORE, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 		}
 	} else {
 		// transfer is only allowed on publicState, update it here to allow estimateGas to work
-		evm.Transfer(evm.publicState, caller.Address(), to.Address(), value, evm.BlockNumber)
+		evm.Transfer(evm.StateDB, caller.Address(), to.Address(), value, evm.BlockNumber)
 		log.Trace("EVM.Call, Transfer, ", "IsPrivate", IsPrivate, "IsSmilo", evm.ChainConfig().IsSmilo, "value", value.Sign(), "smiloReadOnly", evm.smiloReadOnly)
 	}
 
@@ -430,7 +430,7 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 
 	var (
 		to       = AccountRef(addr)
-		snapshot = evm.StateDB.Snapshot()
+		snapshot = stateDB.Snapshot()
 	)
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.

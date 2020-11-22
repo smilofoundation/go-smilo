@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"go-smilo/src/blockchain/smilobft/light"
-
 	"github.com/ethereum/go-ethereum/common/mclock"
+
+	"go-smilo/src/blockchain/smilobft/light"
 )
 
 var (

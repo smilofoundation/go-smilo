@@ -26,6 +26,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
+	lru "github.com/hashicorp/golang-lru"
+
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -33,12 +39,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -210,6 +210,11 @@ func (lc *LightChain) Engine() consensus.Engine { return lc.engine }
 // Genesis returns the genesis block
 func (lc *LightChain) Genesis() *types.Block {
 	return lc.genesisBlock
+}
+
+// State returns a new mutable state based on the current HEAD block.
+func (bc *LightChain) State() (*state.StateDB, *state.StateDB, error) {
+	return nil, nil, errors.New("not implemented, needs client/server interface split")
 }
 
 func (lc *LightChain) StateCache() (state.Database, state.Database) {
@@ -427,11 +432,6 @@ func (lc *LightChain) HasHeader(hash common.Hash, number uint64) bool {
 	return lc.hc.HasHeader(hash, number)
 }
 
-// GetCanonicalHash returns the canonical hash for a given block number
-func (lc *LightChain) GetCanonicalHash(number uint64) common.Hash {
-	return lc.hc.GetCanonicalHash(number)
-}
-
 // GetBlockHashesFromHash retrieves a number of block hashes starting at a given
 // hash, fetching towards the genesis block.
 func (lc *LightChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []common.Hash {
@@ -444,6 +444,9 @@ func (lc *LightChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []com
 //
 // Note: ancestor == 0 returns the same block, 1 returns its parent and so on.
 func (lc *LightChain) GetAncestor(hash common.Hash, number, ancestor uint64, maxNonCanonical *uint64) (common.Hash, uint64) {
+	lc.chainmu.RLock()
+	defer lc.chainmu.RUnlock()
+
 	return lc.hc.GetAncestor(hash, number, ancestor, maxNonCanonical)
 }
 

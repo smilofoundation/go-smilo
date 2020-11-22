@@ -9,27 +9,18 @@ jobs:
     - stage: build
       os: osx
 
-  include:
-    - stage: build
-      os: linux
-      dist: xenial
-      go: 1.12.x
-      script:
-      - go run src/blockchain/smilobft/build/ci.go install
-      - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
-
     # These are the latest Go versions.
     - stage: build
       os: linux
       dist: xenial
-      go: 1.13.x
+      go: 1.15.x
       script:
         - go run src/blockchain/smilobft/build/ci.go install
         - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
 
     - stage: build
       os: osx
-      go: 1.13.x
+      go: 1.15.x
       osx_image: xcode11.3
       script:
         - echo "Increase the maximum number of open file descriptors on macOS"
@@ -43,12 +34,13 @@ jobs:
         - unset -f cd # workaround for https://github.com/travis-ci/travis-ci/issues/8703
         - go run src/blockchain/smilobft/build/ci.go install
         - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
+        - TEST_MODE=blackbox go test -v -race ./src/blockchain/smilobft/core -test.run TestPrivateTransactionBlackbox
 
     # This builder only tests code linters on latest version of Go
     - stage: lint
       os: linux
       dist: xenial
-      go: 1.13.x
+      go: 1.15.x
       env:
         - lint
       git:
@@ -60,7 +52,7 @@ jobs:
     - stage: build
       os: linux
       dist: xenial
-      go: 1.13.x
+      go: 1.15.x
       env:
         - TENDERMINT
       git:
@@ -76,7 +68,7 @@ jobs:
     - stage: build
       os: linux
       dist: xenial
-      go: 1.13.x
+      go: 1.15.x
       env:
         - TENDERMINT_SLOW
       git:
@@ -121,7 +113,7 @@ jobs:
     - stage: build
       os: linux
       dist: xenial
-      go: 1.13.x
+      go: 1.15.x
       env:
         - ubuntu-ppa
       git:

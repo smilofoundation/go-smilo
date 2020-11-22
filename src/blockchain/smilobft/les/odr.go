@@ -18,14 +18,12 @@ package les
 
 import (
 	"context"
-	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/light"
-
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 // LesOdr implements light.OdrBackend
@@ -123,11 +121,10 @@ func (odr *LesOdr) Retrieve(ctx context.Context, req light.OdrRequest) (err erro
 			return func() { lreq.Request(reqID, p) }
 		},
 	}
-	sent := mclock.Now()
+
 	if err = odr.retriever.retrieve(ctx, reqID, rq, func(p distPeer, msg *Msg) error { return lreq.Validate(odr.db, msg) }, odr.stop); err == nil {
 		// retrieved from network, store in db
 		req.StoreResult(odr.db)
-		requestRTT.Update(time.Duration(mclock.Now() - sent))
 	} else {
 		log.Debug("Failed to retrieve data from network", "err", err)
 	}

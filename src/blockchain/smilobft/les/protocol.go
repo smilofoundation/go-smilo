@@ -23,12 +23,11 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Constants to match up protocol versions and messages

@@ -20,14 +20,13 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 var sha3Nil = crypto.Keccak256Hash(nil)
@@ -62,7 +61,7 @@ func GetHeaderByNumber(ctx context.Context, odr OdrBackend, number uint64) (*typ
 		}
 	}
 	if number >= chtCount*odr.IndexerConfig().ChtSize {
-		return nil, errNoTrustedCht
+		return nil, ErrNoTrustedCht
 	}
 	r := &ChtRequest{ChtRoot: GetChtRoot(db, chtCount-1, sectionHead), ChtNum: chtCount - 1, BlockNum: number, Config: odr.IndexerConfig()}
 	if err := odr.Retrieve(ctx, r); err != nil {
@@ -126,7 +125,7 @@ func GetBlock(ctx context.Context, odr OdrBackend, hash common.Hash, number uint
 	// Retrieve the block header and body contents
 	header := rawdb.ReadHeader(odr.Database(), hash, number)
 	if header == nil {
-		return nil, errNoHeader
+		return nil, ErrNoHeader
 	}
 	body, err := GetBody(ctx, odr, hash, number)
 	if err != nil {
@@ -243,7 +242,7 @@ func GetBloomBits(ctx context.Context, odr OdrBackend, bitIdx uint, sectionIdxLi
 		} else {
 			// TODO(rjl493456442) Convert sectionIndex to BloomTrie relative index
 			if sectionIdx >= bloomTrieCount {
-				return nil, errNoTrustedBloomTrie
+				return nil, ErrNoTrustedBloomTrie
 			}
 			reqList = append(reqList, sectionIdx)
 			reqIdx = append(reqIdx, i)

@@ -70,8 +70,9 @@ type StateDB struct {
 	trie Trie
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
-	stateObjects      map[common.Address]*stateObject
-	stateObjectsDirty map[common.Address]struct{}
+	stateObjects        map[common.Address]*stateObject
+	stateObjectsPending map[common.Address]struct{} // State objects finalized but not yet written to the trie
+	stateObjectsDirty   map[common.Address]struct{} // State objects modified in the current execution
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
@@ -114,13 +115,14 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		return nil, err
 	}
 	return &StateDB{
-		db:                db,
-		trie:              tr,
-		stateObjects:      make(map[common.Address]*stateObject),
-		stateObjectsDirty: make(map[common.Address]struct{}),
-		logs:              make(map[common.Hash][]*types.Log),
-		preimages:         make(map[common.Hash][]byte),
-		journal:           newJournal(),
+		db:                  db,
+		trie:                tr,
+		stateObjects:        make(map[common.Address]*stateObject),
+		stateObjectsPending: make(map[common.Address]struct{}),
+		stateObjectsDirty:   make(map[common.Address]struct{}),
+		logs:                make(map[common.Hash][]*types.Log),
+		preimages:           make(map[common.Hash][]byte),
+		journal:             newJournal(),
 	}, nil
 }
 
@@ -144,6 +146,7 @@ func (s *StateDB) Reset(root common.Hash) error {
 	}
 	s.trie = tr
 	s.stateObjects = make(map[common.Address]*stateObject)
+	s.stateObjectsPending = make(map[common.Address]struct{})
 	s.stateObjectsDirty = make(map[common.Address]struct{})
 	s.thash = common.Hash{}
 	s.bhash = common.Hash{}
@@ -351,6 +354,7 @@ func (s *StateDB) HasSuicided(addr common.Address) bool {
 	return false
 }
 
+// Quorum
 // GetStorageRoot returns the root of the storage associated with the given address.
 func (s *StateDB) GetStorageRoot(addr common.Address) (common.Hash, error) {
 	so := s.getStateObject(addr)
@@ -497,19 +501,27 @@ func (s *StateDB) deleteStateObject(stateObject *stateObject) {
 		defer func(start time.Time) { s.AccountUpdates += time.Since(start) }(time.Now())
 	}
 	// Delete the account from the trie
-	stateObject.deleted = true
-
 	addr := stateObject.Address()
 	s.setError(s.trie.TryDelete(addr[:]))
 }
 
-// Retrieve a state object given by the address. Returns nil if not found.
-func (s *StateDB) getStateObject(addr common.Address) (stateObject *stateObject) {
-	// Prefer live objects
+// getStateObject retrieves a state object given by the address, returning nil if
+// the object is not found or was deleted in this execution context. If you need
+// to differentiate between non-existent/just-deleted, use getDeletedStateObject.
+func (s *StateDB) getStateObject(addr common.Address) *stateObject {
+	if obj := s.getDeletedStateObject(addr); obj != nil && !obj.deleted {
+		return obj
+	}
+	return nil
+}
+
+// getDeletedStateObject is similar to getStateObject, but instead of returning
+// nil for a deleted state object, it returns the actual object with the deleted
+// flag set. This is needed by the state journal to revert to the correct self-
+// destructed object instead of wiping all knowledge about the state object.
+func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
+	// Prefer live objects if any is available
 	if obj := s.stateObjects[addr]; obj != nil {
-		if obj.deleted {
-			return nil
-		}
 		return obj
 	}
 	// Track the amount of time wasted on loading the object from the database
@@ -540,7 +552,7 @@ func (s *StateDB) setStateObject(object *stateObject) {
 // Retrieve a state object or create a new state object if nil.
 func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 	stateObject := s.getStateObject(addr)
-	if stateObject == nil || stateObject.deleted {
+	if stateObject == nil {
 		stateObject, _ = s.createObject(addr)
 	}
 	return stateObject
@@ -549,7 +561,8 @@ func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 // createObject creates a new state object. If there is an existing account with
 // the given address, it is overwritten and returned as the second return value.
 func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) {
-	prev = s.getStateObject(addr)
+	prev = s.getDeletedStateObject(addr) // Note, prev might have been deleted, we need that!
+
 	newobj = newObject(s, addr, Account{})
 	newobj.setNonce(0) // sets the object to dirty
 	if prev == nil {
@@ -612,15 +625,16 @@ func (s *StateDB) ForEachStorage(addr common.Address, cb func(key, value common.
 func (s *StateDB) Copy() *StateDB {
 	// Copy all the basic fields, initialize the memory ones
 	state := &StateDB{
-		db:                s.db,
-		trie:              s.db.CopyTrie(s.trie),
-		stateObjects:      make(map[common.Address]*stateObject, len(s.journal.dirties)),
-		stateObjectsDirty: make(map[common.Address]struct{}, len(s.journal.dirties)),
-		refund:            s.refund,
-		logs:              make(map[common.Hash][]*types.Log, len(s.logs)),
-		logSize:           s.logSize,
-		preimages:         make(map[common.Hash][]byte, len(s.preimages)),
-		journal:           newJournal(),
+		db:                  s.db,
+		trie:                s.db.CopyTrie(s.trie),
+		stateObjects:        make(map[common.Address]*stateObject, len(s.journal.dirties)),
+		stateObjectsPending: make(map[common.Address]struct{}, len(s.stateObjectsPending)),
+		stateObjectsDirty:   make(map[common.Address]struct{}, len(s.journal.dirties)),
+		refund:              s.refund,
+		logs:                make(map[common.Hash][]*types.Log, len(s.logs)),
+		logSize:             s.logSize,
+		preimages:           make(map[common.Hash][]byte, len(s.preimages)),
+		journal:             newJournal(),
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range s.journal.dirties {
@@ -629,18 +643,29 @@ func (s *StateDB) Copy() *StateDB {
 		// in the stateObjects: OOG after touch on ripeMD prior to Byzantium. Thus, we need to check for
 		// nil
 		if object, exist := s.stateObjects[addr]; exist {
+			// Even though the original object is dirty, we are not copying the journal,
+			// so we need to make sure that anyside effect the journal would have caused
+			// during a commit (or similar op) is already applied to the copy.
 			state.stateObjects[addr] = object.deepCopy(state)
-			state.stateObjectsDirty[addr] = struct{}{}
+
+			state.stateObjectsDirty[addr] = struct{}{}   // Mark the copy dirty to force internal (code/state) commits
+			state.stateObjectsPending[addr] = struct{}{} // Mark the copy pending to force external (account) commits
 		}
 	}
 	// Above, we don't copy the actual journal. This means that if the copy is copied, the
 	// loop above will be a no-op, since the copy's journal is empty.
 	// Thus, here we iterate over stateObjects, to enable copies of copies
+	for addr := range s.stateObjectsPending {
+		if _, exist := state.stateObjects[addr]; !exist {
+			state.stateObjects[addr] = s.stateObjects[addr].deepCopy(state)
+		}
+		state.stateObjectsPending[addr] = struct{}{}
+	}
 	for addr := range s.stateObjectsDirty {
 		if _, exist := state.stateObjects[addr]; !exist {
 			state.stateObjects[addr] = s.stateObjects[addr].deepCopy(state)
-			state.stateObjectsDirty[addr] = struct{}{}
 		}
+		state.stateObjectsDirty[addr] = struct{}{}
 	}
 	for hash, logs := range s.logs {
 		cpy := make([]*types.Log, len(logs))
@@ -685,11 +710,12 @@ func (s *StateDB) GetRefund() uint64 {
 	return s.refund
 }
 
-// Finalise finalises the state by removing the self destructed objects
-// and clears the journal as well as the refunds.
+// Finalise finalises the state by removing the self destructed objects and clears
+// the journal as well as the refunds. Finalise, however, will not push any updates
+// into the tries just yet. Only IntermediateRoot or Commit will do that.
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	for addr := range s.journal.dirties {
-		stateObject, exist := s.stateObjects[addr]
+		obj, exist := s.stateObjects[addr]
 		if !exist {
 			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
 			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
@@ -699,13 +725,12 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 			// Thus, we can safely ignore it here
 			continue
 		}
-
-		if stateObject.suicided || (deleteEmptyObjects && stateObject.empty()) {
-			s.deleteStateObject(stateObject)
+		if obj.suicided || (deleteEmptyObjects && obj.empty()) {
+			obj.deleted = true
 		} else {
-			stateObject.updateRoot(s.db)
-			s.updateStateObject(stateObject)
+			obj.finalise()
 		}
+		s.stateObjectsPending[addr] = struct{}{}
 		s.stateObjectsDirty[addr] = struct{}{}
 	}
 	// Invalidate journal because reverting across transactions is not allowed.
@@ -716,8 +741,21 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 // It is called in between transactions to get the root hash that
 // goes into transaction receipts.
 func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
+	// Finalise all the dirty storage states and write them into the tries
 	s.Finalise(deleteEmptyObjects)
 
+	for addr := range s.stateObjectsPending {
+		obj := s.stateObjects[addr]
+		if obj.deleted {
+			s.deleteStateObject(obj)
+		} else {
+			obj.updateRoot(s.db)
+			s.updateStateObject(obj)
+		}
+	}
+	if len(s.stateObjectsPending) > 0 {
+		s.stateObjectsPending = make(map[common.Address]struct{})
+	}
 	// Track the amount of time wasted on hashing the account trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountHashes += time.Since(start) }(time.Now())
@@ -734,7 +772,7 @@ func (s *StateDB) Prepare(thash, bhash common.Hash, ti int) {
 }
 
 func (s *StateDB) clearJournalAndRefund() {
-	if s.journal == nil || len(s.journal.entries) > 0 {
+	if len(s.journal.entries) > 0 {
 		s.journal = newJournal()
 		s.refund = 0
 	}
@@ -742,40 +780,32 @@ func (s *StateDB) clearJournalAndRefund() {
 }
 
 // Commit writes the state to the underlying in-memory trie database.
-func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) {
-	defer s.clearJournalAndRefund()
+func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
+	// Finalize any pending changes and merge everything into the tries
+	s.IntermediateRoot(deleteEmptyObjects)
 
-	for addr := range s.journal.dirties {
-		s.stateObjectsDirty[addr] = struct{}{}
-	}
 	// Commit objects to the trie, measuring the elapsed time
-	for addr, stateObject := range s.stateObjects {
-		_, isDirty := s.stateObjectsDirty[addr]
-		switch {
-		case stateObject.suicided || (isDirty && deleteEmptyObjects && stateObject.empty()):
-			// If the object has been removed, don't bother syncing it
-			// and just mark it for deletion in the trie.
-			s.deleteStateObject(stateObject)
-		case isDirty:
+	for addr := range s.stateObjectsDirty {
+		if obj := s.stateObjects[addr]; !obj.deleted {
 			// Write any contract code associated with the state object
-			if stateObject.code != nil && stateObject.dirtyCode {
-				s.db.TrieDB().InsertBlob(common.BytesToHash(stateObject.CodeHash()), stateObject.code)
-				stateObject.dirtyCode = false
+			if obj.code != nil && obj.dirtyCode {
+				s.db.TrieDB().InsertBlob(common.BytesToHash(obj.CodeHash()), obj.code)
+				obj.dirtyCode = false
 			}
-			// Write any storage changes in the state object to its storage trie.
-			if err := stateObject.CommitTrie(s.db); err != nil {
+			// Write any storage changes in the state object to its storage trie
+			if err := obj.CommitTrie(s.db); err != nil {
 				return common.Hash{}, err
 			}
-			// Update the object in the main account trie.
-			s.updateStateObject(stateObject)
 		}
-		delete(s.stateObjectsDirty, addr)
+	}
+	if len(s.stateObjectsDirty) > 0 {
+		s.stateObjectsDirty = make(map[common.Address]struct{})
 	}
 	// Write the account trie changes, measuing the amount of wasted time
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountCommits += time.Since(start) }(time.Now())
 	}
-	root, err = s.trie.Commit(func(leaf []byte, parent common.Hash) error {
+	return s.trie.Commit(func(leaf []byte, parent common.Hash) error {
 		var account Account
 		if err := rlp.DecodeBytes(leaf, &account); err != nil {
 			return nil
@@ -789,5 +819,4 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		}
 		return nil
 	})
-	return root, err
 }

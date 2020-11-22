@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// Package light implements on-demand retrieval capable state and chain objects
+// for the Ethereum Light Client.
 package light
 
 import (
@@ -21,12 +23,12 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/ethdb"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // NoOdr is the default context passed to an ODR capable function when the ODR

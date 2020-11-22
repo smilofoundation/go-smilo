@@ -23,22 +23,23 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"go-smilo/src/blockchain/smilobft/consensus/istanbul"
-	tendermintPackageConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	istanbulBackend "go-smilo/src/blockchain/smilobft/consensus/istanbul/backend"
+	"go-smilo/src/blockchain/smilobft/consensus/sport"
 	sportBackend "go-smilo/src/blockchain/smilobft/consensus/sport/backend"
+	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
 	sportDAOBackend "go-smilo/src/blockchain/smilobft/consensus/sportdao/backend"
 	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
-	"go-smilo/src/blockchain/smilobft/consensus/sport"
-	"go-smilo/src/blockchain/smilobft/consensus/sportdao"
+	tendermintPackageConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/core/forkid"
 	"math/big"
 	"sort"
 	"sync"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 
@@ -114,7 +115,6 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	return pm, db, nil
 }
 
-
 // newTestProtocolManagerConsensus creates a new protocol manager for testing purposes,
 // that uses the specified consensus mechanism.
 func newTestProtocolManagerConsensus(consensusAlgo string,
@@ -123,7 +123,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 	sportConfig *params.SportConfig,
 	sportDAOConfig *params.SportDAOConfig,
 	tendermintConfig *params.TendermintConfig,
-	) (*ProtocolManager, ethdb.Database, error) {
+) (*ProtocolManager, ethdb.Database, error) {
 
 	var config = params.ChainConfig{}
 
@@ -154,7 +154,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 
 		nodeKey, _ := crypto.GenerateKey()
 
-		gspec.Config.Istanbul =  &params.IstanbulConfig{}
+		gspec.Config.Istanbul = &params.IstanbulConfig{}
 
 		engine = istanbulBackend.New(&istanbul, nodeKey, db, gspec.Config, nil)
 
@@ -167,7 +167,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 
 		nodeKey, _ := crypto.GenerateKey()
 
-		gspec.Config.Sport =  &params.SportConfig{}
+		gspec.Config.Sport = &params.SportConfig{}
 
 		engine = sportBackend.New(&smilobft, nodeKey, db)
 
@@ -180,7 +180,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 
 		nodeKey, _ := crypto.GenerateKey()
 
-		gspec.Config.SportDAO =  &params.SportDAOConfig{}
+		gspec.Config.SportDAO = &params.SportDAOConfig{}
 
 		engine = sportDAOBackend.New(&smilobftdao, nodeKey, db, gspec.Config, nil)
 
@@ -193,8 +193,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 
 		nodeKey, _ := crypto.GenerateKey()
 
-		gspec.Config.Tendermint =  &params.TendermintConfig{}
-
+		gspec.Config.Tendermint = &params.TendermintConfig{}
 
 		engine = tendermintBackend.New(&tendermint, nodeKey, db, gspec.Config, nil)
 
@@ -214,7 +213,6 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 	pm.Start(1000)
 	return pm, db, nil
 }
-
 
 // newTestProtocolManagerMust creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification

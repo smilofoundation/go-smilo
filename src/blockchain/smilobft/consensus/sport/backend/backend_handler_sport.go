@@ -40,7 +40,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	defer sb.coreMu.Unlock()
 
 	if msg.Code == smilobftMsg {
-		log.Debug("backend/backend_handler_sport.go, HandleMsg(), Gossip, smilobftMsg message, GOT IT!!! ", "msg", msg.String())
+		//log.Debug("backend/backend_handler_sport.go, HandleMsg(), Gossip, smilobftMsg message, GOT IT!!! ", "msg", msg.String())
 		if !sb.coreStarted {
 			return true, sport.ErrStoppedEngine
 		}

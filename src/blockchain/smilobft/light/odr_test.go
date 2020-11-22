@@ -24,6 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
@@ -33,11 +38,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/ethdb"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/trie"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 var (

@@ -48,11 +48,11 @@ func TestNodeInfo(t *testing.T) {
 
 	// Define the tests to be run
 	tests := []struct {
-		consensus      string
-		cliqueConfig   *params.CliqueConfig
-		istanbulConfig *params.IstanbulConfig
-		sportConfig *params.SportConfig
-		sportDAOConfig *params.SportDAOConfig
+		consensus        string
+		cliqueConfig     *params.CliqueConfig
+		istanbulConfig   *params.IstanbulConfig
+		sportConfig      *params.SportConfig
+		sportDAOConfig   *params.SportDAOConfig
 		tendermintConfig *params.TendermintConfig
 	}{
 		{"eth", nil, nil, nil, nil, nil},
@@ -71,7 +71,6 @@ func TestNodeInfo(t *testing.T) {
 	for i, tt := range tests {
 
 		pm, _, err := newTestProtocolManagerConsensus(tt.consensus, tt.cliqueConfig, tt.istanbulConfig, tt.sportConfig, tt.sportDAOConfig, tt.tendermintConfig)
-
 
 		if err == nil {
 			pmConsensus := pm.getConsensusAlgorithm()
@@ -641,11 +640,11 @@ func TestBroadcastBlock(t *testing.T) {
 
 func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	var (
-		evmux  = new(cmn.TypeMux)
-		pow    = ethash.NewFaker()
-		db     = rawdb.NewMemoryDatabase()
-		config = &params.ChainConfig{}
-		gspec  = &core.Genesis{Config: config}
+		evmux   = new(cmn.TypeMux)
+		pow     = ethash.NewFaker()
+		db      = rawdb.NewMemoryDatabase()
+		config  = &params.ChainConfig{}
+		gspec   = &core.Genesis{Config: config}
 		genesis = gspec.MustCommit(db)
 	)
 	config.AutonityContractConfig = &params.AutonityContractGenesis{}
@@ -666,7 +665,6 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	if err := config.AutonityContractConfig.AddDefault().Validate(); err != nil {
 		t.Fatal(err)
 	}
-
 
 	blockchain, err := core.NewBlockChain(db, nil, config, pow, vm.Config{}, nil)
 	if err != nil {
@@ -697,7 +695,7 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	doneCh := make(chan struct{}, totalPeers)
 	for _, peer := range peers {
 		go func(p *testPeer) {
-			if err := p2p.ExpectMsg(p.app, NewBlockMsg, &newBlockData{Block: chain[0], TD:  big.NewInt(131136)}); err != nil {
+			if err := p2p.ExpectMsg(p.app, NewBlockMsg, &newBlockData{Block: chain[0], TD: big.NewInt(131136)}); err != nil {
 				t.Log("eth/handler_test.go:688 p2p.ExpectMsg err", err)
 				errCh <- err
 			} else {

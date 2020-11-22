@@ -22,15 +22,16 @@ import (
 	"fmt"
 	"testing"
 
+	"go-smilo/src/blockchain/smilobft/core/rawdb"
+
+	"github.com/davecgh/go-spew/spew"
+
 	"go-smilo/src/blockchain/smilobft/consensus/ethash"
 	"go-smilo/src/blockchain/smilobft/core"
-	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/vm"
 	"go-smilo/src/blockchain/smilobft/params"
 	"go-smilo/src/blockchain/smilobft/trie"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func TestNodeIterator(t *testing.T) {
