@@ -3,7 +3,7 @@ go_import_path: go-smilo
 sudo: false
 jobs:
   allow_failures:
-    - stage: build
+    - stage: test
       env:
         - TENDERMINT_SLOW
     - stage: build
@@ -39,7 +39,7 @@ jobs:
         - TEST_MODE=blackbox go test -v -race ./src/blockchain/smilobft/core -test.run TestPrivateTransactionBlackbox
 
     # This builder only tests code linters on latest version of Go
-    - stage: lint
+    - stage: build
       os: linux
       dist: xenial
       go: 1.15.x
