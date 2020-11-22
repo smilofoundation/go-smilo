@@ -9,6 +9,7 @@ jobs:
     - stage: build
       os: osx
 
+  include:
     # These are the latest Go versions.
     - stage: build
       os: linux
