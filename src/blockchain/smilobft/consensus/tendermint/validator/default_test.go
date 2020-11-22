@@ -17,6 +17,7 @@
 package validator
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -151,39 +152,39 @@ func testEmptyValSet(t *testing.T) {
 
 func testAddAndRemoveValidator(t *testing.T) {
 	valSet := NewSet(ExtractValidators([]byte{}), config.RoundRobin)
-	if !valSet.AddValidator(common.BytesToAddress([]byte(string(2)))) {
+	if !valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
 		t.Error("the validator should be added")
 	}
-	if valSet.AddValidator(common.BytesToAddress([]byte(string(2)))) {
+	if valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
 		t.Error("the existing validator should not be added")
 	}
-	valSet.AddValidator(common.BytesToAddress([]byte(string(1))))
-	valSet.AddValidator(common.BytesToAddress([]byte(string(0))))
+	valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 1))))
+	valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 0))))
 	if len(valSet.List()) != 3 {
 		t.Error("the size of validator set should be 3")
 	}
 
 	for i, v := range valSet.List() {
-		expected := common.BytesToAddress([]byte(string(i)))
+		expected := common.BytesToAddress([]byte(fmt.Sprintf("%d", i)))
 		if v.Address() != expected {
 			t.Errorf("the order of validators is wrong: have %v, want %v", v.Address().Hex(), expected.Hex())
 		}
 	}
 
-	if !valSet.RemoveValidator(common.BytesToAddress([]byte(string(2)))) {
+	if !valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
 		t.Error("the validator should be removed")
 	}
-	if valSet.RemoveValidator(common.BytesToAddress([]byte(string(2)))) {
+	if valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
 		t.Error("the non-existing validator should not be removed")
 	}
 	if len(valSet.List()) != 2 {
 		t.Error("the size of validator set should be 2")
 	}
-	valSet.RemoveValidator(common.BytesToAddress([]byte(string(1))))
+	valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 1))))
 	if len(valSet.List()) != 1 {
 		t.Error("the size of validator set should be 1")
 	}
-	valSet.RemoveValidator(common.BytesToAddress([]byte(string(0))))
+	valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 0))))
 	if len(valSet.List()) != 0 {
 		t.Error("the size of validator set should be 0")
 	}

@@ -18,6 +18,7 @@
 package fullnode
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -146,32 +147,32 @@ func TestAddAndRemoveFullnode(t *testing.T) {
 	fullnodeSet := NewFullnodeSet(ExtractFullnodes(extraData), sportdao.RoundRobin)
 	require.Len(t, fullnodeSet.List(), 0, "Fullnodeset should start empty")
 
-	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(string(2))), "the fullnode 2 should be added")
+	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 2))), "the fullnode 2 should be added")
 
-	require.True(t, !fullnodeSet.AddFullnode(cmn.StringToAddress(string(2))), "the existing fullnode 2 should not be added")
+	require.True(t, !fullnodeSet.AddFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 2))), "the existing fullnode 2 should not be added")
 
-	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(string(1))), "the fullnode 1 should be added")
+	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 1))), "the fullnode 1 should be added")
 
-	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(string(0))), "the fullnode 0 should be added")
+	require.True(t, fullnodeSet.AddFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 0))), "the fullnode 0 should be added")
 
 	require.Len(t, fullnodeSet.List(), 3, "the size of fullnode set should be 3")
 
 	for i, v := range fullnodeSet.List() {
-		expected := cmn.StringToAddress(string(i))
+		expected := cmn.StringToAddress(fmt.Sprintf("%d", i))
 		require.Equal(t, expected, v.Address(), "Full node found is not correct.")
 	}
 
-	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(string(2))), "the fullnode should be removed")
+	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 2))), "the fullnode should be removed")
 
-	require.True(t, !fullnodeSet.RemoveFullnode(cmn.StringToAddress(string(2))), "the non-existing fullnode should not be removed")
+	require.True(t, !fullnodeSet.RemoveFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 2))), "the non-existing fullnode should not be removed")
 
 	require.Len(t, fullnodeSet.List(), 2, "the size of fullnode set should be 2")
 
-	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(string(1))), "the fullnode should be removed")
+	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 1))), "the fullnode should be removed")
 
 	require.Len(t, fullnodeSet.List(), 1, "the size of fullnode set should be 1")
 
-	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(string(0))), "the fullnode should be removed")
+	require.True(t, fullnodeSet.RemoveFullnode(cmn.StringToAddress(fmt.Sprintf("%d", 0))), "the fullnode should be removed")
 
 	require.Len(t, fullnodeSet.List(), 0, "the size of fullnode set should be 0")
 

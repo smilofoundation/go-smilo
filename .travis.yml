@@ -18,6 +18,7 @@ jobs:
       script:
         - go run src/blockchain/smilobft/build/ci.go install
         - go run src/blockchain/smilobft/build/ci.go test -coverage $TEST_PACKAGES
+        - TEST_MODE=blackbox go test -v -race ./src/blockchain/smilobft/core -test.run TestPrivateTransactionBlackbox
 
     - stage: build
       os: osx
@@ -50,7 +51,7 @@ jobs:
         - go run src/blockchain/smilobft/build/ci.go lint
 
     # This builder only tests tendermint consensus on latest version of Go
-    - stage: build
+    - stage: test
       os: linux
       dist: xenial
       go: 1.15.x
@@ -66,7 +67,7 @@ jobs:
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintLongRun
         - CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStopUpToFNodes
 
-    - stage: build
+    - stage: test
       os: linux
       dist: xenial
       go: 1.15.x
@@ -111,7 +112,7 @@ jobs:
 #        - bash <(curl -s https://codecov.io/bash) -t $(CODECOV_TOKEN)
 
     # This builder does the Ubuntu PPA upload
-    - stage: build
+    - stage: release
       os: linux
       dist: xenial
       go: 1.15.x

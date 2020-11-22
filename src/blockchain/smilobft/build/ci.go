@@ -418,7 +418,7 @@ func doLint(cmdline []string) {
 
 // downloadLinter downloads and unpacks golangci-lint.
 func downloadLinter(cachedir string) string {
-	const version = "1.22.2"
+	const version = "1.27.0"
 
 	csdb := build.MustLoadChecksums("src/blockchain/smilobft/build/checksums.txt")
 	base := fmt.Sprintf("golangci-lint-%s-%s-%s", version, runtime.GOOS, runtime.GOARCH)
