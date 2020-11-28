@@ -314,7 +314,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		log.Debug("############### state_transition, VM returned with NO error after executing evm, ", "contractCreation", contractCreation, "isPrivate", isPrivate, "leftoverGas", leftoverGas, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 	}
 
-	if st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil) {
+	if !isPrivate && st.evm.ChainConfig().AutonityContractConfig != nil && (st.evm.ChainConfig().Istanbul != nil || st.evm.ChainConfig().SportDAO != nil || st.evm.ChainConfig().Tendermint != nil) {
 
 		st.refundGas()
 		addr, innerErr := st.evm.ChainConfig().AutonityContractConfig.GetContractAddress()
@@ -336,7 +336,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 
 		//give back gas if no err on EVM && IsSmilo=true,IsGas=true,IsGasRefund=true
 		if vmerr == nil && isSmilo && isGas && isGasRefunded {
-			log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, ", "contractCreation", contractCreation, "isPrivate", isPrivate, "leftoverGas", leftoverGas, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
+			log.Debug("############### state_transition, give back gas if no err on EVM after executing evm.Call, isSmilo && isGas && isGasRefunded", "contractCreation", contractCreation, "isPrivate", isPrivate, "leftoverGas", leftoverGas, "len(ret)", len(ret), "st.gasUsed()", st.gasUsed(), "st.gasPrice", st.gasPrice)
 			st.refundGasSmiloVersion()
 			// miners do not get reward in gas for transactions on smilo
 			//st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice), st.evm.BlockNumber)

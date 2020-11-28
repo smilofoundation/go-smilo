@@ -383,7 +383,7 @@ func (self *worker) wait() {
 				log.BlockHash = block.Hash()
 			}
 
-			// write private transacions
+			// write private transactions
 			privateStateRoot, _ := work.privateState.Commit(self.chainConfig.IsEIP158(block.Number()))
 			core.WritePrivateStateRoot(self.chainDb, block.Root(), privateStateRoot)
 			allReceipts := mergeReceipts(work.receipts, work.vaultReceipts)
