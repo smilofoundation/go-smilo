@@ -32,7 +32,6 @@ func WritePrivateStateRoot(db ethdb.Database, blockRoot, root common.Hash) error
 	return db.Put(append(privateRootPrefix, blockRoot[:]...), root[:])
 }
 
-
 // GetPrivateBlockBloom retrieves the vault bloom associated with the given number.
 func GetPrivateBlockBloom(db ethdb.Database, number uint64) (bloom types.Bloom) {
 	data, _ := db.Get(append(privateBloomPrefix, encodeBlockNumber(number)...))
