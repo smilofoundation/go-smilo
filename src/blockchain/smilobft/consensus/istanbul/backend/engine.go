@@ -702,9 +702,5 @@ func (sb *Backend) SealHash(header *types.Header) common.Hash {
 
 // Protocol implements consensus.Engine.Protocol
 func (sb *Backend) ProtocolOld() consensus.Protocol {
-	return consensus.Protocol{
-		Name:     "istanbul",
-		Versions: []uint{64},
-		Lengths:  []uint64{18},
-	}
+	return consensus.IstanbulProtocol
 }

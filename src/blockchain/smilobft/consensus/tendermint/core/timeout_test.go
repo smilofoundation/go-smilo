@@ -2,18 +2,19 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"math/big"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/golang/mock/gomock"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
-	"go-smilo/src/blockchain/smilobft/core/types"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
-	"math/big"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestCore_measureMetricsOnStopTimer(t *testing.T) {

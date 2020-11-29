@@ -27,8 +27,6 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -143,7 +141,7 @@ var parseNodeTests = []struct {
 	{
 		// This test checks that errors from url.Parse are handled.
 		rawurl:    "://foo",
-		wantError: `parse ://foo: missing protocol scheme`,
+		wantError: `parse "://foo": missing protocol scheme`,
 	},
 }
 
@@ -154,8 +152,10 @@ func TestParseNode(t *testing.T) {
 			if err == nil {
 				t.Errorf("test %q:\n  got nil error, expected %#q", test.rawurl, test.wantError)
 				continue
+			} else if !strings.Contains(err.Error(), test.wantError) {
+				t.Errorf("test %q:\n  got error %#q, expected %#q", test.rawurl, err.Error(), test.wantError)
+				continue
 			}
-			require.Contains(t, err.Error(), test.wantError, "test %q:\n  got error %#q, expected %#q", test.rawurl, err.Error(), test.wantError)
 		} else {
 			if err != nil {
 				t.Errorf("test %q:\n  unexpected error: %v", test.rawurl, err)

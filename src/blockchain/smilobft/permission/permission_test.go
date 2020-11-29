@@ -29,13 +29,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind"
 	"go-smilo/src/blockchain/smilobft/accounts/abi/bind/backends"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/node"
 	pbind "go-smilo/src/blockchain/smilobft/permission/bind"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -147,10 +148,10 @@ func setup() {
 
 			Miner: miner.Config{
 				Etherbase: guardianAddress,
-				GasFloor: genesis.GasLimit * 9 / 10,
-				GasCeil:  genesis.GasLimit * 11 / 10,
-				GasPrice: big.NewInt(1),
-				Recommit: time.Second,
+				GasFloor:  genesis.GasLimit * 9 / 10,
+				GasCeil:   genesis.GasLimit * 11 / 10,
+				GasPrice:  big.NewInt(1),
+				Recommit:  time.Second,
 			},
 		}, nil)
 	}); err != nil {
@@ -319,12 +320,12 @@ func TestQuorumControlsAPI_ListAPIs(t *testing.T) {
 func TestQuorumControlsAPI_OrgAPIs(t *testing.T) {
 	testObject := typicalQuorumControlsAPI(t)
 	invalidTxa := ethapi.SendTxArgs{From: getArbitraryAccount()}
-	txa := ethapi.SendTxArgs{From: guardianAddress}
 
 	// test AddOrg
 	orgAdminKey, _ := crypto.GenerateKey()
 	orgAdminAddress := crypto.PubkeyToAddress(orgAdminKey.PublicKey)
 
+	txa := ethapi.SendTxArgs{From: guardianAddress}
 	_, err := testObject.AddOrg(arbitraryOrgToAdd, arbitraryNode1, orgAdminAddress, invalidTxa)
 	assert.Equal(t, err, errors.New("Invalid account id"))
 
@@ -547,13 +548,13 @@ func tmpKeyStore(encrypted bool) (string, *keystore.KeyStore, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	new := keystore.NewPlaintextKeyStore
+	newKs := keystore.NewPlaintextKeyStore
 	if encrypted {
-		new = func(kd string) *keystore.KeyStore {
+		newKs = func(kd string) *keystore.KeyStore {
 			return keystore.NewKeyStore(kd, keystore.LightScryptN, keystore.LightScryptP)
 		}
 	}
-	return d, new(d), err
+	return d, newKs(d), err
 }
 
 func TestPermissionCtrl_whenUpdateFile(t *testing.T) {

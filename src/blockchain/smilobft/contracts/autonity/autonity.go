@@ -87,7 +87,7 @@ func (ac *Contract) MeasureMetricsOfNetworkEconomic(header *types.Header, stateD
 	// pack the function which dump the data from contract.
 	input, err := ABI.Pack("dumpEconomicsMetricData")
 	if err != nil {
-		log.Warn("cannot pack the method: ", err.Error())
+		log.Warn("cannot pack the method: ", "err", err.Error())
 		return
 	}
 

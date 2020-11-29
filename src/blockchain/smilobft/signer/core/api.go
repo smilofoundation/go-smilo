@@ -21,22 +21,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/accounts/keystore"
+	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
+	"go-smilo/src/blockchain/smilobft/accounts/usbwallet"
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
+	"go-smilo/src/blockchain/smilobft/signer/storage"
 	"math/big"
 	"os"
 	"reflect"
-
-	"go-smilo/src/blockchain/smilobft/accounts/scwallet"
-	"go-smilo/src/blockchain/smilobft/signer/storage"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/keystore"
-	"go-smilo/src/blockchain/smilobft/accounts/usbwallet"
-	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 )
 
 const (
@@ -503,11 +501,17 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 	var (
 		err    error
 		result SignTxResponse
+		msgs   *ValidationMessages
 	)
-	msgs, err := api.validator.ValidateTransaction(methodSelector, &args)
-	if err != nil {
-		return nil, err
+	if args.IsPrivate {
+		msgs = new(ValidationMessages)
+	} else {
+		msgs, err = api.validator.ValidateTransaction(methodSelector, &args)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	// If we are in 'rejectMode', then reject rather than show the user warnings
 	if api.rejectMode {
 		if err := msgs.getWarnings(); err != nil {

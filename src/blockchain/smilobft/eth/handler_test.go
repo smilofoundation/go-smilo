@@ -43,38 +43,50 @@ import (
 	"go-smilo/src/blockchain/smilobft/params"
 )
 
-// Tests that protocol versions and modes of operations are matched up properly.
-func TestProtocolCompatibility(t *testing.T) {
-	// Define the compatibility chart
+// Tests that correct consensus mechanism details are returned in NodeInfo.
+func TestNodeInfo(t *testing.T) {
+
+	// Define the tests to be run
 	tests := []struct {
-		version    uint
-		mode       downloader.SyncMode
-		compatible bool
+		consensus        string
+		cliqueConfig     *params.CliqueConfig
+		istanbulConfig   *params.IstanbulConfig
+		sportConfig      *params.SportConfig
+		sportDAOConfig   *params.SportDAOConfig
+		tendermintConfig *params.TendermintConfig
 	}{
-		{61, downloader.FullSync, true}, {62, downloader.FullSync, true}, {63, downloader.FullSync, true},
-		{61, downloader.FastSync, false}, {62, downloader.FastSync, false}, {63, downloader.FastSync, true},
+		{"eth", nil, nil, nil, nil, nil},
+		{consensus: "clique", cliqueConfig: &params.CliqueConfig{Period: 1, Epoch: 1}},
+		{consensus: "istanbul", istanbulConfig: &params.IstanbulConfig{Epoch: 1, ProposerPolicy: 1, Ceil2Nby3Block: big.NewInt(10)}},
+		{consensus: "smilobft", sportConfig: &params.SportConfig{Epoch: 1, SpeakerPolicy: 1, MinFunds: 10}},
+		{consensus: "smilobftdao", sportDAOConfig: &params.SportDAOConfig{Epoch: 1, SpeakerPolicy: 1, MinFunds: 10}},
+		{consensus: "tendermint", tendermintConfig: &params.TendermintConfig{Epoch: 1, ProposerPolicy: 1, BlockPeriod: 10, RequestTimeout: 10}},
 	}
+
 	// Make sure anything we screw up is restored
 	backup := consensus.EthProtocol.Versions
 	defer func() { consensus.EthProtocol.Versions = backup }()
 
-	// Try all available compatibility configs and check for errors
+	// Try all available consensus mechanisms and check for errors
 	for i, tt := range tests {
-		consensus.EthProtocol.Versions = []uint{tt.version}
 
-		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil, nil)
-		if pm != nil {
-			defer pm.Stop()
+		pm, _, err := newTestProtocolManagerConsensus(tt.consensus, tt.cliqueConfig, tt.istanbulConfig, tt.sportConfig, tt.sportDAOConfig, tt.tendermintConfig)
+
+		if err == nil {
+			pmConsensus := pm.getConsensusAlgorithm()
+			if tt.consensus != pmConsensus {
+				t.Errorf("test %d: consensus type error, wanted %v but got %v", i, tt.consensus, pmConsensus)
+			}
+		} else {
+			t.Errorf("test %d: consensus type error %v", i, err)
 		}
-		if (err == nil && !tt.compatible) || (err != nil && tt.compatible) {
-			t.Errorf("test %d: compatibility mismatch: have error %v, want compatibility %v", i, err, tt.compatible)
-		}
+
 	}
 }
 
 // Tests that block headers can be retrieved from a remote chain based on user queries.
-func TestGetBlockHeaders62(t *testing.T) { testGetBlockHeaders(t, 62) }
 func TestGetBlockHeaders63(t *testing.T) { testGetBlockHeaders(t, 63) }
+func TestGetBlockHeaders64(t *testing.T) { testGetBlockHeaders(t, 64) }
 
 func testGetBlockHeaders(t *testing.T, protocol int) {
 	p2pPeer := newTestP2PPeer("peer")
@@ -234,8 +246,8 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 }
 
 // Tests that block contents can be retrieved from a remote chain based on their hashes.
-func TestGetBlockBodies62(t *testing.T) { testGetBlockBodies(t, 62) }
 func TestGetBlockBodies63(t *testing.T) { testGetBlockBodies(t, 63) }
+func TestGetBlockBodies64(t *testing.T) { testGetBlockBodies(t, 64) }
 
 func testGetBlockBodies(t *testing.T, protocol int) {
 	p2pPeer := newTestP2PPeer("peer")
@@ -309,6 +321,7 @@ func testGetBlockBodies(t *testing.T, protocol int) {
 
 // Tests that the node state database can be retrieved based on hashes.
 func TestGetNodeData63(t *testing.T) { testGetNodeData(t, 63) }
+func TestGetNodeData64(t *testing.T) { testGetNodeData(t, 64) }
 
 func testGetNodeData(t *testing.T, protocol int) {
 	// Define three accounts to simulate transactions with
@@ -407,6 +420,7 @@ func testGetNodeData(t *testing.T, protocol int) {
 
 // Tests that the transaction receipts can be retrieved based on hashes.
 func TestGetReceipt63(t *testing.T) { testGetReceipt(t, 63) }
+func TestGetReceipt64(t *testing.T) { testGetReceipt(t, 64) }
 
 func testGetReceipt(t *testing.T, protocol int) {
 	// Define three accounts to simulate transactions with
@@ -470,7 +484,6 @@ func testGetReceipt(t *testing.T, protocol int) {
 // challenge to validate each other's chains. Hash mismatches, or missing ones
 // during a fast sync should lead to the peer getting dropped.
 func TestCheckpointChallenge(t *testing.T) {
-	t.Skip() // failing with handler_test.go:598: peer count mismatch: have 1, want 0 - only on macos ?
 	tests := []struct {
 		syncmode   downloader.SyncMode
 		checkpoint bool
@@ -627,11 +640,12 @@ func TestBroadcastBlock(t *testing.T) {
 
 func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	var (
-		evmux  = new(cmn.TypeMux)
-		pow    = ethash.NewFaker()
-		db     = rawdb.NewMemoryDatabase()
-		config = &params.ChainConfig{}
-		gspec  = &core.Genesis{Config: config}
+		evmux   = new(cmn.TypeMux)
+		pow     = ethash.NewFaker()
+		db      = rawdb.NewMemoryDatabase()
+		config  = &params.ChainConfig{}
+		gspec   = &core.Genesis{Config: config}
+		genesis = gspec.MustCommit(db)
 	)
 	config.AutonityContractConfig = &params.AutonityContractGenesis{}
 	config.Istanbul = &params.IstanbulConfig{}
@@ -651,8 +665,6 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	if err := config.AutonityContractConfig.AddDefault().Validate(); err != nil {
 		t.Fatal(err)
 	}
-
-	genesis := gspec.MustCommit(db)
 
 	blockchain, err := core.NewBlockChain(db, nil, config, pow, vm.Config{}, nil)
 	if err != nil {
@@ -683,15 +695,15 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	doneCh := make(chan struct{}, totalPeers)
 	for _, peer := range peers {
 		go func(p *testPeer) {
-			if expectErr := p2p.ExpectMsg(p.app, NewBlockMsg, &newBlockData{Block: chain[0], TD: new(big.Int).Add(genesis.Difficulty(), chain[0].Difficulty())}); expectErr != nil {
-				//t.Log("eth/handler_test.go:635 p2p.ExpectMsg err", expectErr)
-				errCh <- expectErr
+			if err := p2p.ExpectMsg(p.app, NewBlockMsg, &newBlockData{Block: chain[0], TD: big.NewInt(131136)}); err != nil {
+				t.Log("eth/handler_test.go:688 p2p.ExpectMsg err", err)
+				errCh <- err
 			} else {
 				doneCh <- struct{}{}
 			}
 		}(peer)
 	}
-	timeout := time.After(600 * time.Millisecond)
+	timeout := time.After(300 * time.Millisecond)
 	var receivedCount int
 outer:
 	for {

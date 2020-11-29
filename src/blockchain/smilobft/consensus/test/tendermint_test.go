@@ -255,7 +255,7 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			st,_, _ := validator.service.BlockChain().State()
+			st, _, _ := validator.service.BlockChain().State()
 			if block.NumberU64() == 1 && st.GetBalance(addr).Uint64() != 0 {
 				t.Fatal("incorrect balance on the first block")
 			}
@@ -266,7 +266,7 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			st,_, _ := validator.service.BlockChain().State()
+			st, _, _ := validator.service.BlockChain().State()
 
 			if block.NumberU64() == 1 && prevBlockBalance != 0 {
 				t.Fatal("incorrect balance on the first block")
@@ -367,7 +367,7 @@ func TestCheckBlockWithSmallFee(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			st, _,_ := validator.service.BlockChain().State()
+			st, _, _ := validator.service.BlockChain().State()
 
 			if block.NumberU64() == 1 && prevBlockBalance != 0 {
 				t.Fatal("incorrect balance on the first block")
@@ -512,7 +512,6 @@ func TestTendermintStartStopFNodes(t *testing.T) {
 	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
 	}
-
 
 	cases := []*testCase{
 		{
@@ -1487,7 +1486,7 @@ func sendTransactions(t *testing.T, test *testCase, validators []*testNode, txPe
 			}
 
 			//skip comparing hashes with 0x
-			if validator.blocks[uint64(i)].hash.String() == emptyHash ||  blockHash.String() == emptyHash {
+			if validator.blocks[uint64(i)].hash.String() == emptyHash || blockHash.String() == emptyHash {
 				continue
 			}
 

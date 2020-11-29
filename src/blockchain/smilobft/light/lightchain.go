@@ -217,7 +217,7 @@ func (bc *LightChain) State() (*state.StateDB, *state.StateDB, error) {
 	return nil, nil, errors.New("not implemented, needs client/server interface split")
 }
 
-func (lc *LightChain) StateCache() state.Database {
+func (lc *LightChain) StateCache() (state.Database, state.Database) {
 	panic("not implemented")
 }
 

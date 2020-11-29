@@ -27,7 +27,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	pcsc "github.com/gballet/go-libpcsclite"
-	ecdh "github.com/wsddn/go-ecdh"
+	"github.com/wsddn/go-ecdh"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/text/unicode/norm"
 )

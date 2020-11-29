@@ -99,8 +99,8 @@ func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan s
 	// Extract some data from the header
 	var (
 		header  = block.Header()
-		hash    = header.HashNoNonce().Bytes()
-		target  = new(big.Int).Div(maxUint256, header.Difficulty)
+		hash    = ethash.SealHash(header).Bytes()
+		target  = new(big.Int).Div(two256, header.Difficulty)
 		number  = header.Number.Uint64()
 		dataset = ethash.dataset(number)
 	)

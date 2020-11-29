@@ -18,12 +18,11 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
-
-	"go-smilo/src/blockchain/smilobft/internal/ethapi"
 )
 
 type AuditLogger struct {

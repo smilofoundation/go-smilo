@@ -27,6 +27,7 @@ import (
 
 type BlackboxVault interface {
 	Post(data []byte, from string, to []string) ([]byte, error)
+	StoreRaw(data []byte, from string) ([]byte, error)
 	PostRawTransaction(data []byte, to []string) ([]byte, error)
 	Get(data []byte) ([]byte, error)
 }

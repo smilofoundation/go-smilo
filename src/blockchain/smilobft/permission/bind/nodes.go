@@ -40,6 +40,7 @@ func DeployNodeManager(auth *bind.TransactOpts, backend bind.ContractBackend, _p
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
+
 	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(NodeManagerBin), backend, _permUpgradable)
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -191,7 +192,7 @@ func (_NodeManager *NodeManagerTransactorRaw) Transact(opts *bind.TransactOpts, 
 
 // GetNodeDetails is a free data retrieval call binding the contract method 0x3f0e0e47.
 //
-// Solidity: function getNodeDetails(enodeId string) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetails(string enodeId) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerCaller) GetNodeDetails(opts *bind.CallOpts, enodeId string) (struct {
 	OrgId      string
 	EnodeId    string
@@ -209,7 +210,7 @@ func (_NodeManager *NodeManagerCaller) GetNodeDetails(opts *bind.CallOpts, enode
 
 // GetNodeDetails is a free data retrieval call binding the contract method 0x3f0e0e47.
 //
-// Solidity: function getNodeDetails(enodeId string) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetails(string enodeId) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerSession) GetNodeDetails(enodeId string) (struct {
 	OrgId      string
 	EnodeId    string
@@ -220,7 +221,7 @@ func (_NodeManager *NodeManagerSession) GetNodeDetails(enodeId string) (struct {
 
 // GetNodeDetails is a free data retrieval call binding the contract method 0x3f0e0e47.
 //
-// Solidity: function getNodeDetails(enodeId string) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetails(string enodeId) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerCallerSession) GetNodeDetails(enodeId string) (struct {
 	OrgId      string
 	EnodeId    string
@@ -231,7 +232,7 @@ func (_NodeManager *NodeManagerCallerSession) GetNodeDetails(enodeId string) (st
 
 // GetNodeDetailsFromIndex is a free data retrieval call binding the contract method 0x97c07a9b.
 //
-// Solidity: function getNodeDetailsFromIndex(_nodeIndex uint256) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetailsFromIndex(uint256 _nodeIndex) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerCaller) GetNodeDetailsFromIndex(opts *bind.CallOpts, _nodeIndex *big.Int) (struct {
 	OrgId      string
 	EnodeId    string
@@ -249,7 +250,7 @@ func (_NodeManager *NodeManagerCaller) GetNodeDetailsFromIndex(opts *bind.CallOp
 
 // GetNodeDetailsFromIndex is a free data retrieval call binding the contract method 0x97c07a9b.
 //
-// Solidity: function getNodeDetailsFromIndex(_nodeIndex uint256) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetailsFromIndex(uint256 _nodeIndex) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerSession) GetNodeDetailsFromIndex(_nodeIndex *big.Int) (struct {
 	OrgId      string
 	EnodeId    string
@@ -260,7 +261,7 @@ func (_NodeManager *NodeManagerSession) GetNodeDetailsFromIndex(_nodeIndex *big.
 
 // GetNodeDetailsFromIndex is a free data retrieval call binding the contract method 0x97c07a9b.
 //
-// Solidity: function getNodeDetailsFromIndex(_nodeIndex uint256) constant returns(_orgId string, _enodeId string, _nodeStatus uint256)
+// Solidity: function getNodeDetailsFromIndex(uint256 _nodeIndex) constant returns(string _orgId, string _enodeId, uint256 _nodeStatus)
 func (_NodeManager *NodeManagerCallerSession) GetNodeDetailsFromIndex(_nodeIndex *big.Int) (struct {
 	OrgId      string
 	EnodeId    string
@@ -297,105 +298,105 @@ func (_NodeManager *NodeManagerCallerSession) GetNumberOfNodes() (*big.Int, erro
 
 // AddAdminNode is a paid mutator transaction binding the contract method 0xe3b09d84.
 //
-// Solidity: function addAdminNode(_enodeId string, _orgId string) returns()
+// Solidity: function addAdminNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactor) AddAdminNode(opts *bind.TransactOpts, _enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.contract.Transact(opts, "addAdminNode", _enodeId, _orgId)
 }
 
 // AddAdminNode is a paid mutator transaction binding the contract method 0xe3b09d84.
 //
-// Solidity: function addAdminNode(_enodeId string, _orgId string) returns()
+// Solidity: function addAdminNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerSession) AddAdminNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddAdminNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // AddAdminNode is a paid mutator transaction binding the contract method 0xe3b09d84.
 //
-// Solidity: function addAdminNode(_enodeId string, _orgId string) returns()
+// Solidity: function addAdminNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactorSession) AddAdminNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddAdminNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // AddNode is a paid mutator transaction binding the contract method 0xa97a4406.
 //
-// Solidity: function addNode(_enodeId string, _orgId string) returns()
+// Solidity: function addNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactor) AddNode(opts *bind.TransactOpts, _enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.contract.Transact(opts, "addNode", _enodeId, _orgId)
 }
 
 // AddNode is a paid mutator transaction binding the contract method 0xa97a4406.
 //
-// Solidity: function addNode(_enodeId string, _orgId string) returns()
+// Solidity: function addNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerSession) AddNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // AddNode is a paid mutator transaction binding the contract method 0xa97a4406.
 //
-// Solidity: function addNode(_enodeId string, _orgId string) returns()
+// Solidity: function addNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactorSession) AddNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // AddOrgNode is a paid mutator transaction binding the contract method 0x3f5e1a45.
 //
-// Solidity: function addOrgNode(_enodeId string, _orgId string) returns()
+// Solidity: function addOrgNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactor) AddOrgNode(opts *bind.TransactOpts, _enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.contract.Transact(opts, "addOrgNode", _enodeId, _orgId)
 }
 
 // AddOrgNode is a paid mutator transaction binding the contract method 0x3f5e1a45.
 //
-// Solidity: function addOrgNode(_enodeId string, _orgId string) returns()
+// Solidity: function addOrgNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerSession) AddOrgNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddOrgNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // AddOrgNode is a paid mutator transaction binding the contract method 0x3f5e1a45.
 //
-// Solidity: function addOrgNode(_enodeId string, _orgId string) returns()
+// Solidity: function addOrgNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactorSession) AddOrgNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.AddOrgNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // ApproveNode is a paid mutator transaction binding the contract method 0x86bc3652.
 //
-// Solidity: function approveNode(_enodeId string, _orgId string) returns()
+// Solidity: function approveNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactor) ApproveNode(opts *bind.TransactOpts, _enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.contract.Transact(opts, "approveNode", _enodeId, _orgId)
 }
 
 // ApproveNode is a paid mutator transaction binding the contract method 0x86bc3652.
 //
-// Solidity: function approveNode(_enodeId string, _orgId string) returns()
+// Solidity: function approveNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerSession) ApproveNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.ApproveNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // ApproveNode is a paid mutator transaction binding the contract method 0x86bc3652.
 //
-// Solidity: function approveNode(_enodeId string, _orgId string) returns()
+// Solidity: function approveNode(string _enodeId, string _orgId) returns()
 func (_NodeManager *NodeManagerTransactorSession) ApproveNode(_enodeId string, _orgId string) (*types.Transaction, error) {
 	return _NodeManager.Contract.ApproveNode(&_NodeManager.TransactOpts, _enodeId, _orgId)
 }
 
 // UpdateNodeStatus is a paid mutator transaction binding the contract method 0x0cc50146.
 //
-// Solidity: function updateNodeStatus(_enodeId string, _orgId string, _action uint256) returns()
+// Solidity: function updateNodeStatus(string _enodeId, string _orgId, uint256 _action) returns()
 func (_NodeManager *NodeManagerTransactor) UpdateNodeStatus(opts *bind.TransactOpts, _enodeId string, _orgId string, _action *big.Int) (*types.Transaction, error) {
 	return _NodeManager.contract.Transact(opts, "updateNodeStatus", _enodeId, _orgId, _action)
 }
 
 // UpdateNodeStatus is a paid mutator transaction binding the contract method 0x0cc50146.
 //
-// Solidity: function updateNodeStatus(_enodeId string, _orgId string, _action uint256) returns()
+// Solidity: function updateNodeStatus(string _enodeId, string _orgId, uint256 _action) returns()
 func (_NodeManager *NodeManagerSession) UpdateNodeStatus(_enodeId string, _orgId string, _action *big.Int) (*types.Transaction, error) {
 	return _NodeManager.Contract.UpdateNodeStatus(&_NodeManager.TransactOpts, _enodeId, _orgId, _action)
 }
 
 // UpdateNodeStatus is a paid mutator transaction binding the contract method 0x0cc50146.
 //
-// Solidity: function updateNodeStatus(_enodeId string, _orgId string, _action uint256) returns()
+// Solidity: function updateNodeStatus(string _enodeId, string _orgId, uint256 _action) returns()
 func (_NodeManager *NodeManagerTransactorSession) UpdateNodeStatus(_enodeId string, _orgId string, _action *big.Int) (*types.Transaction, error) {
 	return _NodeManager.Contract.UpdateNodeStatus(&_NodeManager.TransactOpts, _enodeId, _orgId, _action)
 }
@@ -476,7 +477,7 @@ type NodeManagerNodeActivated struct {
 
 // FilterNodeActivated is a free log retrieval operation binding the contract event 0x49796be3ca168a59c8ae46c75a36a9bb3a84753d3e12a812f93ae010e783b14f.
 //
-// Solidity: e NodeActivated(_enodeId string, _orgId string)
+// Solidity: event NodeActivated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeActivated(opts *bind.FilterOpts) (*NodeManagerNodeActivatedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeActivated")
@@ -488,7 +489,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeActivated(opts *bind.FilterOp
 
 // WatchNodeActivated is a free log subscription operation binding the contract event 0x49796be3ca168a59c8ae46c75a36a9bb3a84753d3e12a812f93ae010e783b14f.
 //
-// Solidity: e NodeActivated(_enodeId string, _orgId string)
+// Solidity: event NodeActivated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeActivated(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeActivated) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeActivated")
@@ -521,6 +522,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeActivated(opts *bind.WatchOpts
 			}
 		}
 	}), nil
+}
+
+// ParseNodeActivated is a log parse operation binding the contract event 0x49796be3ca168a59c8ae46c75a36a9bb3a84753d3e12a812f93ae010e783b14f.
+//
+// Solidity: event NodeActivated(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeActivated(log types.Log) (*NodeManagerNodeActivated, error) {
+	event := new(NodeManagerNodeActivated)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeActivated", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeApprovedIterator is returned from FilterNodeApproved and is used to iterate over the raw logs and unpacked data for NodeApproved events raised by the NodeManager contract.
@@ -599,7 +611,7 @@ type NodeManagerNodeApproved struct {
 
 // FilterNodeApproved is a free log retrieval operation binding the contract event 0x0413ce00d5de406d9939003416263a7530eaeb13f9d281c8baeba1601def960d.
 //
-// Solidity: e NodeApproved(_enodeId string, _orgId string)
+// Solidity: event NodeApproved(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeApproved(opts *bind.FilterOpts) (*NodeManagerNodeApprovedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeApproved")
@@ -611,7 +623,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeApproved(opts *bind.FilterOpt
 
 // WatchNodeApproved is a free log subscription operation binding the contract event 0x0413ce00d5de406d9939003416263a7530eaeb13f9d281c8baeba1601def960d.
 //
-// Solidity: e NodeApproved(_enodeId string, _orgId string)
+// Solidity: event NodeApproved(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeApproved(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeApproved) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeApproved")
@@ -644,6 +656,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeApproved(opts *bind.WatchOpts,
 			}
 		}
 	}), nil
+}
+
+// ParseNodeApproved is a log parse operation binding the contract event 0x0413ce00d5de406d9939003416263a7530eaeb13f9d281c8baeba1601def960d.
+//
+// Solidity: event NodeApproved(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeApproved(log types.Log) (*NodeManagerNodeApproved, error) {
+	event := new(NodeManagerNodeApproved)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeApproved", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeBlacklistedIterator is returned from FilterNodeBlacklisted and is used to iterate over the raw logs and unpacked data for NodeBlacklisted events raised by the NodeManager contract.
@@ -722,7 +745,7 @@ type NodeManagerNodeBlacklisted struct {
 
 // FilterNodeBlacklisted is a free log retrieval operation binding the contract event 0x4714623279994517c446c8fb72c3fdaca26434da1e2490d3976fe0cd880cfa7a.
 //
-// Solidity: e NodeBlacklisted(_enodeId string, _orgId string)
+// Solidity: event NodeBlacklisted(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeBlacklisted(opts *bind.FilterOpts) (*NodeManagerNodeBlacklistedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeBlacklisted")
@@ -734,7 +757,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeBlacklisted(opts *bind.Filter
 
 // WatchNodeBlacklisted is a free log subscription operation binding the contract event 0x4714623279994517c446c8fb72c3fdaca26434da1e2490d3976fe0cd880cfa7a.
 //
-// Solidity: e NodeBlacklisted(_enodeId string, _orgId string)
+// Solidity: event NodeBlacklisted(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeBlacklisted(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeBlacklisted) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeBlacklisted")
@@ -767,6 +790,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeBlacklisted(opts *bind.WatchOp
 			}
 		}
 	}), nil
+}
+
+// ParseNodeBlacklisted is a log parse operation binding the contract event 0x4714623279994517c446c8fb72c3fdaca26434da1e2490d3976fe0cd880cfa7a.
+//
+// Solidity: event NodeBlacklisted(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeBlacklisted(log types.Log) (*NodeManagerNodeBlacklisted, error) {
+	event := new(NodeManagerNodeBlacklisted)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeBlacklisted", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeDeactivatedIterator is returned from FilterNodeDeactivated and is used to iterate over the raw logs and unpacked data for NodeDeactivated events raised by the NodeManager contract.
@@ -845,7 +879,7 @@ type NodeManagerNodeDeactivated struct {
 
 // FilterNodeDeactivated is a free log retrieval operation binding the contract event 0xc6c3720fe673e87bb26e06be713d514278aa94c3939cfe7c64b9bea4d486824a.
 //
-// Solidity: e NodeDeactivated(_enodeId string, _orgId string)
+// Solidity: event NodeDeactivated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeDeactivated(opts *bind.FilterOpts) (*NodeManagerNodeDeactivatedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeDeactivated")
@@ -857,7 +891,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeDeactivated(opts *bind.Filter
 
 // WatchNodeDeactivated is a free log subscription operation binding the contract event 0xc6c3720fe673e87bb26e06be713d514278aa94c3939cfe7c64b9bea4d486824a.
 //
-// Solidity: e NodeDeactivated(_enodeId string, _orgId string)
+// Solidity: event NodeDeactivated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeDeactivated(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeDeactivated) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeDeactivated")
@@ -890,6 +924,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeDeactivated(opts *bind.WatchOp
 			}
 		}
 	}), nil
+}
+
+// ParseNodeDeactivated is a log parse operation binding the contract event 0xc6c3720fe673e87bb26e06be713d514278aa94c3939cfe7c64b9bea4d486824a.
+//
+// Solidity: event NodeDeactivated(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeDeactivated(log types.Log) (*NodeManagerNodeDeactivated, error) {
+	event := new(NodeManagerNodeDeactivated)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeDeactivated", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeProposedIterator is returned from FilterNodeProposed and is used to iterate over the raw logs and unpacked data for NodeProposed events raised by the NodeManager contract.
@@ -968,7 +1013,7 @@ type NodeManagerNodeProposed struct {
 
 // FilterNodeProposed is a free log retrieval operation binding the contract event 0xb1a7eec7dd1a516c3132d6d1f770758b19aa34c3a07c138caf662688b7e3556f.
 //
-// Solidity: e NodeProposed(_enodeId string, _orgId string)
+// Solidity: event NodeProposed(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeProposed(opts *bind.FilterOpts) (*NodeManagerNodeProposedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeProposed")
@@ -980,7 +1025,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeProposed(opts *bind.FilterOpt
 
 // WatchNodeProposed is a free log subscription operation binding the contract event 0xb1a7eec7dd1a516c3132d6d1f770758b19aa34c3a07c138caf662688b7e3556f.
 //
-// Solidity: e NodeProposed(_enodeId string, _orgId string)
+// Solidity: event NodeProposed(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeProposed(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeProposed) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeProposed")
@@ -1013,6 +1058,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeProposed(opts *bind.WatchOpts,
 			}
 		}
 	}), nil
+}
+
+// ParseNodeProposed is a log parse operation binding the contract event 0xb1a7eec7dd1a516c3132d6d1f770758b19aa34c3a07c138caf662688b7e3556f.
+//
+// Solidity: event NodeProposed(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeProposed(log types.Log) (*NodeManagerNodeProposed, error) {
+	event := new(NodeManagerNodeProposed)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeProposed", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeRecoveryCompletedIterator is returned from FilterNodeRecoveryCompleted and is used to iterate over the raw logs and unpacked data for NodeRecoveryCompleted events raised by the NodeManager contract.
@@ -1091,7 +1147,7 @@ type NodeManagerNodeRecoveryCompleted struct {
 
 // FilterNodeRecoveryCompleted is a free log retrieval operation binding the contract event 0x787d7bc525e7c4658c64e3e456d974a1be21cc196e8162a4bf1337a12cb38dac.
 //
-// Solidity: e NodeRecoveryCompleted(_enodeId string, _orgId string)
+// Solidity: event NodeRecoveryCompleted(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeRecoveryCompleted(opts *bind.FilterOpts) (*NodeManagerNodeRecoveryCompletedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeRecoveryCompleted")
@@ -1103,7 +1159,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeRecoveryCompleted(opts *bind.
 
 // WatchNodeRecoveryCompleted is a free log subscription operation binding the contract event 0x787d7bc525e7c4658c64e3e456d974a1be21cc196e8162a4bf1337a12cb38dac.
 //
-// Solidity: e NodeRecoveryCompleted(_enodeId string, _orgId string)
+// Solidity: event NodeRecoveryCompleted(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeRecoveryCompleted(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeRecoveryCompleted) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeRecoveryCompleted")
@@ -1136,6 +1192,17 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeRecoveryCompleted(opts *bind.W
 			}
 		}
 	}), nil
+}
+
+// ParseNodeRecoveryCompleted is a log parse operation binding the contract event 0x787d7bc525e7c4658c64e3e456d974a1be21cc196e8162a4bf1337a12cb38dac.
+//
+// Solidity: event NodeRecoveryCompleted(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeRecoveryCompleted(log types.Log) (*NodeManagerNodeRecoveryCompleted, error) {
+	event := new(NodeManagerNodeRecoveryCompleted)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeRecoveryCompleted", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }
 
 // NodeManagerNodeRecoveryInitiatedIterator is returned from FilterNodeRecoveryInitiated and is used to iterate over the raw logs and unpacked data for NodeRecoveryInitiated events raised by the NodeManager contract.
@@ -1214,7 +1281,7 @@ type NodeManagerNodeRecoveryInitiated struct {
 
 // FilterNodeRecoveryInitiated is a free log retrieval operation binding the contract event 0xfd385c618a1e89d01fb9a21780846793e282e8bc0b60caf6ccb3e422d543fbfb.
 //
-// Solidity: e NodeRecoveryInitiated(_enodeId string, _orgId string)
+// Solidity: event NodeRecoveryInitiated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) FilterNodeRecoveryInitiated(opts *bind.FilterOpts) (*NodeManagerNodeRecoveryInitiatedIterator, error) {
 
 	logs, sub, err := _NodeManager.contract.FilterLogs(opts, "NodeRecoveryInitiated")
@@ -1226,7 +1293,7 @@ func (_NodeManager *NodeManagerFilterer) FilterNodeRecoveryInitiated(opts *bind.
 
 // WatchNodeRecoveryInitiated is a free log subscription operation binding the contract event 0xfd385c618a1e89d01fb9a21780846793e282e8bc0b60caf6ccb3e422d543fbfb.
 //
-// Solidity: e NodeRecoveryInitiated(_enodeId string, _orgId string)
+// Solidity: event NodeRecoveryInitiated(string _enodeId, string _orgId)
 func (_NodeManager *NodeManagerFilterer) WatchNodeRecoveryInitiated(opts *bind.WatchOpts, sink chan<- *NodeManagerNodeRecoveryInitiated) (event.Subscription, error) {
 
 	logs, sub, err := _NodeManager.contract.WatchLogs(opts, "NodeRecoveryInitiated")
@@ -1259,4 +1326,15 @@ func (_NodeManager *NodeManagerFilterer) WatchNodeRecoveryInitiated(opts *bind.W
 			}
 		}
 	}), nil
+}
+
+// ParseNodeRecoveryInitiated is a log parse operation binding the contract event 0xfd385c618a1e89d01fb9a21780846793e282e8bc0b60caf6ccb3e422d543fbfb.
+//
+// Solidity: event NodeRecoveryInitiated(string _enodeId, string _orgId)
+func (_NodeManager *NodeManagerFilterer) ParseNodeRecoveryInitiated(log types.Log) (*NodeManagerNodeRecoveryInitiated, error) {
+	event := new(NodeManagerNodeRecoveryInitiated)
+	if err := _NodeManager.contract.UnpackLog(event, "NodeRecoveryInitiated", log); err != nil {
+		return nil, err
+	}
+	return event, nil
 }

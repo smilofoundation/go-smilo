@@ -52,6 +52,7 @@ func signTx(key *ecdsa.PrivateKey, signer Signer) (*Transaction, common.Address,
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	tx := NewTransaction(0, addr, new(big.Int), 0, new(big.Int), nil)
 	signedTx, err := SignTx(tx, signer, key)
+	//fmt.Printf("\ntx.data.V signTx after sign [%v] \n", signedTx.data.V)
 	return signedTx, addr, err
 }
 

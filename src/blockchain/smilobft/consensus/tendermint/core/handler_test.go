@@ -2,14 +2,15 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
-	"math/big"
-	"testing"
 )
 
 func TestHandleCheckedMessage(t *testing.T) {

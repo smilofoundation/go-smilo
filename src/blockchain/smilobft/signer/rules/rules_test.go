@@ -1,35 +1,34 @@
 // Copyright 2018 The go-ethereum Authors
-// This file is part of go-ethereum.
+// This file is part of the go-ethereum library.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// The go-ethereum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
-//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
 package rules
 
 import (
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"go-smilo/src/blockchain/smilobft/internal/ethapi"
+	"go-smilo/src/blockchain/smilobft/signer/core"
+	"go-smilo/src/blockchain/smilobft/signer/storage"
 	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/internal/ethapi"
-	"go-smilo/src/blockchain/smilobft/signer/core"
-	"go-smilo/src/blockchain/smilobft/signer/storage"
 )
 
 const JS = `
@@ -179,7 +178,7 @@ func TestSignTxRequest(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	fmt.Printf("to %v", to.Address().String())
+	t.Logf("to %v", to.Address().String())
 	resp, err := r.ApproveTx(&core.SignTxRequest{
 		Transaction: core.SendTxArgs{
 			From: *from,
@@ -295,7 +294,7 @@ func TestMissingFunc(t *testing.T) {
 	if approved {
 		t.Errorf("Expected missing method to cause non-approval")
 	}
-	fmt.Printf("Err %v", err)
+	t.Logf("Err %v", err)
 
 }
 func TestStorage(t *testing.T) {
@@ -347,7 +346,7 @@ func TestStorage(t *testing.T) {
 	if retval != exp {
 		t.Errorf("Unexpected data, expected '%v', got '%v'", exp, retval)
 	}
-	fmt.Printf("Err %v", err)
+	t.Logf("Err %v", err)
 
 }
 
@@ -603,7 +602,7 @@ function ApproveSignData(r){
 	hash, rawdata := accounts.TextAndHash([]byte(message))
 	addr, _ := mixAddr("0x694267f14675d7e1b9494fd8d72fefe1755710fa")
 
-	fmt.Printf("address %v %v\n", addr.String(), addr.Original())
+	t.Logf("address %v %v\n", addr.String(), addr.Original())
 
 	nvt := []*core.NameValueType{
 		{

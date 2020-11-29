@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/p2p/enr"
 	"math/big"
 	"runtime"
 	"sync"
@@ -161,12 +162,14 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if err != nil {
 		return nil, err
 	}
-	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideIstanbul)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig, "config", config)
+	log.Info("Initialised chain configuration", "chainConfig", chainConfig, "config", config)
 
+	// changes to manipulate the chain id for migration from 2.0.2 and below version to 2.0.3
+	// version of Quorum  - this is applicable for v2.0.3 onwards
 	if chainConfig.IsSmilo {
 		if (chainConfig.ChainID != nil && chainConfig.ChainID.Int64() == 1) || config.NetworkId == 1 {
 			return nil, errors.New("cannot have chain id or network id as 1")
@@ -211,6 +214,13 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		glienickeCh:    make(chan core.WhitelistEvent),
 	}
+
+	//// Quorum: Set protocol Name/Version
+	//if chainConfig.IsSmilo {
+	//	quorumProtocol := eth.engine.Protocol()
+	//	protocolName = quorumProtocol.Name
+	//	ProtocolVersions = quorumProtocol.Versions
+	//}
 
 	// force to set the etherbase to node key address
 	if chainConfig.Istanbul != nil || chainConfig.SportDAO != nil || chainConfig.Tendermint != nil || chainConfig.Sport != nil {
@@ -293,7 +303,8 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 		return nil, err
 	}
 
-	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil}
+	hexNodeId := fmt.Sprintf("%x", crypto.FromECDSAPub(&ctx.NodeKey().PublicKey)[1:]) // Quorum
+	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil, hexNodeId}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.Miner.GasPrice
@@ -326,6 +337,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 
 	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
+		chainConfig.Clique.AllowedFutureBlockTime = config.AllowedFutureBlockTime //Quorum
 		log.Warn("$$$ Clique is requested, set it up", "chainConfig", chainConfig)
 		return clique.New(chainConfig.Clique, db)
 	}
@@ -369,6 +381,15 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 		if config.Istanbul.MaxTimeout == 0 {
 			config.Istanbul.MaxTimeout = istanbul.DefaultConfig.MaxTimeout
 		}
+
+		if chainConfig.Istanbul.Epoch != 0 {
+			config.Istanbul.Epoch = chainConfig.Istanbul.Epoch
+		}
+		config.Istanbul.ProposerPolicy = istanbul.ProposerPolicy(chainConfig.Istanbul.ProposerPolicy)
+		//TODO: should this should be added to istanbul at some point ?
+		//config.Istanbul.Ceil2Nby3Block = chainConfig.Istanbul.Ceil2Nby3Block
+		//config.Istanbul.AllowedFutureBlockTime = config.AllowedFutureBlockTime
+
 		log.Warn("$$$ Istanbul Consensus activated, will set it up", "chainConfig.Istanbul", chainConfig.Istanbul, "chainConfig", chainConfig)
 		return istanbulBackend.New(&config.Istanbul, ctx.NodeKey(), db, chainConfig, vmConfig)
 	}
@@ -634,7 +655,7 @@ func (s *Smilo) EventMux() *cmn.TypeMux             { return s.eventMux }
 func (s *Smilo) Engine() consensus.Engine           { return s.engine }
 func (s *Smilo) ChainDb() ethdb.Database            { return s.chainDb }
 func (s *Smilo) IsListening() bool                  { return true } // Always listening
-func (s *Smilo) EthVersion() int                    { return int(s.protocolManager.SubProtocols[0].Version) }
+func (s *Smilo) EthVersion() int                    { return int(ProtocolVersions[0]) }
 func (s *Smilo) NetVersion() uint64                 { return s.networkID }
 func (s *Smilo) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
 func (s *Smilo) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
@@ -643,18 +664,14 @@ func (s *Smilo) ArchiveMode() bool                  { return s.config.NoPruning 
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Smilo) Protocols() []p2p.Protocol {
-	var protos []p2p.Protocol
-	//
-	//for i, vsn := range ProtocolVersions {
-	//	protos[i] = s.protocolManager.makeProtocol(vsn)
-	//	protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
-	//}
-	//if s.lesServer != nil {
-	//	protos = append(protos, s.lesServer.Protocols()...)
-	//}
-
-	protos = append(protos, s.protocolManager.SubProtocols...)
-
+	protos := make([]p2p.Protocol, len(ProtocolVersions))
+	for i, vsn := range ProtocolVersions {
+		protos[i] = s.protocolManager.makeProtocol(vsn)
+		protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
+	}
+	if s.lesServer != nil {
+		protos = append(protos, s.lesServer.Protocols()...)
+	}
 	return protos
 }
 
@@ -753,4 +770,8 @@ func (s *Smilo) Stop() error {
 	s.chainDb.Close()
 	close(s.shutdownChan)
 	return nil
+}
+
+func (s *Smilo) CalcGasLimit(block *types.Block) uint64 {
+	return core.CalcGasLimit(block, s.config.Miner.GasFloor, s.config.Miner.GasCeil)
 }

@@ -65,6 +65,7 @@ func (api *PublicEthereumAPI) Coinbase() (common.Address, error) {
 	return api.Etherbase()
 }
 
+// Quorum
 // StorageRoot returns the storage root of an account on the the given (optional) block height.
 // If block number is not given the latest block is used.
 func (s *PublicEthereumAPI) StorageRoot(addr common.Address, blockNr *rpc.BlockNumber) (common.Hash, error) {
@@ -200,6 +201,11 @@ func NewPrivateAdminAPI(eth *Smilo) *PrivateAdminAPI {
 
 // ExportChain exports the current blockchain into a local file.
 func (api *PrivateAdminAPI) ExportChain(file string) (bool, error) {
+	if _, err := os.Stat(file); err == nil {
+		// File already exists. Allowing overwrite could be a DoS vecotor,
+		// since the 'file' may point to arbitrary paths on the drive
+		return false, errors.New("location would overwrite an existing file")
+	}
 	// Make sure we can create the file to export into
 	out, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -292,7 +298,8 @@ func NewPublicDebugAPI(eth *Smilo) *PublicDebugAPI {
 }
 
 // DumpBlock retrieves the entire state of the database at a given block.
-func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ string) (state.Dump, error) {
+// Quorum adds an additional parameter to support private state dump
+func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ *string) (state.Dump, error) {
 	var publicState, privateState *state.StateDB
 	var err error
 	if blockNr == rpc.PendingBlockNumber {
@@ -316,14 +323,10 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber, typ string) (state
 		}
 	}
 
-	switch typ {
-	case "public":
-		return publicState.RawDump(false, false, true), nil
-	case "vault":
+	if typ != nil && *typ == "private" {
 		return privateState.RawDump(false, false, true), nil
-	default:
-		return state.Dump{}, fmt.Errorf("unknown type: '%s'", typ)
 	}
+	return publicState.RawDump(false, false, true), nil
 }
 
 // PrivateDebugAPI is the collection of Smilo full node APIs exposed over
@@ -458,7 +461,7 @@ type storageEntry struct {
 
 // StorageRangeAt returns the storage at the given block height and transaction index.
 func (api *PrivateDebugAPI) StorageRangeAt(ctx context.Context, blockHash common.Hash, txIndex int, contractAddress common.Address, keyStart hexutil.Bytes, maxResult int) (StorageRangeResult, error) {
-	_, _, _, statedb, err := api.computeTxEnv(blockHash, txIndex, 0)
+	_, _, statedb, _, err := api.computeTxEnv(blockHash, txIndex, 0)
 	if err != nil {
 		return StorageRangeResult{}, err
 	}
@@ -551,7 +554,8 @@ func (api *PrivateDebugAPI) getModifiedAccounts(startBlock, endBlock *types.Bloc
 	if startBlock.Number().Uint64() >= endBlock.Number().Uint64() {
 		return nil, fmt.Errorf("start block height (%d) must be less than end block height (%d)", startBlock.Number().Uint64(), endBlock.Number().Uint64())
 	}
-	triedb := api.eth.BlockChain().StateCache().TrieDB()
+	statedb, _ := api.eth.BlockChain().StateCache()
+	triedb := statedb.TrieDB()
 
 	oldTrie, err := trie.NewSecure(startBlock.Root(), triedb)
 	if err != nil {

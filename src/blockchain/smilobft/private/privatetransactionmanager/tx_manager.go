@@ -52,6 +52,19 @@ func (b *BlackboxVault) Post(data []byte, from string, to []string) (out []byte,
 	return out, nil
 }
 
+func (b *BlackboxVault) StoreRaw(data []byte, from string) (out []byte, err error) {
+	if b == nil || b.isBlackboxNotInUse {
+		log.Error("Could not start Blackbox, Post, PostData, ", "b", b, "error", ErrBlackboxIsNotStarted)
+		return nil, ErrBlackboxIsNotStarted
+	}
+	out, err = b.node.StorePayload(data, from)
+	if err != nil {
+		return nil, err
+	}
+	b.cache.Set(string(out), data, cache.DefaultExpiration)
+	return out, nil
+}
+
 func (b *BlackboxVault) PostRawTransaction(data []byte, to []string) (out []byte, err error) {
 	if b == nil || b.isBlackboxNotInUse {
 		log.Error("Could not start Blackbox, Post, PostData, ", "b", b, "error", ErrBlackboxIsNotStarted)

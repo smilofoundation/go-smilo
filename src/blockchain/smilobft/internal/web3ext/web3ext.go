@@ -233,6 +233,11 @@ web3._extend({
 	property: 'debug',
 	methods: [
 		new web3._extend.Method({
+			name: 'accountRange',
+			call: 'debug_accountRange',
+			params: 2
+		}),
+		new web3._extend.Method({
 			name: 'printBlock',
 			call: 'debug_printBlock',
 			params: 1
@@ -261,7 +266,8 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'dumpBlock',
 			call: 'debug_dumpBlock',
-			params: 1
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, ""]
 		}),
 		new web3._extend.Method({
 			name: 'chaindbProperty',
@@ -496,6 +502,12 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'submitTransaction',
 			call: 'eth_submitTransaction',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputTransactionFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'fillTransaction',
+			call: 'eth_fillTransaction',
 			params: 1,
 			inputFormatter: [web3._extend.formatters.inputTransactionFormatter]
 		}),
@@ -1033,6 +1045,7 @@ web3._extend({
        ]
 })
 `
+
 const Istanbul_JS = `
 web3._extend({
 	property: 'istanbul',

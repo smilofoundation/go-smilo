@@ -18,6 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+var (
+	TEST_MODE = os.Getenv("TEST_MODE")
+)
+
 func runBlackbox() (*osExec.Cmd, error) {
 
 	tempdir, err := ioutil.TempDir("", "blackbox")
@@ -136,15 +140,15 @@ func runBlackbox() (*osExec.Cmd, error) {
 // Store then log
 func TestPrivateTransactionBlackbox(t *testing.T) {
 	//TODO: Add blackbox OSX/WIN compiled libs, detect os and run appropriate files
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != "linux" || TEST_MODE != "blackbox" {
 		t.Skip()
 	}
 
 	var (
-		key, _      = crypto.GenerateKey()
-		helper      = MakeCallHelper()
-		privateState  = helper.PrivateState
-		publicState = helper.PublicState
+		key, _       = crypto.GenerateKey()
+		helper       = MakeCallHelper()
+		privateState = helper.PrivateState
+		publicState  = helper.PublicState
 	)
 
 	blackboxCmd, err := runBlackbox()

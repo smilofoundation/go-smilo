@@ -26,9 +26,19 @@ const (
 	errInvalidMsg
 )
 
+// Quorum
+//
+// Constants for peer connection errors
+const (
+	// When permissioning is enabled, and node is not permissioned in the network
+	errPermissionDenied = iota + 100
+)
+
 var errorToString = map[int]string{
 	errInvalidMsgCode: "invalid message code",
 	errInvalidMsg:     "invalid message",
+	// Quorum
+	errPermissionDenied: "permission denied",
 }
 
 type peerError struct {

@@ -18,7 +18,7 @@ import (
 )
 
 // callHelper makes it easier to do proper calls and use the state transition object.
-// It also manages the nonces of the caller and keeps vault and public state, which
+// It also manages the nonces of the caller and keeps private and public state, which
 // can be freely modified outside of the helper.
 type callHelper struct {
 	db ethdb.Database
@@ -43,6 +43,7 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 		err  error
 	)
 
+	// TODO(joel): these are just stubbed to the same values as in dual_state_test.go
 	cg.header.Number = new(big.Int)
 	cg.header.Time = 43
 	cg.header.Difficulty = new(big.Int).SetUint64(1000488)
@@ -55,6 +56,7 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 	//}
 
 	tx, err := types.SignTx(types.NewTransaction(cg.TxNonce(from), to, new(big.Int), 1000000, new(big.Int), input), signer, key)
+
 	if err != nil {
 		return err
 	}
@@ -70,11 +72,12 @@ func (cg *callHelper) MakeCall(private bool, key *ecdsa.PrivateKey, to common.Ad
 	} else {
 		tx.SetPrivate()
 	}
-
+	// TODO(joel): can we just pass nil instead of bc?
 	bc, _ := NewBlockChain(cg.db, nil, params.SmiloTestChainConfig, ethash.NewFaker(), vm.Config{}, nil)
 	context := NewEVMContext(msg, &cg.header, bc, &from)
 	vmenv := vm.NewEVM(context, publicState, privateState, params.SmiloTestChainConfig, vm.Config{})
-	_, _, _, err = ApplyMessage(vmenv, msg, cg.gp)
+	sender := vm.AccountRef(msg.From())
+	_, _, err = vmenv.Call(sender, to, msg.Data(), 100000000, new(big.Int), tx.IsPrivate())
 	return err
 }
 

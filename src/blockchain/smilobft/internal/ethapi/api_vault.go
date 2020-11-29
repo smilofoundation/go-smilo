@@ -40,7 +40,7 @@ type PrivateTxArgs struct {
 
 // SendRawTransactionVault will add the signed transaction to the Vault and to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
-func (s *PublicTransactionPoolAPI) SendRawTransactionVault(ctx context.Context, encodedTx hexutil.Bytes, args PrivateTxArgs) (common.Hash, error) {
+func (s *PublicTransactionPoolAPI) SendRawPrivateTransaction(ctx context.Context, encodedTx hexutil.Bytes, args PrivateTxArgs) (common.Hash, error) {
 	if private.VaultInstance == nil {
 		return common.Hash{}, fmt.Errorf("vault is not enabled")
 	}

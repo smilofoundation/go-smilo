@@ -34,7 +34,6 @@ import (
 var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
-   Copyright 2018-2019 The go-smilo Authors
    Copyright 2013-2019 The go-ethereum Authors
 
 USAGE:
@@ -277,6 +276,19 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.MinerLegacyExtraDataFlag,
 		},
 	},
+	// QUORUM
+	{
+		Name: "QUORUM",
+		Flags: []cli.Flag{
+			utils.QuorumImmutabilityThreshold,
+			utils.EnableNodePermissionFlag,
+			utils.PluginSettingsFlag,
+			utils.PluginSkipVerifyFlag,
+			utils.PluginLocalVerifyFlag,
+			utils.PluginPublicKeyFlag,
+			utils.AllowedFutureBlockTimeFlag,
+		},
+	},
 	{
 		Name: "MISC",
 	},
@@ -301,6 +313,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.IstanbulBlockPeriodFlag,
 		},
 	},
+	// END QUORUM
 	{
 		Name: "SPORTDAO",
 		Flags: []cli.Flag{

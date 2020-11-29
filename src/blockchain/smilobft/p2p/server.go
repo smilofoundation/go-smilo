@@ -46,6 +46,11 @@ import (
 const (
 	defaultDialTimeout = 15 * time.Second
 
+	// This is the fairness knob for the discovery mixer. When looking for peers, we'll
+	// wait this long for a single source of candidates before moving on and trying other
+	// sources.
+	discmixTimeout = 5 * time.Second
+
 	// Connectivity defaults.
 	maxActiveDialTasks     = 16
 	defaultMaxPendingPeers = 50
@@ -180,15 +185,19 @@ type Server struct {
 	lock    sync.Mutex // protects running
 	running bool
 
-	nodedb       *enode.DB
-	localnode    *enode.LocalNode
-	ntab         discoverTable
 	listener     net.Listener
 	ourHandshake *protoHandshake
-	DiscV5       *discv5.Network
 	loopWG       sync.WaitGroup // loop, listenLoop
 	peerFeed     event.Feed
 	log          log.Logger
+
+	nodedb    *enode.DB
+	localnode *enode.LocalNode
+	ntab      *discover.UDPv4
+	DiscV5    *discv5.Network
+	discmix   *enode.FairMix
+
+	staticNodeResolver nodeResolver
 
 	// Channels into the run loop.
 	quit                    chan struct{}
@@ -205,6 +214,9 @@ type Server struct {
 	// State of run loop and listenLoop.
 	lastLookup     time.Time
 	inboundHistory expHeap
+
+	// raft peers info
+	checkPeerInRaft func(*enode.Node) bool
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -526,7 +538,7 @@ func (srv *Server) Start() (err error) {
 		if err := srv.setupDiscovery(); err != nil {
 			return err
 		}
-		dialer = newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
+		dialer = newDialState(srv.localnode.ID(), dynPeers, &srv.Config)
 		log.Info("EnableNodePermissionFlag false, NetRestrict mode disabled.", "srv.localnode.ID()", srv.localnode.ID(), "srv.ntab", srv.ntab, "dynPeers", dynPeers, "&srv.Config", &srv.Config)
 	} else {
 		// Discovery protocol is disabled for consortium chains.
@@ -536,10 +548,9 @@ func (srv *Server) Start() (err error) {
 		srv.NoDiscovery = true
 		srv.StaticNodes = nil
 		//srv.TrustedNodes = nil //-> breaks TestServerAtCap
-		dialer = newDialState(srv.localnode.ID(), nil, 0, &Config{NetRestrict: srv.Config.NetRestrict})
+		dialer = newDialState(srv.localnode.ID(), 0, &Config{NetRestrict: srv.Config.NetRestrict})
 	}
 
-	//dialer := newDialState(srv.localnode.ID(), srv.ntab, dynPeers, &srv.Config)
 	srv.loopWG.Add(1)
 	go srv.run(dialer)
 	return nil
@@ -590,6 +601,18 @@ func (srv *Server) setupLocalNode() error {
 }
 
 func (srv *Server) setupDiscovery() error {
+	srv.discmix = enode.NewFairMix(discmixTimeout)
+
+	// Add protocol-specific discovery sources.
+	added := make(map[string]bool)
+	for _, proto := range srv.Protocols {
+		if proto.DialCandidates != nil && !added[proto.Name] {
+			srv.discmix.AddSource(proto.DialCandidates)
+			added[proto.Name] = true
+		}
+	}
+
+	// Don't listen on UDP endpoint if DHT is disabled.
 	if srv.NoDiscovery && !srv.DiscoveryV5 {
 		return nil
 	}
@@ -631,7 +654,10 @@ func (srv *Server) setupDiscovery() error {
 			return err
 		}
 		srv.ntab = ntab
+		srv.discmix.AddSource(ntab.RandomNodes())
+		srv.staticNodeResolver = ntab
 	}
+
 	// Discovery V5
 	if srv.DiscoveryV5 {
 		var ntab *discv5.Network
@@ -689,6 +715,7 @@ func (srv *Server) run(dialstate dialer) {
 	srv.log.Info("Started P2P networking", "self", srv.localnode.Node().URLv4())
 	defer srv.loopWG.Done()
 	defer srv.nodedb.Close()
+	defer srv.discmix.Close()
 
 	var (
 		peers        = make(map[enode.ID]*Peer)
@@ -719,21 +746,7 @@ func (srv *Server) run(dialstate dialer) {
 		for ; len(runningTasks) < maxActiveDialTasks && i < len(ts); i++ {
 			t := ts[i]
 			srv.log.Trace("New dial task", "task", t)
-
-			go func() {
-				select {
-				case <-srv.quit:
-					return
-				default:
-					t.Do(srv)
-				}
-
-				select {
-				case <-srv.quit:
-					return
-				case taskdone <- t:
-				}
-			}()
+			go func() { t.Do(srv); taskdone <- t }()
 			runningTasks = append(runningTasks, t)
 		}
 		return ts[i:]
@@ -1023,6 +1036,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 		srv.log.Trace("Failed RLPx handshake", "addr", c.fd.RemoteAddr(), "conn", c.flags, "err", err)
 		return err
 	}
+
 	if dialDest != nil {
 		// For dialed connections, check that the remote public key matches.
 		if dialPubkey.X.Cmp(remotePubkey.X) != 0 || dialPubkey.Y.Cmp(remotePubkey.Y) != 0 {
@@ -1034,7 +1048,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	}
 	clog := srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
 
-	//START - SMILO Permissioning
+	//START - QUORUM Permissioning
 	if srv.EnableNodePermissionFlag {
 		currentNode := srv.NodeInfo().ID
 		cnodeName := srv.NodeInfo().Name
@@ -1056,13 +1070,14 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 			log.Trace("NodeID Permissioning", "Connection Direction", direction)
 		}
 
-		if !IsNodePermissioned(NodeID, currentNode, srv.DataDir, direction) {
-			return nil
+		if !isNodePermissioned(NodeID, currentNode, srv.DataDir, direction) {
+			return newPeerError(errPermissionDenied, "id=%s…%s %s id=%s…%s", currentNode[:4], currentNode[len(currentNode)-4:], direction, NodeID[:4], NodeID[len(NodeID)-4:])
 		}
 	} else {
 		clog.Trace("Node Permissioning is Disabled.")
 	}
-	//END - SMILO Permissioning
+
+	//END - QUORUM Permissioning
 
 	if conn, ok := c.fd.(*meteredConn); ok {
 		conn.handshakeDone(c.node.ID())

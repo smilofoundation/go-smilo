@@ -80,7 +80,7 @@ type BlockChain interface {
 	CurrentHeader() *types.Header
 	GetTd(hash common.Hash, number uint64) *big.Int
 	State() (*state.StateDB, *state.StateDB, error)
-	StateCache() state.Database
+	StateCache() (state.Database, state.Database)
 	InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error)
 	Rollback(chain []common.Hash)
 	GetHeaderByNumber(number uint64) *types.Header
@@ -723,8 +723,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 						atomic.AddUint32(&p.invalidCount, 1)
 						continue
 					}
-					triedb := pm.blockchain.StateCache().TrieDB()
-
+					statedb, _ := pm.blockchain.StateCache()
+					triedb := statedb.TrieDB()
 					account, err := pm.getAccount(triedb, header.Root, common.BytesToHash(request.AccKey))
 					if err != nil {
 						p.Log().Warn("Failed to retrieve account for code", "block", header.Number, "hash", header.Hash(), "account", common.BytesToHash(request.AccKey), "err", err)
@@ -898,7 +898,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 						continue
 					}
 					// Open the account or storage trie for the request
-					statedb := pm.blockchain.StateCache()
+					statedb, _ := pm.blockchain.StateCache()
 
 					switch len(request.AccKey) {
 					case 0:

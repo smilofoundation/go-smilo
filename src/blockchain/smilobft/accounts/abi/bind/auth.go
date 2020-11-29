@@ -103,15 +103,14 @@ func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) 
 //
 // NewWalletTransactor is a utility method to easily create a transaction signer
 // from a wallet account
-func NewWalletTransactor(w accounts.Wallet, from accounts.Account) *TransactOpts {
+func NewWalletTransactor(w accounts.Wallet, account accounts.Account) *TransactOpts {
 	return &TransactOpts{
-		From: from.Address,
+		From: account.Address,
 		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			signature, err := w.SignText(from, signer.Hash(tx).Bytes())
-			if err != nil {
-				return nil, err
+			if address != account.Address {
+				return nil, errors.New("not authorized to sign this account")
 			}
-			return tx.WithSignature(signer, signature)
+			return w.SignTx(account, tx, nil) // homestead signer without chainID is backward compatible
 		},
 	}
 }

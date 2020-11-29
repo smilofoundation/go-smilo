@@ -36,6 +36,7 @@ func TestCacheFileEvict(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpdir)
 	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest})
+	defer e.Close()
 
 	workers := 8
 	epochs := 100
@@ -57,7 +58,7 @@ func verifyTest(wg *sync.WaitGroup, e *Ethash, workerIndex, epochs int) {
 		if block < 0 {
 			block = 0
 		}
-		head := &types.Header{Number: big.NewInt(block), Difficulty: big.NewInt(100)}
-		e.VerifySeal(nil, head)
+		header := &types.Header{Number: big.NewInt(block), Difficulty: big.NewInt(100)}
+		e.VerifySeal(nil, header)
 	}
 }

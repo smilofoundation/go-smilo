@@ -283,7 +283,7 @@ func (p *PermissionCtrl) Stop() error {
 func (p *PermissionCtrl) monitorQIP714Block() error {
 	// if QIP714block is not given, set the default access
 	// to readonly
-	if p.eth.ChainConfig().QIP714Block == nil {
+	if p.eth.BlockChain().Config().QIP714Block == nil {
 		types.SetDefaultAccess()
 		return nil
 	}
@@ -297,7 +297,7 @@ func (p *PermissionCtrl) monitorQIP714Block() error {
 		for {
 			select {
 			case head := <-chainHeadCh:
-				if p.eth.ChainConfig().IsQIP714(head.Block.Number()) {
+				if p.eth.BlockChain().Config().IsQIP714(head.Block.Number()) {
 					types.SetDefaultAccess()
 					return
 				}

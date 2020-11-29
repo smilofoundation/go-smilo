@@ -22,13 +22,15 @@ GO ?= 1.12
 
 build: clean
 	go build -o go-smilo main.go
-	docker build --no-cache -t $(FULLDOCKERNAME) .
 
 test: clean ## Run tests
 	go test ./src/blockchain/... -timeout=10m
 
 test-c: clean ## Run tests with coverage
 	go test ./src/... -timeout=15m -cover
+
+test-blackbox: clean ## Run tests
+	TEST_MODE=blackbox  go test -v -race ./src/blockchain/smilobft/core -test.run TestPrivateTransactionBlackbox
 
 test-all: clean
 	$(foreach pkg,$(PACKAGES),\
@@ -37,6 +39,19 @@ test-all: clean
 test-race: clean ## Run tests with -race. Note: expected to fail, but look for "DATA RACE" failures specifically
 	go test ./src/... -timeout=5m -race
 
+test-tendermint:
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintSuccess
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintOneMalicious
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintSlowConnections
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintLongRun
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStopUpToFNodes
+test-tendermint-slow:
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckFeeRedirectionAndRedistribution
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestCheckBlockWithSmallFee
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 10m -test.run ^TestTendermintStartStopSingleNode
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFNodes
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusOneNodes
+	CONSENSUS_TEST_MODE=tendermint go test ./src/blockchain/smilobft/consensus/test/... --count=1 -timeout 20m -test.run ^TestTendermintStartStopFPlusTwoNodes
 lint: lint-eth ## Run linters
 
 lint-eth: clean

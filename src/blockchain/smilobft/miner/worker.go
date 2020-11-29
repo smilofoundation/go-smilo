@@ -49,8 +49,10 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
+
 	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
 	chainHeadChanSize = 10
+
 	// chainSideChanSize is the size of channel listening to ChainSideEvent.
 	chainSideChanSize = 10
 )
@@ -381,7 +383,7 @@ func (self *worker) wait() {
 				log.BlockHash = block.Hash()
 			}
 
-			// write private transacions
+			// write private transactions
 			privateStateRoot, _ := work.privateState.Commit(self.chainConfig.IsEIP158(block.Number()))
 			core.WritePrivateStateRoot(self.chainDb, block.Root(), privateStateRoot)
 			allReceipts := mergeReceipts(work.receipts, work.vaultReceipts)
@@ -715,7 +717,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, c
 	snap := env.state.Snapshot()
 	vaultSnap := env.privateState.Snapshot()
 
-	receipt, vaultReceipt, _, err := core.ApplyTransaction(env.chainConfig, bc, &coinbase, gp, env.state, env.privateState, env.header, tx, &env.header.GasUsed, vm.Config{})
+	receipt, vaultReceipt, err := core.ApplyTransaction(env.chainConfig, bc, &coinbase, gp, env.state, env.privateState, env.header, tx, &env.header.GasUsed, vm.Config{})
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		env.privateState.RevertToSnapshot(vaultSnap)

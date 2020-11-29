@@ -1,4 +1,4 @@
-// Copyright 2018 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -20,10 +20,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"regexp"
 	"strings"
-
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -141,7 +140,7 @@ func parseCallData(calldata []byte, abidata string) (*decodedCallData, error) {
 		return nil, err
 	}
 	// Everything valid, assemble the call infos for the signer
-	decoded := decodedCallData{signature: method.Sig(), name: method.Name}
+	decoded := decodedCallData{signature: method.Sig(), name: method.RawName}
 	for i := 0; i < len(method.Inputs); i++ {
 		decoded.inputs = append(decoded.inputs, decodedArgument{
 			soltype: method.Inputs[i],

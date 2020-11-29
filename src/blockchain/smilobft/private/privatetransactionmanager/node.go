@@ -20,15 +20,42 @@ package privatetransactionmanager
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/tv42/httpunix"
 )
+
+type storeRawReq struct {
+	Payload string `json:"payload"`
+	From    string `json:"from,omitempty"`
+}
+
+type storeRawResp struct {
+	Key string `json:"key"`
+}
+
+func launchNode(cfgPath string) (*exec.Cmd, error) {
+	cmd := exec.Command("constellation-node", cfgPath)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	go io.Copy(os.Stderr, stderr)
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	time.Sleep(100 * time.Millisecond)
+	return cmd, nil
+}
 
 func unixTransport(socketPath string) *httpunix.Transport {
 	t := &httpunix.Transport{
@@ -55,11 +82,29 @@ func RunNode(socketPath string) error {
 	if res.StatusCode == 200 {
 		return nil
 	}
-	return errors.New("blackbox Node API did not respond to upcheck request")
+	return errors.New("private transaction manager did not respond to upcheck request")
 }
 
 type Client struct {
 	httpClient *http.Client
+}
+
+func (c *Client) doJson(path string, apiReq interface{}) (*http.Response, error) {
+	buf := new(bytes.Buffer)
+	err := json.NewEncoder(buf).Encode(apiReq)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", "http+unix://c/"+path, buf)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := c.httpClient.Do(req)
+	if err == nil && res.StatusCode != 200 {
+		return nil, fmt.Errorf("Non-200 status code: %+v", res)
+	}
+	return res, err
 }
 
 func (c *Client) PostData(pl []byte, b64From string, b64To []string) ([]byte, error) {
@@ -86,6 +131,44 @@ func (c *Client) PostData(pl []byte, b64From string, b64To []string) ([]byte, er
 	}
 
 	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, res.Body))
+}
+
+func (c *Client) StorePayload(pl []byte, b64From string) ([]byte, error) {
+	storeRawReq := &storeRawReq{
+		Payload: base64.StdEncoding.EncodeToString(pl),
+		From:    b64From,
+	}
+	buf := new(bytes.Buffer)
+	if err := json.NewEncoder(buf).Encode(storeRawReq); err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", "http+unix://c/storeraw", buf)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("Non-200 status code, verify that tessera is running and version is 0.10.5+: %v", res)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Non-200 status code: %+v", res)
+	}
+	// parse response
+	var storeRawResp storeRawResp
+	if err := json.NewDecoder(res.Body).Decode(&storeRawResp); err != nil {
+		return nil, err
+	}
+	encryptedPayloadHash, err := base64.StdEncoding.DecodeString(storeRawResp.Key)
+	if err != nil {
+		return nil, err
+	}
+	return encryptedPayloadHash, nil
 }
 
 func (c *Client) PostDataRawTransaction(signedPayload []byte, b64To []string) ([]byte, error) {

@@ -68,7 +68,7 @@ func TestDualState(t *testing.T) {
 		secondState string
 	}{
 		{
-			name:            "test dual state vault to public",
+			name:            "test dual state private to public",
 			firstStateCode:  "600a6000526001601ff300",
 			secondStateCode: "60016000600060006000730200000000000000000000000000000000000000620186a0f160005160005500",
 			callMessage: callmsg{
@@ -87,7 +87,7 @@ func TestDualState(t *testing.T) {
 			secondState: "vault",
 		},
 		{
-			name:            "test dual state public to vault",
+			name:            "test dual state public to private",
 			firstStateCode:  "600a6000526001601ff300",
 			secondStateCode: "60016000600060006000730200000000000000000000000000000000000000620186a0f160005160005500",
 			callMessage: callmsg{

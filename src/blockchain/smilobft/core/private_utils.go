@@ -32,13 +32,6 @@ func WritePrivateStateRoot(db ethdb.Database, blockRoot, root common.Hash) error
 	return db.Put(append(privateRootPrefix, blockRoot[:]...), root[:])
 }
 
-// WritePrivateBlockBloom creates a bloom filter for the given receipts and saves it to the database
-// with the number given as identifier (i.e. block number).
-func WritePrivateBlockBloom(db ethdb.Database, number uint64, receipts types.Receipts) error {
-	rbloom := types.CreateBloom(receipts)
-	return db.Put(append(privateBloomPrefix, encodeBlockNumber(number)...), rbloom[:])
-}
-
 // GetPrivateBlockBloom retrieves the vault bloom associated with the given number.
 func GetPrivateBlockBloom(db ethdb.Database, number uint64) (bloom types.Bloom) {
 	data, _ := db.Get(append(privateBloomPrefix, encodeBlockNumber(number)...))

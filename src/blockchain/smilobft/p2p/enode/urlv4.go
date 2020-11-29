@@ -63,7 +63,7 @@ func MustParseV4(rawurl string) *Node {
 //
 // For complete nodes, the node ID is encoded in the username portion
 // of the URL, separated from the host by an @ sign. The hostname can
-// only be given as an IP address, DNS domain names are not allowed.
+// be given as an IP address or a DNS domain name.
 // The port in the host name section is the TCP listening port. If the
 // TCP and UDP (discovery) ports differ, the UDP port is specified as
 // query parameter "discport".
@@ -128,6 +128,12 @@ func NewV4(pubkey *ecdsa.PublicKey, ip net.IP, tcp, udp int) *Node {
 	if len(ip) > 0 {
 		r.Set(enr.IP(ip))
 	}
+	return newV4(pubkey, r, tcp, udp)
+}
+
+// broken out from `func NewV4` (above) same in upstream go-ethereum, but taken out
+// to avoid code duplication b/t NewV4 and NewV4Hostname
+func newV4(pubkey *ecdsa.PublicKey, r enr.Record, tcp, udp int) *Node {
 	if udp != 0 {
 		r.Set(enr.UDP(udp))
 	}

@@ -88,12 +88,6 @@ func NewSimulatedBackendWithDatabase(database ethdb.Database, alloc core.Genesis
 	return backend
 }
 
-// NewSimulatedBackend creates a new binding backend using a simulated blockchain
-// for testing purposes.
-func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
-	return NewSimulatedBackendWithDatabase(rawdb.NewMemoryDatabase(), alloc, gasLimit)
-}
-
 // Quorum
 //
 // Create a simulated backend based on existing Ethereum service
@@ -101,11 +95,17 @@ func NewSimulatedBackendFrom(ethereum *eth.Smilo) *SimulatedBackend {
 	backend := &SimulatedBackend{
 		database:   ethereum.ChainDb(),
 		blockchain: ethereum.BlockChain(),
-		config:     ethereum.ChainConfig(),
+		config:     ethereum.BlockChain().Config(),
 		events:     filters.NewEventSystem(new(cmn.TypeMux), &filterBackend{ethereum.ChainDb(), ethereum.BlockChain()}, false),
 	}
 	backend.rollback()
 	return backend
+}
+
+// NewSimulatedBackend creates a new binding backend using a simulated blockchain
+// for testing purposes.
+func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
+	return NewSimulatedBackendWithDatabase(rawdb.NewMemoryDatabase(), alloc, gasLimit)
 }
 
 // Close terminates the underlying blockchain's update loop.

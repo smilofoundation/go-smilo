@@ -24,8 +24,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
 
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/event"
@@ -50,6 +48,11 @@ type EthAPIBackend struct {
 	extRPCEnabled bool
 	eth           *Smilo
 	gpo           *gasprice.Oracle
+
+	// Quorum
+	//
+	// hex node id from node public key
+	hexNodeId string
 }
 
 // ChainConfig returns the active chain configuration.
@@ -79,6 +82,23 @@ func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumb
 	return b.eth.blockchain.GetHeaderByNumber(uint64(number)), nil
 }
 
+func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Header, error) {
+	if blockNr, ok := blockNrOrHash.Number(); ok {
+		return b.HeaderByNumber(ctx, blockNr)
+	}
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		header := b.eth.blockchain.GetHeaderByHash(hash)
+		if header == nil {
+			return nil, errors.New("header for hash not found")
+		}
+		if blockNrOrHash.RequireCanonical && b.eth.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+			return nil, errors.New("hash is not currently canonical")
+		}
+		return header, nil
+	}
+	return nil, errors.New("invalid arguments; neither block nor hash specified")
+}
+
 func (b *EthAPIBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
 	return b.eth.blockchain.GetHeaderByHash(hash), nil
 }
@@ -100,6 +120,27 @@ func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*typ
 	return b.eth.blockchain.GetBlockByHash(hash), nil
 }
 
+func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
+	if blockNr, ok := blockNrOrHash.Number(); ok {
+		return b.BlockByNumber(ctx, blockNr)
+	}
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		header := b.eth.blockchain.GetHeaderByHash(hash)
+		if header == nil {
+			return nil, errors.New("header for hash not found")
+		}
+		if blockNrOrHash.RequireCanonical && b.eth.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+			return nil, errors.New("hash is not currently canonical")
+		}
+		block := b.eth.blockchain.GetBlock(hash, header.Number.Uint64())
+		if block == nil {
+			return nil, errors.New("header found, but block body is missing")
+		}
+		return block, nil
+	}
+	return nil, errors.New("invalid arguments; neither block nor hash specified")
+}
+
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (vm.SmiloAPIState, *types.Header, error) {
 	// Pending state is only known by the miner
 	if number == rpc.PendingBlockNumber {
@@ -116,14 +157,29 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.B
 	}
 	stateDb, privateState, err := b.eth.BlockChain().StateAt(header.Root)
 	return EthAPIState{stateDb, privateState}, header, err
+
 }
 
-func (b *EthAPIBackend) GetHeader(ctx context.Context, hash common.Hash) *types.Header {
-	return b.eth.blockchain.GetHeaderByHash(hash)
-}
+func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (vm.SmiloAPIState, *types.Header, error) {
+	if blockNr, ok := blockNrOrHash.Number(); ok {
+		return b.StateAndHeaderByNumber(ctx, blockNr)
+	}
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		header, err := b.HeaderByHash(ctx, hash)
+		if err != nil {
+			return nil, nil, err
+		}
+		if header == nil {
+			return nil, nil, errors.New("header for hash not found")
+		}
+		if blockNrOrHash.RequireCanonical && b.eth.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+			return nil, nil, errors.New("hash is not currently canonical")
+		}
+		stateDb, privateState, err := b.eth.BlockChain().StateAt(header.Root)
+		return EthAPIState{stateDb, privateState}, header, err
 
-func (b *EthAPIBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	return b.eth.blockchain.GetBlockByHash(hash), nil
+	}
+	return nil, nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
@@ -147,26 +203,27 @@ func (b *EthAPIBackend) GetTd(blockHash common.Hash) *big.Int {
 }
 
 func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state vm.SmiloAPIState, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error) {
-	statedb := state
-	from := statedb.(EthAPIState).State.GetOrNewStateObject(msg.From())
+	statedb := state.(EthAPIState)
+	from := statedb.state.GetOrNewStateObject(msg.From())
 	from.SetBalance(math.MaxBig256, header.Number)
 	from.SetSmiloPay(math.MaxBig256)
 	vmError := func() error { return nil }
 
 	context := core.NewEVMContext(msg, header, b.eth.BlockChain(), nil)
 
+	// Set the private state to public state if contract address is not present in the private state
 	to := common.Address{}
 	if msg.To() != nil {
 		to = *msg.To()
 	}
 
 	// Should be public, if address is not present in private state
-	privateState := statedb.(EthAPIState).PrivateState
+	privateState := statedb.privateState
 	if !privateState.Exist(to) {
-		privateState = statedb.(EthAPIState).State
+		privateState = statedb.state
 	}
 
-	return vm.NewEVM(context, statedb.(EthAPIState).State, statedb.(EthAPIState).PrivateState, b.eth.chainConfig, vmCfg), vmError, nil
+	return vm.NewEVM(context, statedb.state, statedb.privateState, b.eth.chainConfig, vmCfg), vmError, nil
 }
 
 func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
@@ -190,6 +247,11 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	// validation for node need to happen here and cannot be done as a part of
+	// validateTx in tx_pool.go as tx_pool validation will happen in every node
+	if b.hexNodeId != "" && !types.ValidateNodeForTxn(b.hexNodeId, signedTx.From()) {
+		return errors.New("cannot send transaction from this node")
+	}
 	return b.eth.txPool.AddLocal(signedTx)
 }
 
@@ -292,183 +354,154 @@ func (b *EthAPIBackend) GetSmiloCodeAnalysisPath() string {
 	return codeAnalysisPath
 }
 
+// used by Quorum
 type EthAPIState struct {
-	State, PrivateState *state.StateDB
+	state, privateState *state.StateDB
 }
 
-func (ethApiState EthAPIState) SetCode(addr common.Address, code []byte) {
-	if ethApiState.PrivateState.Exist(addr) {
-		stateObject := ethApiState.PrivateState.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetCode(crypto.Keccak256Hash(code), code)
-		}
+func (s EthAPIState) GetBalance(addr common.Address) *big.Int {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetBalance(addr)
+	}
+	return s.state.GetBalance(addr)
+}
+
+func (s EthAPIState) GetCode(addr common.Address) []byte {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetCode(addr)
+	}
+	return s.state.GetCode(addr)
+}
+
+func (s EthAPIState) SetNonce(addr common.Address, nonce uint64) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SetNonce(addr, nonce)
 	} else {
-		stateObject := ethApiState.State.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetCode(crypto.Keccak256Hash(code), code)
-		}
+		s.state.SetNonce(addr, nonce)
 	}
 }
 
-func (ethApiState EthAPIState) SetState(addr common.Address, key, value common.Hash) {
-	if ethApiState.PrivateState.Exist(addr) {
-		stateObject := ethApiState.PrivateState.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetState(ethApiState.PrivateState.Database(), key, value)
-		}
+func (s EthAPIState) SetCode(addr common.Address, code []byte) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SetCode(addr, code)
 	} else {
-		stateObject := ethApiState.State.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetState(ethApiState.State.Database(), key, value)
-		}
+		s.state.SetCode(addr, code)
 	}
 }
 
-func (ethApiState EthAPIState) SetBalance(addr common.Address, amount, blockNumber *big.Int) {
-	if ethApiState.PrivateState.Exist(addr) {
-		stateObject := ethApiState.PrivateState.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetBalance(amount, blockNumber)
-		}
+func (s EthAPIState) SetBalance(addr common.Address, balance, blockNumber *big.Int) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SetBalance(addr, balance, blockNumber)
 	} else {
-		stateObject := ethApiState.State.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetBalance(amount, blockNumber)
-		}
+		s.state.SetBalance(addr, balance, blockNumber)
 	}
 }
 
-func (ethApiState EthAPIState) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
-	if ethApiState.PrivateState.Exist(addr) {
-		stateObject := ethApiState.PrivateState.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetStorage(storage)
-		}
+func (s EthAPIState) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SetStorage(addr, storage)
 	} else {
-		stateObject := ethApiState.State.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetStorage(storage)
-		}
+		s.state.SetStorage(addr, storage)
 	}
 }
 
-func (ethApiState EthAPIState) SetNonce(addr common.Address, nonce uint64) {
-	if ethApiState.PrivateState.Exist(addr) {
-		stateObject := ethApiState.PrivateState.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetNonce(nonce)
-		}
+func (s EthAPIState) SetState(addr common.Address, key, value common.Hash) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SetState(addr, key, value)
 	} else {
-		stateObject := ethApiState.State.GetOrNewStateObject(addr)
-		if stateObject != nil {
-			stateObject.SetNonce(nonce)
-		}
+		s.state.SetState(addr, key, value)
 	}
 }
 
-func (ethApiState EthAPIState) GetBalance(addr common.Address) *big.Int {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetBalance(addr)
+func (s EthAPIState) GetState(a common.Address, b common.Hash) common.Hash {
+	if s.privateState.Exist(a) {
+		return s.privateState.GetState(a, b)
 	}
-	return ethApiState.State.GetBalance(addr)
+	return s.state.GetState(a, b)
+}
+
+func (s EthAPIState) GetNonce(addr common.Address) uint64 {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetNonce(addr)
+	}
+	return s.state.GetNonce(addr)
 }
 
 // AddBalance implemented to satisfy SmiloAPIState
-func (ethApiState EthAPIState) AddBalance(addr common.Address, amount *big.Int, blockNumber *big.Int) {
-	if ethApiState.PrivateState.Exist(addr) {
-		ethApiState.PrivateState.AddBalance(addr, amount, blockNumber)
+func (s EthAPIState) AddBalance(addr common.Address, amount *big.Int, blockNumber *big.Int) {
+	if s.privateState.Exist(addr) {
+		s.privateState.AddBalance(addr, amount, blockNumber)
 	} else {
-		ethApiState.State.AddBalance(addr, amount, blockNumber)
+		s.state.AddBalance(addr, amount, blockNumber)
 	}
 }
 
 // SubSmiloPay implemented to satisfy SmiloAPIState
-func (ethApiState EthAPIState) SubSmiloPay(addr common.Address, amount *big.Int, blockNumber *big.Int) {
-	if ethApiState.PrivateState.Exist(addr) {
-		ethApiState.PrivateState.SubSmiloPay(addr, amount, blockNumber)
+func (s EthAPIState) SubSmiloPay(addr common.Address, amount *big.Int, blockNumber *big.Int) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SubSmiloPay(addr, amount, blockNumber)
 	} else {
-		ethApiState.State.SubSmiloPay(addr, amount, blockNumber)
+		s.state.SubSmiloPay(addr, amount, blockNumber)
 	}
 }
 
 // AddSmiloPay implemented to satisfy SmiloAPIState
-func (ethApiState EthAPIState) AddSmiloPay(addr common.Address, amount *big.Int) {
-	if ethApiState.PrivateState.Exist(addr) {
-		ethApiState.PrivateState.AddSmiloPay(addr, amount)
+func (s EthAPIState) AddSmiloPay(addr common.Address, amount *big.Int) {
+	if s.privateState.Exist(addr) {
+		s.privateState.AddSmiloPay(addr, amount)
 	} else {
-		ethApiState.State.AddSmiloPay(addr, amount)
+		s.state.AddSmiloPay(addr, amount)
 	}
 }
 
 // GetSmiloPay implemented to satisfy SmiloAPIState
-func (ethApiState EthAPIState) GetSmiloPay(addr common.Address, blockNumber *big.Int) *big.Int {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetSmiloPay(addr, blockNumber)
+func (s EthAPIState) GetSmiloPay(addr common.Address, blockNumber *big.Int) *big.Int {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetSmiloPay(addr, blockNumber)
 	}
-	return ethApiState.State.GetSmiloPay(addr, blockNumber)
+	return s.state.GetSmiloPay(addr, blockNumber)
 }
 
 // SubBalance implemented to satisfy SmiloAPIState
-func (ethApiState EthAPIState) SubBalance(addr common.Address, amount, blockNumber *big.Int) {
-	if ethApiState.PrivateState.Exist(addr) {
-		ethApiState.PrivateState.SubBalance(addr, amount, blockNumber)
+func (s EthAPIState) SubBalance(addr common.Address, amount, blockNumber *big.Int) {
+	if s.privateState.Exist(addr) {
+		s.privateState.SubBalance(addr, amount, blockNumber)
 	} else {
-		ethApiState.State.SubBalance(addr, amount, blockNumber)
+		s.state.SubBalance(addr, amount, blockNumber)
 	}
 }
 
-func (ethApiState EthAPIState) GetCode(addr common.Address) []byte {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetCode(addr)
+func (s EthAPIState) GetProof(addr common.Address) ([][]byte, error) {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetProof(addr)
 	}
-	return ethApiState.State.GetCode(addr)
+	return s.state.GetProof(addr)
 }
 
-func (ethApiState EthAPIState) GetState(a common.Address, b common.Hash) common.Hash {
-	if ethApiState.PrivateState.Exist(a) {
-		return ethApiState.PrivateState.GetState(a, b)
+func (s EthAPIState) GetStorageProof(addr common.Address, h common.Hash) ([][]byte, error) {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetStorageProof(addr, h)
 	}
-	return ethApiState.State.GetState(a, b)
+	return s.state.GetStorageProof(addr, h)
 }
 
-func (ethApiState EthAPIState) GetNonce(addr common.Address) uint64 {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetNonce(addr)
+func (s EthAPIState) StorageTrie(addr common.Address) state.Trie {
+	if s.privateState.Exist(addr) {
+		return s.privateState.StorageTrie(addr)
 	}
-	return ethApiState.State.GetNonce(addr)
+	return s.state.StorageTrie(addr)
 }
 
-func (ethApiState EthAPIState) GetProof(addr common.Address) ([][]byte, error) {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetProof(addr)
+func (s EthAPIState) Error() error {
+	if s.privateState.Error() != nil {
+		return s.privateState.Error()
 	}
-	return ethApiState.State.GetProof(addr)
+	return s.state.Error()
 }
 
-func (ethApiState EthAPIState) GetStorageProof(addr common.Address, h common.Hash) ([][]byte, error) {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetStorageProof(addr, h)
+func (s EthAPIState) GetCodeHash(addr common.Address) common.Hash {
+	if s.privateState.Exist(addr) {
+		return s.privateState.GetCodeHash(addr)
 	}
-	return ethApiState.State.GetStorageProof(addr, h)
-}
-
-func (ethApiState EthAPIState) StorageTrie(addr common.Address) state.Trie {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.StorageTrie(addr)
-	}
-	return ethApiState.State.StorageTrie(addr)
-}
-
-func (ethApiState EthAPIState) Error() error {
-	if ethApiState.PrivateState.Error() != nil {
-		return ethApiState.PrivateState.Error()
-	}
-	return ethApiState.State.Error()
-}
-
-func (ethApiState EthAPIState) GetCodeHash(addr common.Address) common.Hash {
-	if ethApiState.PrivateState.Exist(addr) {
-		return ethApiState.PrivateState.GetCodeHash(addr)
-	}
-	return ethApiState.State.GetCodeHash(addr)
+	return s.state.GetCodeHash(addr)
 }

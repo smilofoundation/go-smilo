@@ -44,7 +44,7 @@ import (
 var ErrTrezorPINNeeded = errors.New("trezor: pin needed")
 
 // ErrTrezorPassphraseNeeded is returned if opening the trezor requires a passphrase
-var ErrTrezorPassphraseNeeded = errors.New("trezor: password needed")
+var ErrTrezorPassphraseNeeded = errors.New("trezor: passphrase needed")
 
 // errTrezorReplyInvalidHeader is the error message returned by a Trezor data exchange
 // if the device replies with a mismatching header. This usually means the device

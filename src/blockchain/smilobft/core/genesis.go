@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/params"
@@ -159,6 +161,10 @@ func (e *GenesisMismatchError) Error() string {
 //
 // The returned chain configuration is never nil.
 func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig, common.Hash, error) {
+	return SetupGenesisBlockWithOverride(db, genesis, nil)
+}
+
+func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, overrideIstanbul *big.Int) (*params.ChainConfig, common.Hash, error) {
 	if genesis != nil && genesis.Config == nil {
 		return params.AllEthashProtocolChanges, common.Hash{}, errGenesisNoConfig
 	}
@@ -177,18 +183,21 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 			genesis.Config.CustomTransactionSizeLimit = DefaultTxPoolConfig.CustomTransactionSizeLimit
 		}
 
-		// Check transaction size limit
+		// Check transaction size limit and max contract code size
 		err := genesis.Config.IsValid()
 		if err != nil {
 			return genesis.Config, common.Hash{}, err
 		}
 
+		// /Quorum
+
 		block, err := genesis.Commit(db)
+		if err != nil {
+			return genesis.Config, common.Hash{}, err
+		}
+		log.Info("********** genesis **********", "hash", block.Hash())
 
-		hash := block.Hash()
-		log.Info("********** genesis **********", "hash", hash)
-
-		return genesis.Config, hash, err
+		return genesis.Config, block.Hash(), nil
 	}
 
 	// We have the genesis block in database(perhaps in ancient database)
@@ -205,7 +214,10 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
 		}
 		block, err := genesis.Commit(db)
-		return genesis.Config, block.Hash(), err
+		if err != nil {
+			return genesis.Config, hash, err
+		}
+		return genesis.Config, block.Hash(), nil
 	}
 
 	// Check whether the genesis block is already written.
@@ -219,6 +231,12 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 
 	// Get the existing chain configuration.
 	newcfg := genesis.configOrDefault(stored)
+	if overrideIstanbul != nil {
+		newcfg.IstanbulBlock = overrideIstanbul
+	}
+	if err := newcfg.CheckConfigForkOrder(); err != nil {
+		return newcfg, common.Hash{}, err
+	}
 	storedcfg := rawdb.ReadChainConfig(db, stored)
 	if storedcfg == nil {
 		log.Warn("Found genesis block without chain config")
@@ -334,11 +352,17 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 // Commit writes the block and state of a genesis specification to the database.
 // The block is committed as the canonical head block.
 func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
-
-	if g.Config == nil {
-		g.Config = params.AllEthashProtocolChanges
+	block := g.ToBlock(db)
+	if block.Number().Sign() != 0 {
+		return nil, fmt.Errorf("can't commit genesis block with number > 0")
 	}
-
+	config := g.Config
+	if config == nil {
+		config = params.AllEthashProtocolChanges
+	}
+	if err := config.CheckConfigForkOrder(); err != nil {
+		return nil, err
+	}
 	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) {
 		log.Warn("core/genesis.go, Commit(), Will SetBFT ")
 		err := g.SetBFT()
@@ -352,11 +376,6 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		//panic(msg)
 	}
 
-	block := g.ToBlock(db)
-
-	if block.Number().Sign() != 0 {
-		return nil, fmt.Errorf("can't commit genesis block with number > 0")
-	}
 	g.mu.RLock()
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
 	g.mu.RUnlock()
@@ -367,7 +386,6 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	rawdb.WriteHeadFastBlockHash(db, block.Hash())
 	rawdb.WriteHeadHeaderHash(db, block.Hash())
 
-	config := g.Config
 	if config.AutonityContractConfig != nil {
 		log.Warn("AutonityContractConfig is defined, will get AutonityContractConfig.Users and WriteEnodeWhitelist")
 		enodes := []string{}
@@ -530,7 +548,7 @@ func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
 	// Assemble and return the genesis with the precompiles and faucet pre-funded
 	return &Genesis{
 		Config:     &config,
-		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, 65)...),
+		ExtraData:  append(append(make([]byte, 32), faucet[:]...), make([]byte, crypto.SignatureLength)...),
 		GasLimit:   6283185,
 		Difficulty: big.NewInt(1),
 		Alloc: map[common.Address]GenesisAccount{

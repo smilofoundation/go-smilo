@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"go-smilo/src/blockchain/smilobft/plugin/gen/proto_common"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

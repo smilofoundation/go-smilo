@@ -367,7 +367,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 				state.Prepare(tx.Hash(), block.Hash(), i)
 				// Might be vulnerable to DoS Attack depending on gaslimit
 				// Todo : Double check
-				receipt, _, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
+				receipt, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 				if receiptErr != nil {
 					sb.logger.Error("Error when ApplyTransaction ", "receiptErr", receiptErr)
 					return 0, receiptErr

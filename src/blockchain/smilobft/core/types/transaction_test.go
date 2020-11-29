@@ -84,7 +84,7 @@ func TestTransactionEncode(t *testing.T) {
 	}
 }
 
-// Test from the original smilo implementation
+// Test from the original quorum implementation
 func TestTransactionEncode2(t *testing.T) {
 	txb, err := rlp.EncodeToBytes(rightvrsTx2)
 	if err != nil {

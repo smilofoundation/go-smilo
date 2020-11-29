@@ -1,4 +1,3 @@
-// Copyright 2019 The go-smilo Authors
 // Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -45,6 +44,7 @@ func TestDefaultGenesisBlock(t *testing.T) {
 }
 
 func TestSetupGenesis(t *testing.T) {
+	// Quorum: customized test cases for quorum
 	var (
 		customghash = common.HexToHash("0x908ba6a9d2fd4a243e12747bfcf3f5a28aaa51a792561b66ba5642e3ae246bdc")
 		customg     = Genesis{
@@ -147,7 +147,7 @@ func TestSetupGenesis(t *testing.T) {
 				customg.Config.CustomTransactionSizeLimit = 100000
 				return SetupGenesisBlock(db, &customg)
 			},
-			wantErr:    errors.New("custom transaction size limit must be bigger than 32 and lower than 128"),
+			wantErr:    errors.New("Genesis transaction size limit must be between 32 and 128"),
 			wantConfig: customg.Config,
 		},
 	}
