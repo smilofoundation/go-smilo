@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 )
 
 type addressKeyMap map[common.Address]*ecdsa.PrivateKey
@@ -24,14 +24,14 @@ func generateValidators(n int) ([]common.Address, addressKeyMap) {
 	return vals, keymap
 }
 
-func newTestValidatorSet(n int) validator.Set {
+func newTestValidatorSet(n int) committee.Set {
 	validators, _ := generateValidators(n)
-	return validator.NewSet(validators, config.RoundRobin)
+	return committee.NewSet(validators, config.RoundRobin)
 }
 
-func newTestValidatorSetWithKeys(n int) (validator.Set, addressKeyMap) {
+func newTestValidatorSetWithKeys(n int) (committee.Set, addressKeyMap) {
 	validators, keyMap := generateValidators(n)
-	return validator.NewSet(validators, config.RoundRobin), keyMap
+	return committee.NewSet(validators, config.RoundRobin), keyMap
 }
 
 func generatePrivateKey() (*ecdsa.PrivateKey, error) {

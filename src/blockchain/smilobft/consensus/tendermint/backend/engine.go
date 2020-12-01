@@ -24,9 +24,9 @@ import (
 	"time"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -236,7 +236,7 @@ func (sb *Backend) verifyCommittedSeals(chain consensus.ChainReader, header *typ
 	if err != nil {
 		return err
 	}
-	validators := validator.NewSet(validatorAddresses, sb.config.GetProposerPolicy())
+	validators := committee.NewSet(validatorAddresses, sb.config.GetProposerPolicy())
 
 	extra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {

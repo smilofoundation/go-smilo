@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math"
 	"math/big"
 	"reflect"
@@ -43,7 +44,6 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	tendermintCrypto "go-smilo/src/blockchain/smilobft/consensus/tendermint/crypto"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/rawdb"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -600,7 +600,7 @@ func generatePrivateKey() (*ecdsa.PrivateKey, error) {
 	return crypto.HexToECDSA(key)
 }
 
-func newTestValidatorSet(n int) (validator.Set, []*ecdsa.PrivateKey) {
+func newTestValidatorSet(n int) (committee.Set, []*ecdsa.PrivateKey) {
 	// generate validators
 	keys := make(Keys, n)
 	addrs := make([]common.Address, n)
@@ -609,7 +609,7 @@ func newTestValidatorSet(n int) (validator.Set, []*ecdsa.PrivateKey) {
 		keys[i] = privateKey
 		addrs[i] = crypto.PubkeyToAddress(privateKey.PublicKey)
 	}
-	vset := validator.NewSet(addrs, config.RoundRobin)
+	vset := committee.NewSet(addrs, config.RoundRobin)
 	sort.Sort(keys) //Keys need to be sorted by its public key address
 	return vset, keys
 }

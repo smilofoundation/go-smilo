@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
@@ -91,7 +91,7 @@ func TestStoreBacklog(t *testing.T) {
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
 		}
 
-		val := validator.New(addr)
+		val := committee.New(addr)
 		c.storeBacklog(nil, val)
 
 		if c.backlogs[val] != nil {
@@ -104,7 +104,7 @@ func TestStoreBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			address:           common.HexToAddress("0x1234567890"),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 		}
 
 		vote := &Vote{
@@ -122,7 +122,7 @@ func TestStoreBacklog(t *testing.T) {
 			Msg:  votePayload,
 		}
 
-		val := validator.New(common.HexToAddress("0x0987654321"))
+		val := committee.New(common.HexToAddress("0x0987654321"))
 		c.storeBacklog(msg, val)
 
 		pque := c.backlogs[val]
@@ -137,7 +137,7 @@ func TestStoreBacklog(t *testing.T) {
 		c := &core{
 			logger:            log.New("backend", "test", "id", 0),
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
 		}
 
@@ -158,7 +158,7 @@ func TestStoreBacklog(t *testing.T) {
 			Msg:  proposalPayload,
 		}
 
-		val := validator.New(common.HexToAddress("0x0987654321"))
+		val := committee.New(common.HexToAddress("0x0987654321"))
 
 		c.storeBacklog(msg, val)
 		pque := c.backlogs[val]
@@ -211,7 +211,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
 		}
 
@@ -271,7 +271,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
 		}
 		c.storeBacklog(msg, val)
@@ -331,7 +331,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(0)),
 		}
 
@@ -368,7 +368,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
 		}
 
@@ -408,7 +408,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
 		}
 		c.storeBacklog(msg, val)
@@ -453,7 +453,7 @@ func TestProcessBacklog(t *testing.T) {
 			logger:            log.New("backend", "test", "id", 0),
 			backend:           backendMock,
 			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			backlogs:          make(map[committee.Validator]*prque.Prque),
 			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(4)),
 		}
 		c.storeBacklog(msg, val)

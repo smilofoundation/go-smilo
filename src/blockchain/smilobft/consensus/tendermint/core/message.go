@@ -26,7 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 )
 
 const (
@@ -83,7 +83,7 @@ var ErrUnauthorizedAddress = errors.New("unauthorized address")
 //
 // define the functions that needs to be provided for core.
 
-func (m *Message) FromPayload(b []byte, valSet validator.Set, validateFn func(validator.Set, []byte, []byte) (common.Address, error)) (*validator.Validator, error) {
+func (m *Message) FromPayload(b []byte, valSet committee.Set, validateFn func(committee.Set, []byte, []byte) (common.Address, error)) (*committee.Validator, error) {
 	// Decode message
 	err := rlp.DecodeBytes(b, m)
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 	"sync"
 	"time"
@@ -33,7 +34,6 @@ import (
 	tendermintConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
@@ -157,17 +157,17 @@ func (sb *Backend) Address() common.Address {
 	return sb.address
 }
 
-func (sb *Backend) Validators(number uint64) validator.Set {
+func (sb *Backend) Validators(number uint64) committee.Set {
 	proposerPolicy := sb.config.GetProposerPolicy()
 	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
 	if err != nil {
-		return validator.NewSet(nil, proposerPolicy)
+		return committee.NewSet(nil, proposerPolicy)
 	}
-	return validator.NewSet(validators, proposerPolicy)
+	return committee.NewSet(validators, proposerPolicy)
 }
 
 // Broadcast implements tendermint.Backend.Broadcast
-func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload []byte) error {
+func (sb *Backend) Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error {
 	// send to others
 	sb.Gossip(ctx, valSet, payload)
 	// send to self
@@ -180,7 +180,7 @@ func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload 
 	return nil
 }
 
-func (sb *Backend) AskSync(valSet validator.Set) {
+func (sb *Backend) AskSync(valSet committee.Set) {
 	sb.logger.Info("Broadcasting consensus sync-me")
 
 	targets := make(map[common.Address]struct{})
@@ -206,7 +206,7 @@ func (sb *Backend) AskSync(valSet validator.Set) {
 }
 
 // Broadcast implements tendermint.Backend.Gossip
-func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []byte) {
+func (sb *Backend) Gossip(ctx context.Context, valSet committee.Set, payload []byte) {
 	hash := types.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 

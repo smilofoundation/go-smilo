@@ -1,4 +1,4 @@
-package validator
+package committee
 
 import (
 	"github.com/ethereum/go-ethereum/common"

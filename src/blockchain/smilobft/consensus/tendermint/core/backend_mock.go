@@ -15,7 +15,7 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
@@ -330,10 +330,10 @@ func (mr *MockBackendMockRecorder) Address() *gomock.Call {
 }
 
 // Validators mocks base method
-func (m *MockBackend) Validators(number uint64) validator.Set {
+func (m *MockBackend) Validators(number uint64) committee.Set {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Validators", number)
-	ret0, _ := ret[0].(validator.Set)
+	ret0, _ := ret[0].(committee.Set)
 	return ret0
 }
 
@@ -374,7 +374,7 @@ func (mr *MockBackendMockRecorder) Post(ev interface{}) *gomock.Call {
 }
 
 // Broadcast mocks base method
-func (m *MockBackend) Broadcast(ctx context.Context, valSet validator.Set, payload []byte) error {
+func (m *MockBackend) Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Broadcast", ctx, valSet, payload)
 	ret0, _ := ret[0].(error)
@@ -388,7 +388,7 @@ func (mr *MockBackendMockRecorder) Broadcast(ctx, valSet, payload interface{}) *
 }
 
 // Gossip mocks base method
-func (m *MockBackend) Gossip(ctx context.Context, valSet validator.Set, payload []byte) {
+func (m *MockBackend) Gossip(ctx context.Context, valSet committee.Set, payload []byte) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Gossip", ctx, valSet, payload)
 }
@@ -537,7 +537,7 @@ func (mr *MockBackendMockRecorder) ResetPeerCache(address interface{}) *gomock.C
 }
 
 // AskSync mocks base method
-func (m *MockBackend) AskSync(set validator.Set) {
+func (m *MockBackend) AskSync(set committee.Set) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AskSync", set)
 }

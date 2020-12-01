@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
@@ -107,17 +107,17 @@ type Backend interface {
 	Address() common.Address
 
 	// Validators returns the validator set
-	Validators(number uint64) validator.Set
+	Validators(number uint64) committee.Set
 
 	Subscribe(types ...interface{}) *cmn.TypeMuxSubscription
 
 	Post(ev interface{})
 
 	// Broadcast sends a message to all validators (include self)
-	Broadcast(ctx context.Context, valSet validator.Set, payload []byte) error
+	Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error
 
 	// Gossip sends a message to all validators (exclude self)
-	Gossip(ctx context.Context, valSet validator.Set, payload []byte)
+	Gossip(ctx context.Context, valSet committee.Set, payload []byte)
 
 	// Commit delivers an approved proposal to backend.
 	// The delivered proposal will be put into blockchain.
@@ -150,7 +150,7 @@ type Backend interface {
 
 	ResetPeerCache(address common.Address)
 
-	AskSync(set validator.Set)
+	AskSync(set committee.Set)
 
 	HandleUnhandledMsgs(ctx context.Context)
 

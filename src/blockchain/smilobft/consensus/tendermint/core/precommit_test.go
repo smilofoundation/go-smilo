@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
@@ -494,7 +494,7 @@ func TestHandleCommit(t *testing.T) {
 	backendMock := NewMockBackend(ctrl)
 	backendMock.EXPECT().LastCommittedProposal().MinTimes(1).Return(block, addr)
 
-	valSet := validator.NewMockSet(ctrl)
+	valSet := committee.NewMockSet(ctrl)
 	valSet.EXPECT().CalcProposer(addr, uint64(0))
 	valSet.EXPECT().IsProposer(addr).Return(false)
 

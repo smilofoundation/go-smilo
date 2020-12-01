@@ -10,8 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 )
 
 func TestMessageEncodeDecode(t *testing.T) {
@@ -83,7 +83,7 @@ func TestMessageFromPayload(t *testing.T) {
 		payload, _ := msg.Payload()
 		wantErr := errors.New("some error")
 
-		validateFn := func(set validator.Set, data []byte, sig []byte) (common.Address, error) {
+		validateFn := func(set committee.Set, data []byte, sig []byte) (common.Address, error) {
 			return common.Address{}, wantErr
 		}
 
@@ -102,7 +102,7 @@ func TestMessageFromPayload(t *testing.T) {
 
 		payload, _ := msg.Payload()
 
-		validateFn := func(set validator.Set, data []byte, sig []byte) (common.Address, error) {
+		validateFn := func(set committee.Set, data []byte, sig []byte) (common.Address, error) {
 			return common.Address{}, nil
 		}
 
@@ -122,9 +122,9 @@ func TestMessageFromPayload(t *testing.T) {
 
 		payload, _ := msg.Payload()
 
-		val := validator.New(authorizedAddress)
-		valSet := validator.NewSet([]common.Address{authorizedAddress}, config.RoundRobin)
-		validateFn := func(set validator.Set, data []byte, sig []byte) (common.Address, error) {
+		val := committee.New(authorizedAddress)
+		valSet := committee.NewSet([]common.Address{authorizedAddress}, config.RoundRobin)
+		validateFn := func(set committee.Set, data []byte, sig []byte) (common.Address, error) {
 			return authorizedAddress, nil
 		}
 

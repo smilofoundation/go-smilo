@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
@@ -55,7 +55,7 @@ func TestSendPropose(t *testing.T) {
 			t.Fatalf("Expected nil, got %v", err)
 		}
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(true).AnyTimes()
 		valSetMock.EXPECT().GetProposer()
 		valSetMock.EXPECT().Copy()
@@ -148,7 +148,7 @@ func TestHandleProposal(t *testing.T) {
 			Signature:     []byte{0x1},
 		}
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(false)
 
 		valSet := &validatorSet{
@@ -196,9 +196,9 @@ func TestHandleProposal(t *testing.T) {
 			Signature:     []byte{0x1},
 		}
 
-		sender := validator.NewMockValidator(ctrl)
+		sender := committee.NewMockValidator(ctrl)
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(true).AnyTimes()
 		valSetMock.EXPECT().GetProposer()
 		valSetMock.EXPECT().Size().AnyTimes()
@@ -296,7 +296,7 @@ func TestHandleProposal(t *testing.T) {
 			Signature:     []byte{0x1},
 		}
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(true).AnyTimes()
 		valSetMock.EXPECT().GetProposer()
 
@@ -359,7 +359,7 @@ func TestHandleProposal(t *testing.T) {
 			Signature:     []byte{0x1},
 		}
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(true).AnyTimes()
 		valSetMock.EXPECT().GetProposer().AnyTimes()
 		valSetMock.EXPECT().Size().AnyTimes()
@@ -456,7 +456,7 @@ func TestHandleProposal(t *testing.T) {
 			Signature:     []byte{0x1},
 		}
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().IsProposer(addr).Return(true).AnyTimes()
 		valSetMock.EXPECT().GetProposer().AnyTimes()
 		valSetMock.EXPECT().Size().AnyTimes()

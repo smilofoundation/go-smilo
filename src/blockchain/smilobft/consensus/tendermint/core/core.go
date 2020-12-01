@@ -29,8 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
@@ -81,7 +81,7 @@ func New(backend Backend, config *config.Config) *core {
 		address:                      backend.Address(),
 		logger:                       logger,
 		backend:                      backend,
-		backlogs:                     make(map[validator.Validator]*prque.Prque),
+		backlogs:                     make(map[committee.Validator]*prque.Prque),
 		pendingUnminedBlocks:         make(map[uint64]*types.Block),
 		pendingUnminedBlockCh:        make(chan *types.Block),
 		stopped:                      make(chan struct{}, 3),
@@ -123,7 +123,7 @@ type core struct {
 
 	valSet *validatorSet
 
-	backlogs   map[validator.Validator]*prque.Prque
+	backlogs   map[committee.Validator]*prque.Prque
 	backlogsMu sync.Mutex
 
 	currentRoundState *roundState

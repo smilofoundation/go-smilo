@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"sync"
@@ -76,7 +76,7 @@ func TestHandleTimeoutPrevote(t *testing.T) {
 			logger:             logger,
 			backend:            mockBackend,
 			address:            currentValidator.Address(),
-			backlogs:           make(map[validator.Validator]*prque.Prque),
+			backlogs:           make(map[committee.Validator]*prque.Prque),
 			currentRoundState:  currentState,
 			futureRoundsChange: make(map[int64]int64),
 			valSet:             &validatorSet{Set: validators},
@@ -92,7 +92,7 @@ func TestHandleTimeoutPrevote(t *testing.T) {
 		// should send precommit nil
 		mockBackend.EXPECT().Sign(gomock.Any()).Times(2)
 		mockBackend.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Do(
-			func(ctx context.Context, valSet validator.Set, payload []byte) {
+			func(ctx context.Context, valSet committee.Set, payload []byte) {
 				message := new(Message)
 				if err := rlp.DecodeBytes(payload, message); err != nil {
 					t.Fatalf("could not decode payload")
@@ -134,7 +134,7 @@ func TestHandleTimeoutPrecommit(t *testing.T) {
 			logger:                       logger,
 			backend:                      mockBackend,
 			address:                      currentValidator.Address(),
-			backlogs:                     make(map[validator.Validator]*prque.Prque),
+			backlogs:                     make(map[committee.Validator]*prque.Prque),
 			currentRoundState:            currentState,
 			currentHeightOldRoundsStates: make(map[int64]*roundState),
 			futureRoundsChange:           make(map[int64]int64),

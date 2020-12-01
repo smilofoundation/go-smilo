@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -292,7 +292,7 @@ func (c *core) handleMsg(ctx context.Context, payload []byte) error {
 	return c.handleCheckedMsg(ctx, msg, *sender)
 }
 
-func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender validator.Validator) error {
+func (c *core) handleCheckedMsg(ctx context.Context, msg *Message, sender committee.Validator) error {
 	logger := c.logger.New("address", c.address, "from", sender)
 
 	// Store the message if it's a future message

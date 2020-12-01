@@ -2,7 +2,7 @@
 // Source: consensus/tendermint/validator/validator_interface.go
 
 // Package validator is a generated GoMock package.
-package validator
+package committee
 
 import (
 	reflect "reflect"

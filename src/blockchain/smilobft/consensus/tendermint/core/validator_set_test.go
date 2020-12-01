@@ -8,7 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 )
 
 func TestValidatorSetSetEmpty(t *testing.T) {
@@ -143,7 +143,7 @@ func TestValidatorSetSize(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	expectedSize := 100
 	validatorSetMock.EXPECT().
@@ -163,9 +163,9 @@ func TestValidatorSetList(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
-	expectedList := []validator.Validator{validator.New(common.Address{}), validator.New(common.Address{})}
+	expectedList := []committee.Validator{committee.New(common.Address{}), committee.New(common.Address{})}
 	validatorSetMock.EXPECT().
 		List().
 		Return(expectedList)
@@ -183,9 +183,9 @@ func TestValidatorSetGetByIndex(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
-	expectedValidator := validator.New(common.Address{})
+	expectedValidator := committee.New(common.Address{})
 	validatorSetMock.EXPECT().
 		GetByIndex(uint64(0)).
 		Return(expectedValidator)
@@ -203,14 +203,14 @@ func TestValidatorSetGetByAddress(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	expectedAddress := common.Address{}
 	expectedAddress[0] = 1
 
 	expectedIndex := 1
 
-	expectedValidator := validator.New(expectedAddress)
+	expectedValidator := committee.New(expectedAddress)
 	validatorSetMock.EXPECT().
 		GetByAddress(expectedAddress).
 		Return(expectedIndex, expectedValidator)
@@ -232,12 +232,12 @@ func TestValidatorSetGetProposer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	expectedAddress := common.Address{}
 	expectedAddress[0] = 1
 
-	expectedValidator := validator.New(expectedAddress)
+	expectedValidator := committee.New(expectedAddress)
 	validatorSetMock.EXPECT().
 		GetProposer().
 		Return(expectedValidator)
@@ -255,12 +255,12 @@ func TestValidatorSetCopy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	expectedAddress := common.Address{}
 	expectedAddress[0] = 1
 
-	expectedValidatorSet := validator.NewSet([]common.Address{expectedAddress}, 1)
+	expectedValidatorSet := committee.NewSet([]common.Address{expectedAddress}, 1)
 
 	validatorSetMock.EXPECT().
 		Copy().
@@ -279,7 +279,7 @@ func TestValidatorSetPolicy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	expectedPolicy := config.ProposerPolicy(1)
 
@@ -300,7 +300,7 @@ func TestValidatorSetCalcProposer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	lastProposer := common.Address{}
 	lastProposer[0] = 1
@@ -320,7 +320,7 @@ func TestValidatorSetIsProposer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	addr := common.Address{}
 	addr[0] = 1
@@ -344,7 +344,7 @@ func TestValidatorSetAddValidator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	addr := common.Address{}
 	addr[0] = 1
@@ -368,7 +368,7 @@ func TestValidatorSetRemoveValidator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	validatorSetMock := validator.NewMockSet(ctrl)
+	validatorSetMock := committee.NewMockSet(ctrl)
 
 	addr := common.Address{}
 	addr[0] = 1
@@ -388,6 +388,6 @@ func TestValidatorSetRemoveValidator(t *testing.T) {
 	}
 }
 
-func Validators(validators []common.Address) validator.Set {
-	return validator.NewSet(validators, config.ProposerPolicy(0))
+func Validators(validators []common.Address) committee.Set {
+	return committee.NewSet(validators, config.ProposerPolicy(0))
 }

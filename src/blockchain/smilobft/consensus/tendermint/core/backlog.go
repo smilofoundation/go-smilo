@@ -17,9 +17,9 @@
 package core
 
 import (
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
@@ -35,7 +35,7 @@ var (
 )
 
 type backlogEvent struct {
-	src validator.Validator
+	src committee.Validator
 	msg *Message
 }
 
@@ -64,7 +64,7 @@ func (c *core) checkMessage(round *big.Int, height *big.Int, step Step) error {
 	return nil
 }
 
-func (c *core) storeBacklog(msg *Message, src validator.Validator) {
+func (c *core) storeBacklog(msg *Message, src committee.Validator) {
 	logger := c.logger.New("from", src, "step", c.currentRoundState.Step())
 
 	if src.Address() == c.address {

@@ -15,8 +15,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
 	"go-smilo/src/blockchain/smilobft/rpc"
@@ -373,9 +373,9 @@ func TestCore_SyncPeer(t *testing.T) {
 		addr := common.HexToAddress("0x0123456789")
 		curRoundState := NewRoundState(big.NewInt(2), big.NewInt(1))
 
-		val := validator.NewMockValidator(ctrl)
+		val := committee.NewMockValidator(ctrl)
 
-		valSetMock := validator.NewMockSet(ctrl)
+		valSetMock := committee.NewMockSet(ctrl)
 		valSetMock.EXPECT().GetByAddress(addr).Return(1, val)
 
 		valSet := &validatorSet{

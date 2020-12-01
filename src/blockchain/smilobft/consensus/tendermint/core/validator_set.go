@@ -6,15 +6,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 )
 
 type validatorSet struct {
 	sync.RWMutex
-	validator.Set
+	committee.Set
 }
 
-func (v *validatorSet) set(valSet validator.Set) {
+func (v *validatorSet) set(valSet committee.Set) {
 	v.Lock()
 	v.Set = valSet
 	v.Unlock()
@@ -30,7 +30,7 @@ func (v *validatorSet) Size() int {
 	return size
 }
 
-func (v *validatorSet) List() []validator.Validator {
+func (v *validatorSet) List() []committee.Validator {
 	v.RLock()
 	defer v.RUnlock()
 	if v.Set == nil {
@@ -41,7 +41,7 @@ func (v *validatorSet) List() []validator.Validator {
 	return list
 }
 
-func (v *validatorSet) GetByIndex(i uint64) validator.Validator {
+func (v *validatorSet) GetByIndex(i uint64) committee.Validator {
 	v.RLock()
 	defer v.RUnlock()
 	if v.Set == nil {
@@ -51,7 +51,7 @@ func (v *validatorSet) GetByIndex(i uint64) validator.Validator {
 	return val
 }
 
-func (v *validatorSet) GetByAddress(addr common.Address) (int, validator.Validator) {
+func (v *validatorSet) GetByAddress(addr common.Address) (int, committee.Validator) {
 	v.RLock()
 	defer v.RUnlock()
 	if v.Set == nil {
@@ -61,7 +61,7 @@ func (v *validatorSet) GetByAddress(addr common.Address) (int, validator.Validat
 	return i, val
 }
 
-func (v *validatorSet) GetProposer() validator.Validator {
+func (v *validatorSet) GetProposer() committee.Validator {
 	v.RLock()
 	defer v.RUnlock()
 	if v.Set == nil {
@@ -71,7 +71,7 @@ func (v *validatorSet) GetProposer() validator.Validator {
 	return val
 }
 
-func (v *validatorSet) Copy() validator.Set {
+func (v *validatorSet) Copy() committee.Set {
 	v.RLock()
 	defer v.RUnlock()
 	if v.Set == nil {

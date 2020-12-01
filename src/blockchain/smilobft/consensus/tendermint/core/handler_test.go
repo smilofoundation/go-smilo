@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 	"testing"
 
@@ -113,7 +113,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 		engine := core{
 			logger:             logger,
 			address:            currentValidator.Address(),
-			backlogs:           make(map[validator.Validator]*prque.Prque),
+			backlogs:           make(map[committee.Validator]*prque.Prque),
 			currentRoundState:  testCase.currentState,
 			futureRoundsChange: make(map[int64]int64),
 			valSet:             &validatorSet{Set: validators},
