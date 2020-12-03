@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/consensus/clique"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"go-smilo/src/blockchain/smilobft/private"
 	"math/big"
 	"strings"
@@ -566,6 +567,10 @@ func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {
 
 func (s *PublicBlockChainAPI) AutonityContract() *autonity.Contract {
 	return s.b.AutonityContract()
+}
+
+func (s *PublicBlockChainAPI) AutonityContractTendermint() *autonity_tendermint.Contract {
+	return s.b.AutonityContractTendermint()
 }
 
 // GetBalance returns the amount of wei for the given address in the state of the

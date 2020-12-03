@@ -17,15 +17,34 @@
 package ethash
 
 import (
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
-
-	"go-smilo/src/blockchain/smilobft/core/types"
 )
+
+// Tests that ethash works correctly in test mode.
+func TestTestMode(t *testing.T) {
+	t.Skip()
+	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
+
+	ethash := NewTester(nil, false)
+	defer ethash.Close()
+
+	results := make(chan struct{})
+	block, err := ethash.Seal(nil, types.NewBlockWithHeader(header), results)
+	if err != nil {
+		t.Fatalf("failed to seal block: %v", err)
+	}
+	header.Nonce = types.EncodeNonce(block.Nonce())
+	header.MixDigest = block.MixDigest()
+	if err := ethash.VerifySeal(nil, header); err != nil {
+		t.Fatalf("unexpected verification error: %v", err)
+	}
+}
 
 // This test checks that cache lru logic doesn't crash under load.
 // It reproduces https://github.com/ethereum/go-ethereum/issues/14943
@@ -35,7 +54,7 @@ func TestCacheFileEvict(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpdir)
-	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest})
+	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest}, nil, false)
 	defer e.Close()
 
 	workers := 8
@@ -58,7 +77,10 @@ func verifyTest(wg *sync.WaitGroup, e *Ethash, workerIndex, epochs int) {
 		if block < 0 {
 			block = 0
 		}
-		header := &types.Header{Number: big.NewInt(block), Difficulty: big.NewInt(100)}
+		header := &types.Header{
+			Number:     big.NewInt(block),
+			Difficulty: big.NewInt(100),
+		}
 		e.VerifySeal(nil, header)
 	}
 }

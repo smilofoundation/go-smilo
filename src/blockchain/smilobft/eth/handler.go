@@ -227,7 +227,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 	if manager.chainconfig.Istanbul != nil || manager.chainconfig.SportDAO != nil || manager.chainconfig.Tendermint != nil {
-		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb, EnableNodePermissionFlag).List
+		manager.enodesWhitelist = rawdb.ReadEnodeWhitelist(chaindb).List
 		log.Warn("eth/handler.go, rawdb.ReadEnodeWhitelist, enodesWhitelist, ", "manager.enodesWhitelist", manager.enodesWhitelist)
 	} else {
 		msg := "Wont set Istanbul Tendermint SportDAO ReadEnodeWhitelist, is this correct ? "

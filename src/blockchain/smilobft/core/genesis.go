@@ -69,6 +69,9 @@ type Genesis struct {
 	GasUsed    uint64      `json:"gasUsed"`
 	ParentHash common.Hash `json:"parentHash"`
 
+	//PoS Fields
+	Committee types.Committee `json:"committee"           gencodec:"required"`
+
 	mu sync.RWMutex
 }
 

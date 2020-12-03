@@ -371,24 +371,21 @@ func TestCore_SyncPeer(t *testing.T) {
 		defer ctrl.Finish()
 
 		addr := common.HexToAddress("0x0123456789")
-		curRoundState := NewRoundState(big.NewInt(2), big.NewInt(1))
+		val := types.CommitteeMember{Address: addr, VotingPower: big.NewInt(1)}
 
-		val := committee.NewMockValidator(ctrl)
-
-		valSetMock := committee.NewMockSet(ctrl)
-		valSetMock.EXPECT().GetByAddress(addr).Return(1, val)
-
-		valSet := &validatorSet{
-			Set: valSetMock,
-		}
+		committeeSet := committee.NewMockSet(ctrl)
+		committeeSet.EXPECT().GetByAddress(addr).Return(1, val, nil)
 
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().SyncPeer(addr, gomock.Any())
 
 		c := &core{
-			backend:           backendMock,
-			currentRoundState: curRoundState,
-			valSet:            valSet,
+			backend:          backendMock,
+			curRoundMessages: NewRoundMessages(),
+			committeeSet:     committeeSet,
+			round:            1,
+			messages:         newMessagesMap(),
+			height:           big.NewInt(1),
 		}
 
 		c.SyncPeer(addr)
@@ -409,7 +406,7 @@ func TestCore_Close(t *testing.T) {
 
 		messageEventSub := evmux.Subscribe(events.MessageEvent{}, backlogEvent{})
 		newUnminedBlockEventSub := evmux.Subscribe(events.NewUnminedBlockEvent{})
-		//committedSub := evmux.Subscribe(events.CommitEvent{})
+		committedSub := evmux.Subscribe(events.CommitEvent{})
 		timeoutEventSub := evmux.Subscribe(TimeoutEvent{})
 		syncEventSub := evmux.Subscribe(events.SyncEvent{})
 
@@ -419,15 +416,17 @@ func TestCore_Close(t *testing.T) {
 
 		logger := log.New("backend", "test", "id", 0)
 
+		isStarted := uint32(1)
+
 		c := &core{
-			backend:    backendMock,
-			cancel:     cancel,
-			isStarting: new(uint32),
-			isStarted:  new(uint32),
-			isStopping: new(uint32),
-			isStopped:  new(uint32),
-			//committedSub:            committedSub,
-			logger:                  log.New("backend", "test", "id", 0),
+			backend:                 backendMock,
+			cancel:                  cancel,
+			isStarting:              new(uint32),
+			isStarted:               &isStarted,
+			isStopping:              new(uint32),
+			isStopped:               new(uint32),
+			committedSub:            committedSub,
+			logger:                  logger,
 			messageEventSub:         messageEventSub,
 			newUnminedBlockEventSub: newUnminedBlockEventSub,
 			proposeTimeout:          newTimeout(propose, logger),
@@ -459,7 +458,7 @@ func TestCore_Close(t *testing.T) {
 
 		messageEventSub := evmux.Subscribe(events.MessageEvent{}, backlogEvent{})
 		newUnminedBlockEventSub := evmux.Subscribe(events.NewUnminedBlockEvent{})
-		//committedSub := evmux.Subscribe(events.CommitEvent{})
+		committedSub := evmux.Subscribe(events.CommitEvent{})
 		timeoutEventSub := evmux.Subscribe(TimeoutEvent{})
 		syncEventSub := evmux.Subscribe(events.SyncEvent{})
 
@@ -467,15 +466,18 @@ func TestCore_Close(t *testing.T) {
 		stopped <- struct{}{}
 		stopped <- struct{}{}
 
+		isStarted := new(uint32)
+		*isStarted = 1
+
 		logger := log.New("backend", "test", "id", 0)
 		c := &core{
-			backend:    backendMock,
-			cancel:     cancel,
-			isStarting: new(uint32),
-			isStarted:  new(uint32),
-			isStopping: new(uint32),
-			isStopped:  new(uint32),
-			//committedSub:            committedSub,
+			backend:                 backendMock,
+			cancel:                  cancel,
+			isStarting:              new(uint32),
+			isStarted:               isStarted,
+			isStopping:              new(uint32),
+			isStopped:               new(uint32),
+			committedSub:            committedSub,
 			logger:                  logger,
 			messageEventSub:         messageEventSub,
 			newUnminedBlockEventSub: newUnminedBlockEventSub,
@@ -495,9 +497,11 @@ func TestCore_Close(t *testing.T) {
 
 	t.Run("the system is already stopped, nothing done", func(t *testing.T) {
 		isStopped := new(uint32)
+		isStarted := new(uint32)
 		atomic.StoreUint32(isStopped, 1)
 
 		c := &core{
+			isStarted: isStarted,
 			isStopped: isStopped,
 		}
 
@@ -508,10 +512,14 @@ func TestCore_Close(t *testing.T) {
 	})
 
 	t.Run("the system is being stopped, nothing done", func(t *testing.T) {
+		isStarted := new(uint32)
+		atomic.StoreUint32(isStarted, 1)
+
 		isStopping := new(uint32)
 		atomic.StoreUint32(isStopping, 1)
 
 		c := &core{
+			isStarted:  isStarted,
 			isStopped:  new(uint32),
 			isStopping: isStopping,
 		}

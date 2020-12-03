@@ -26,6 +26,14 @@
   version = "v0.3.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:0a035ff42c5d88ae87f815157ff81fdb758b4065069b56efd8f123c3478ae586"
+  name = "github.com/JekaMas/pretty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "bfc6f9ec9574d3596a75cec8fe110a659dcb6458"
+
+[[projects]]
   digest = "1:f96ba6ecca7ba87b1dddd70ae38cfc4ce5ea844f58d1f728e121d2e29cdfb8a2"
   name = "github.com/allegro/bigcache"
   packages = [
@@ -996,6 +1004,7 @@
   input-imports = [
     "github.com/Azure/azure-storage-blob-go/azblob",
     "github.com/BurntSushi/toml",
+    "github.com/JekaMas/pretty",
     "github.com/allegro/bigcache",
     "github.com/apilayer/freegeoip",
     "github.com/cespare/cp",
@@ -1016,6 +1025,7 @@
     "github.com/ethereum/go-ethereum/common/prque",
     "github.com/ethereum/go-ethereum/console",
     "github.com/ethereum/go-ethereum/crypto",
+    "github.com/ethereum/go-ethereum/crypto/blake2b",
     "github.com/ethereum/go-ethereum/crypto/bn256",
     "github.com/ethereum/go-ethereum/crypto/ecies",
     "github.com/ethereum/go-ethereum/crypto/secp256k1",

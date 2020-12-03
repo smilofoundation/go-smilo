@@ -105,7 +105,7 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey, error) {
 	genesis.Mixhash = types.BFTDigest
 
 	appendFullnodes(genesis, addrs)
-	err := genesis.Config.AutonityContractConfig.AddDefault().Validate()
+	err := genesis.Config.AutonityContractConfig.AddDefault("").Validate()
 	if err != nil {
 		return nil, nil, err
 	}

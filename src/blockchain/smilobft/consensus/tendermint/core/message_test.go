@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"reflect"
 	"testing"
@@ -122,14 +123,21 @@ func TestMessageFromPayload(t *testing.T) {
 
 		payload, _ := msg.Payload()
 
-		val := committee.New(authorizedAddress)
-		valSet := committee.NewSet([]common.Address{authorizedAddress}, config.RoundRobin)
+		val := types.CommitteeMember{
+			Address:     authorizedAddress,
+			VotingPower: new(big.Int).SetUint64(1),
+		}
+
+		committeeSet, err := committee.NewSet(types.Committee{val}, config.RoundRobin, val.Address)
+		if err != nil {
+			t.Fatal("error creating committee set")
+		}
 		validateFn := func(set committee.Set, data []byte, sig []byte) (common.Address, error) {
 			return authorizedAddress, nil
 		}
 
 		decMsg := &Message{}
-		newVal, err := decMsg.FromPayload(payload, valSet, validateFn)
+		newVal, err := decMsg.FromPayload(payload, committeeSet, validateFn)
 		if err != nil {
 			t.Fatalf("have %v, want nil", err)
 		}
@@ -142,7 +150,7 @@ func TestMessageFromPayload(t *testing.T) {
 
 func TestMessageDecode(t *testing.T) {
 	vote := &Vote{
-		Round:             big.NewInt(1),
+		Round:             1,
 		Height:            big.NewInt(2),
 		ProposedBlockHash: common.BytesToHash([]byte{0x1}),
 	}

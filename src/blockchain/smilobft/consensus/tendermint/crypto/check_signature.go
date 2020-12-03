@@ -21,9 +21,10 @@ func CheckValidatorSignature(valSet committee.Set, data []byte, sig []byte) (com
 	}
 
 	// 2. Check validator
-	if _, val := valSet.GetByAddress(signer); val != nil {
-		return val.Address(), nil
+	_, val, err := valSet.GetByAddress(signer)
+	if err != nil {
+		return common.Address{}, ErrUnauthorizedAddress
 	}
 
-	return common.Address{}, ErrUnauthorizedAddress
+	return val.Address, nil
 }

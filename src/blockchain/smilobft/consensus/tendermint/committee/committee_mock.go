@@ -5,64 +5,12 @@
 package committee
 
 import (
+	"go-smilo/src/blockchain/smilobft/core/types"
 	reflect "reflect"
 
 	common "github.com/ethereum/go-ethereum/common"
 	gomock "github.com/golang/mock/gomock"
-
-	config "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 )
-
-// MockValidator is a mock of Validator interface
-type MockValidator struct {
-	ctrl     *gomock.Controller
-	recorder *MockValidatorMockRecorder
-}
-
-// MockValidatorMockRecorder is the mock recorder for MockValidator
-type MockValidatorMockRecorder struct {
-	mock *MockValidator
-}
-
-// NewMockValidator creates a new mock instance
-func NewMockValidator(ctrl *gomock.Controller) *MockValidator {
-	mock := &MockValidator{ctrl: ctrl}
-	mock.recorder = &MockValidatorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockValidator) EXPECT() *MockValidatorMockRecorder {
-	return m.recorder
-}
-
-// Address mocks base method
-func (m *MockValidator) Address() common.Address {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Address")
-	ret0, _ := ret[0].(common.Address)
-	return ret0
-}
-
-// Address indicates an expected call of Address
-func (mr *MockValidatorMockRecorder) Address() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Address", reflect.TypeOf((*MockValidator)(nil).Address))
-}
-
-// String mocks base method
-func (m *MockValidator) String() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "String")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// String indicates an expected call of String
-func (mr *MockValidatorMockRecorder) String() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "String", reflect.TypeOf((*MockValidator)(nil).String))
-}
 
 // MockSet is a mock of Set interface
 type MockSet struct {
@@ -87,18 +35,6 @@ func (m *MockSet) EXPECT() *MockSetMockRecorder {
 	return m.recorder
 }
 
-// CalcProposer mocks base method
-func (m *MockSet) CalcProposer(lastProposer common.Address, round uint64) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CalcProposer", lastProposer, round)
-}
-
-// CalcProposer indicates an expected call of CalcProposer
-func (mr *MockSetMockRecorder) CalcProposer(lastProposer, round interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalcProposer", reflect.TypeOf((*MockSet)(nil).CalcProposer), lastProposer, round)
-}
-
 // Size mocks base method
 func (m *MockSet) Size() int {
 	m.ctrl.T.Helper()
@@ -113,26 +49,27 @@ func (mr *MockSetMockRecorder) Size() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Size", reflect.TypeOf((*MockSet)(nil).Size))
 }
 
-// List mocks base method
-func (m *MockSet) List() []Validator {
+// Committee mocks base method
+func (m *MockSet) Committee() types.Committee {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]Validator)
+	ret := m.ctrl.Call(m, "Committee")
+	ret0, _ := ret[0].(types.Committee)
 	return ret0
 }
 
-// List indicates an expected call of List
-func (mr *MockSetMockRecorder) List() *gomock.Call {
+// Committee indicates an expected call of Committee
+func (mr *MockSetMockRecorder) Committee() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSet)(nil).List))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Committee", reflect.TypeOf((*MockSet)(nil).Committee))
 }
 
 // GetByIndex mocks base method
-func (m *MockSet) GetByIndex(i uint64) Validator {
+func (m *MockSet) GetByIndex(i int) (types.CommitteeMember, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByIndex", i)
-	ret0, _ := ret[0].(Validator)
-	return ret0
+	ret0, _ := ret[0].(types.CommitteeMember)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetByIndex indicates an expected call of GetByIndex
@@ -142,12 +79,13 @@ func (mr *MockSetMockRecorder) GetByIndex(i interface{}) *gomock.Call {
 }
 
 // GetByAddress mocks base method
-func (m *MockSet) GetByAddress(addr common.Address) (int, Validator) {
+func (m *MockSet) GetByAddress(addr common.Address) (int, types.CommitteeMember, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByAddress", addr)
 	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(Validator)
-	return ret0, ret1
+	ret1, _ := ret[1].(types.CommitteeMember)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetByAddress indicates an expected call of GetByAddress
@@ -157,59 +95,31 @@ func (mr *MockSetMockRecorder) GetByAddress(addr interface{}) *gomock.Call {
 }
 
 // GetProposer mocks base method
-func (m *MockSet) GetProposer() Validator {
+func (m *MockSet) GetProposer(round int64) types.CommitteeMember {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProposer")
-	ret0, _ := ret[0].(Validator)
+	ret := m.ctrl.Call(m, "GetProposer", round)
+	ret0, _ := ret[0].(types.CommitteeMember)
 	return ret0
 }
 
 // GetProposer indicates an expected call of GetProposer
-func (mr *MockSetMockRecorder) GetProposer() *gomock.Call {
+func (mr *MockSetMockRecorder) GetProposer(round interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProposer", reflect.TypeOf((*MockSet)(nil).GetProposer))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProposer", reflect.TypeOf((*MockSet)(nil).GetProposer), round)
 }
 
 // IsProposer mocks base method
-func (m *MockSet) IsProposer(address common.Address) bool {
+func (m *MockSet) IsProposer(round int64, address common.Address) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsProposer", address)
+	ret := m.ctrl.Call(m, "IsProposer", round, address)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // IsProposer indicates an expected call of IsProposer
-func (mr *MockSetMockRecorder) IsProposer(address interface{}) *gomock.Call {
+func (mr *MockSetMockRecorder) IsProposer(round, address interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProposer", reflect.TypeOf((*MockSet)(nil).IsProposer), address)
-}
-
-// AddValidator mocks base method
-func (m *MockSet) AddValidator(address common.Address) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddValidator", address)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// AddValidator indicates an expected call of AddValidator
-func (mr *MockSetMockRecorder) AddValidator(address interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddValidator", reflect.TypeOf((*MockSet)(nil).AddValidator), address)
-}
-
-// RemoveValidator mocks base method
-func (m *MockSet) RemoveValidator(address common.Address) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveValidator", address)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// RemoveValidator indicates an expected call of RemoveValidator
-func (mr *MockSetMockRecorder) RemoveValidator(address interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveValidator", reflect.TypeOf((*MockSet)(nil).RemoveValidator), address)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProposer", reflect.TypeOf((*MockSet)(nil).IsProposer), round, address)
 }
 
 // Copy mocks base method
@@ -227,10 +137,10 @@ func (mr *MockSetMockRecorder) Copy() *gomock.Call {
 }
 
 // F mocks base method
-func (m *MockSet) F() int {
+func (m *MockSet) F() uint64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "F")
-	ret0, _ := ret[0].(int)
+	ret0, _ := ret[0].(uint64)
 	return ret0
 }
 
@@ -241,10 +151,10 @@ func (mr *MockSetMockRecorder) F() *gomock.Call {
 }
 
 // Quorum mocks base method
-func (m *MockSet) Quorum() int {
+func (m *MockSet) Quorum() uint64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Quorum")
-	ret0, _ := ret[0].(int)
+	ret0, _ := ret[0].(uint64)
 	return ret0
 }
 
@@ -252,18 +162,4 @@ func (m *MockSet) Quorum() int {
 func (mr *MockSetMockRecorder) Quorum() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Quorum", reflect.TypeOf((*MockSet)(nil).Quorum))
-}
-
-// Policy mocks base method
-func (m *MockSet) Policy() config.ProposerPolicy {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Policy")
-	ret0, _ := ret[0].(config.ProposerPolicy)
-	return ret0
-}
-
-// Policy indicates an expected call of Policy
-func (mr *MockSetMockRecorder) Policy() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Policy", reflect.TypeOf((*MockSet)(nil).Policy))
 }

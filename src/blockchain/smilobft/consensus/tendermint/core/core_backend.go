@@ -88,7 +88,7 @@ func (c *core) Protocol() (protocolName string, extraMsgCodes uint64) {
 
 // Synchronize new connected peer with current height state
 func (c *core) SyncPeer(address common.Address) {
-	if c.IsValidator(address) {
+	if c.IsMember(address) {
 		c.backend.SyncPeer(address, c.GetCurrentHeightMessages())
 	}
 }
@@ -106,8 +106,8 @@ type Backend interface {
 	// Address returns the owner's address
 	Address() common.Address
 
-	// Validators returns the validator set
-	Validators(number uint64) committee.Set
+	// Validators returns the committee set
+	Committee(number uint64) (committee.Set, error)
 
 	Subscribe(types ...interface{}) *cmn.TypeMuxSubscription
 
@@ -121,7 +121,7 @@ type Backend interface {
 
 	// Commit delivers an approved proposal to backend.
 	// The delivered proposal will be put into blockchain.
-	Commit(proposalBlock types.Block, seals [][]byte) error
+	Commit(proposalBlock *types.Block, round int64, seals [][]byte) error
 
 	// VerifyProposal verifies the proposal. If a consensus.ErrFutureBlock error is returned,
 	// the time difference of the proposal and current time is also returned.
@@ -145,6 +145,8 @@ type Backend interface {
 
 	// Setter for proposed block hash
 	SetProposedBlockHash(hash common.Hash)
+
+	AddSeal(block *types.Block) (*types.Block, error)
 
 	SyncPeer(address common.Address, messages []*Message)
 

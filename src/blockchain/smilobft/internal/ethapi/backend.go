@@ -19,6 +19,7 @@ package ethapi
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -47,6 +48,7 @@ import (
 type Backend interface {
 	// General Ethereum API
 	AutonityContract() *autonity.Contract
+	AutonityContractTendermint() *autonity_tendermint.Contract
 	Downloader() *downloader.Downloader
 	ProtocolVersion() int
 	SuggestPrice(ctx context.Context) (*big.Int, error)

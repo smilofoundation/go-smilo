@@ -17,6 +17,9 @@
 package committee
 
 import (
+	"errors"
+	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"math"
 	"reflect"
 	"sort"
@@ -27,177 +30,111 @@ import (
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 )
 
-type defaultValidator struct {
-	address common.Address
-}
-
-func (val *defaultValidator) Address() common.Address {
-	return val.address
-}
-
-func (val *defaultValidator) String() string {
-	return val.Address().String()
-}
-
-// ----------------------------------------------------------------------------
+var ErrEmptyCommitteeSet = errors.New("committee set can't be empty")
 
 type defaultSet struct {
-	validators Validators
-	policy     config.ProposerPolicy
+	members      types.Committee
+	policy       config.ProposerPolicy
+	lastProposer common.Address
+	selector     ProposalSelector
+	totalPower   uint64
 
-	proposer    Validator
-	validatorMu sync.RWMutex
-	selector    ProposalSelector
+	mu       sync.RWMutex                    // members doesn't need to be protected as it is read-only
+	proposer map[int64]types.CommitteeMember // cached computed values
 }
 
-func newDefaultSet(addrs []common.Address, policy config.ProposerPolicy) *defaultSet {
-	valSet := &defaultSet{}
+func NewSet(members types.Committee, policy config.ProposerPolicy, lastProposer common.Address) (*defaultSet, error) {
 
-	valSet.policy = policy
-	valSet.validators = makeValidators(addrs)
+	if len(members) == 0 {
+		return nil, ErrEmptyCommitteeSet
+	}
 
+	committee := &defaultSet{}
+	committee.policy = policy
+	committee.members = members
+	committee.proposer = make(map[int64]types.CommitteeMember)
 	// sort validator
-	sort.Sort(valSet.validators)
-	// init proposer
-	if valSet.Size() > 0 {
-		valSet.proposer = valSet.GetByIndex(0)
+	sort.Sort(committee.members)
+
+	committee.totalPower = 0
+	for i := range members {
+		committee.totalPower += members[i].VotingPower.Uint64()
 	}
 
 	switch policy {
 	case config.Sticky:
-		valSet.selector = stickyProposer
+		committee.selector = stickyProposer
 	case config.RoundRobin:
-		valSet.selector = roundRobinProposer
+		committee.selector = roundRobinProposer
 	default:
-		valSet.selector = roundRobinProposer
+		committee.selector = roundRobinProposer
 	}
 
-	return valSet
+	committee.lastProposer = lastProposer
+	committee.proposer[0] = committee.selector(committee, lastProposer, 0)
+	return committee, nil
 }
 
-func makeValidators(addrs []common.Address) []Validator {
-	validators := make([]Validator, len(addrs))
-	for i, addr := range addrs {
-		validators[i] = New(addr)
+func copyMembers(members types.Committee) types.Committee {
+	membersCopy := make(types.Committee, len(members))
+	for i, val := range members {
+		membersCopy[i] = val
 	}
-
-	return validators
+	return membersCopy
 }
 
-func copyValidators(validators []Validator) []Validator {
-	validatorsCopy := make([]Validator, len(validators))
-	for i, val := range validators {
-		validatorsCopy[i] = New(val.Address())
+func (set *defaultSet) Size() int {
+	return len(set.members)
+}
+
+func (set *defaultSet) Committee() types.Committee {
+	return copyMembers(set.members)
+}
+
+func (set *defaultSet) GetByIndex(i int) (types.CommitteeMember, error) {
+	if i < 0 || i >= len(set.members) {
+		return types.CommitteeMember{}, consensus.ErrCommitteeMemberNotFound
 	}
-
-	return validatorsCopy
+	return set.members[i], nil
 }
 
-func (valSet *defaultSet) Size() int {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-	return len(valSet.validators)
-}
-
-func (valSet *defaultSet) List() []Validator {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-
-	return copyValidators(valSet.validators)
-}
-
-func (valSet *defaultSet) GetByIndex(i uint64) Validator {
-	if i < uint64(valSet.Size()) {
-		valSet.validatorMu.RLock()
-		defer valSet.validatorMu.RUnlock()
-
-		return New(valSet.validators[i].Address())
-	}
-
-	return nil
-}
-
-func (valSet *defaultSet) GetByAddress(addr common.Address) (int, Validator) {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-
-	for i, val := range valSet.validators {
-		if addr == val.Address() {
-			return i, val
+func (set *defaultSet) GetByAddress(addr common.Address) (int, types.CommitteeMember, error) {
+	for i, member := range set.members {
+		if addr == member.Address {
+			return i, member, nil
 		}
 	}
-	return -1, nil
+	return -1, types.CommitteeMember{}, consensus.ErrCommitteeMemberNotFound
 }
 
-func (valSet *defaultSet) GetProposer() Validator {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-
-	return valSet.getProposer()
-}
-
-func (valSet *defaultSet) getProposer() Validator {
-	return New(valSet.proposer.Address())
-}
-
-func (valSet *defaultSet) IsProposer(address common.Address) bool {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-
-	_, val := valSet.GetByAddress(address)
-	return reflect.DeepEqual(valSet.getProposer(), val)
-}
-
-func (valSet *defaultSet) CalcProposer(lastProposer common.Address, round uint64) {
-	proposer := valSet.selector(valSet, lastProposer, round)
-
-	valSet.validatorMu.Lock()
-	valSet.proposer = proposer
-	valSet.validatorMu.Unlock()
-}
-
-func (valSet *defaultSet) AddValidator(address common.Address) bool {
-	valSet.validatorMu.Lock()
-	defer valSet.validatorMu.Unlock()
-
-	for _, v := range valSet.validators {
-		if v.Address() == address {
-			return false
-		}
+func (set *defaultSet) GetProposer(round int64) types.CommitteeMember {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+	v, ok := set.proposer[round]
+	if !ok {
+		v = set.selector(set, set.lastProposer, round)
+		set.proposer[round] = v
 	}
 
-	valSet.validators = append(valSet.validators, New(address))
-	// TODO: we may not need to re-sort it again
-	sort.Sort(valSet.validators)
-	return true
+	return v
 }
 
-func (valSet *defaultSet) RemoveValidator(address common.Address) bool {
-	valSet.validatorMu.Lock()
-	defer valSet.validatorMu.Unlock()
-
-	for i, v := range valSet.validators {
-		if v.Address() == address {
-			valSet.validators = append(valSet.validators[:i], valSet.validators[i+1:]...)
-			return true
-		}
+func (set *defaultSet) IsProposer(round int64, address common.Address) bool {
+	_, val, err := set.GetByAddress(address)
+	if err != nil {
+		return false
 	}
-	return false
+	curProposer := set.GetProposer(round)
+	return reflect.DeepEqual(curProposer, val)
 }
 
-func (valSet *defaultSet) Copy() Set {
-	valSet.validatorMu.RLock()
-	defer valSet.validatorMu.RUnlock()
-
-	addresses := make([]common.Address, 0, len(valSet.validators))
-	for _, v := range valSet.validators {
-		addresses = append(addresses, v.Address())
-	}
-	return NewSet(addresses, valSet.policy)
+func (set *defaultSet) Copy() Set {
+	newSet, _ := NewSet(copyMembers(set.members), set.policy, set.lastProposer)
+	return newSet
 }
 
-func (valSet *defaultSet) F() int { return int(math.Ceil(float64(valSet.Size())/3)) - 1 }
+func (set *defaultSet) F() uint64 { return uint64(math.Ceil(float64(set.totalPower)/3)) - 1 }
 
-func (valSet *defaultSet) Quorum() int { return int(math.Ceil((2 * float64(valSet.Size())) / 3.)) }
+func (set *defaultSet) Quorum() uint64 { return uint64(math.Ceil((2 * float64(set.totalPower)) / 3.)) }
 
-func (valSet *defaultSet) Policy() config.ProposerPolicy { return valSet.policy }
+func (set *defaultSet) Policy() config.ProposerPolicy { return set.policy }

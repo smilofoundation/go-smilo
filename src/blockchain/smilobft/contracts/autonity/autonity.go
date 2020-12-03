@@ -48,10 +48,10 @@ type Blockchainer interface {
 	Config() *params.ChainConfig
 
 	UpdateEnodeWhitelist(newWhitelist *types.Nodes)
-	ReadEnodeWhitelist(EnableNodePermissionFlag bool) *types.Nodes
+	ReadEnodeWhitelist() *types.Nodes
 
-	UpdateBlacklist(newBlacklist *types.Nodes)
-	ReadBlacklist(TxPoolBlacklistFlag bool) *types.Nodes
+	PutKeyValue(key []byte, value []byte) error
+	GetKeyValue(key []byte) ([]byte, error)
 }
 
 type Contract struct {
@@ -236,8 +236,8 @@ func (ac *Contract) ContractGetValidators(chain consensus.ChainReader, header *t
 
 var ErrAutonityContract = errors.New("could not call Autonity contract")
 
-func (ac *Contract) UpdateEnodesWhitelist(state, vaultstate *state.StateDB, block *types.Block) error {
-	newWhitelist, err := ac.GetWhitelist(block, state, vaultstate)
+func (ac *Contract) UpdateEnodesWhitelist(state *state.StateDB, block *types.Block) error {
+	newWhitelist, err := ac.GetWhitelist(block, state)
 	if err != nil {
 		log.Error("could not call contract", "err", err)
 		return ErrAutonityContract
@@ -247,7 +247,7 @@ func (ac *Contract) UpdateEnodesWhitelist(state, vaultstate *state.StateDB, bloc
 	return nil
 }
 
-func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.StateDB) (*types.Nodes, error) {
+func (ac *Contract) GetWhitelist(block *types.Block, db *state.StateDB) (*types.Nodes, error) {
 	var (
 		newWhitelist *types.Nodes
 		err          error
@@ -255,10 +255,10 @@ func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.State
 
 	if block.Number().Uint64() == 1 {
 		// use genesis block whitelist
-		newWhitelist = ac.bc.ReadEnodeWhitelist(false)
+		newWhitelist = ac.bc.ReadEnodeWhitelist()
 	} else {
 		// call retrieveWhitelist contract function
-		newWhitelist, err = ac.callGetWhitelist(db, vaultstate, block.Header())
+		newWhitelist, err = ac.callGetWhitelist(db, block.Header())
 	}
 
 	return newWhitelist, err
@@ -266,7 +266,7 @@ func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.State
 
 //blockchain
 
-func (ac *Contract) callGetWhitelist(state, vaultstate *state.StateDB, header *types.Header) (*types.Nodes, error) {
+func (ac *Contract) callGetWhitelist(state *state.StateDB, header *types.Header) (*types.Nodes, error) {
 	// Needs to be refactored somehow
 	deployer := ac.bc.Config().AutonityContractConfig.Deployer
 	sender := vm.AccountRef(deployer)
@@ -298,12 +298,12 @@ func (ac *Contract) callGetWhitelist(state, vaultstate *state.StateDB, header *t
 	return types.NewNodes(returnedEnodes, false), nil
 }
 
-func (ac *Contract) GetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB) (uint64, error) {
+func (ac *Contract) GetMinimumGasPrice(block *types.Block, db *state.StateDB) (uint64, error) {
 	if block.Number().Uint64() <= 1 {
 		return ac.bc.Config().AutonityContractConfig.MinGasPrice, nil
 	}
 
-	return ac.callGetMinimumGasPrice(db, vaultstate, block.Header())
+	return ac.callGetMinimumGasPrice(db,  block.Header())
 }
 
 func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB, price *big.Int) error {
@@ -314,7 +314,7 @@ func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state
 	return ac.callSetMinimumGasPrice(db, vaultstate, block.Header(), price)
 }
 
-func (ac *Contract) callGetMinimumGasPrice(state, vaultstate *state.StateDB, header *types.Header) (uint64, error) {
+func (ac *Contract) callGetMinimumGasPrice(state *state.StateDB, header *types.Header) (uint64, error) {
 	// Needs to be refactored somehow
 	deployer := ac.bc.Config().AutonityContractConfig.Deployer
 	sender := vm.AccountRef(deployer)

@@ -17,7 +17,9 @@
 package committee
 
 import (
-	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/core/types"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,26 +40,23 @@ func TestValidatorSet(t *testing.T) {
 	testNormalValSet(t)
 	testEmptyValSet(t)
 	testStickyProposer(t)
-	testAddAndRemoveValidator(t)
 }
 
 func testNewValidatorSet(t *testing.T) {
-	var validators []Validator
+	var validators types.Committee
 	const ValCnt = 100
 
-	// Create 100 validators with random addresses
-	b := []byte{}
+	// Create 100 members with random addresses
 	for i := 0; i < ValCnt; i++ {
 		key, _ := crypto.GenerateKey()
 		addr := crypto.PubkeyToAddress(key.PublicKey)
-		val := New(addr)
+		val := types.CommitteeMember{Address: addr, VotingPower: new(big.Int).SetUint64(1)}
 		validators = append(validators, val)
-		b = append(b, val.Address().Bytes()...)
 	}
 
 	// Create Set
-	valSet := NewSet(ExtractValidators(b), config.RoundRobin)
-	if valSet == nil {
+	valSet, err := NewSet(validators, config.RoundRobin, validators[0].Address)
+	if err != nil || valSet == nil {
 		t.Error("the validator byte array cannot be parsed")
 		t.FailNow()
 	}
@@ -71,17 +70,23 @@ func testNewValidatorSet(t *testing.T) {
 		valsMap[val.String()] = struct{}{}
 	}
 
-	// Check validators sorting: should be in ascending order
+	// Check members sorting: should be in ascending order
 	for i := 0; i < ValCnt-1; i++ {
-		val := valSet.GetByIndex(uint64(i))
-		nextVal := valSet.GetByIndex(uint64(i + 1))
+		val, err := valSet.GetByIndex(i)
+		if err != nil {
+			t.Error("unexpected error")
+		}
+		nextVal, err := valSet.GetByIndex(i + 1)
+		if err != nil {
+			t.Error("unexpected error")
+		}
 		if strings.Compare(val.String(), nextVal.String()) >= 0 {
 			t.Error("validator set is not sorted in ascending order")
 		}
 
 		if _, ok := valsMap[val.String()]; !ok {
-			t.Errorf("validator set has unexpected element %s. Original validators %v, given %v",
-				val.String(), validators, valSet.List())
+			t.Errorf("validator set has unexpected element %s. Original members %v, given %v",
+				val.String(), validators, valSet.Committee())
 		}
 	}
 }
@@ -91,102 +96,61 @@ func testNormalValSet(t *testing.T) {
 	b2 := common.Hex2Bytes(testAddress2)
 	addr1 := common.BytesToAddress(b1)
 	addr2 := common.BytesToAddress(b2)
-	val1 := New(addr1)
-	val2 := New(addr2)
+	val1 := types.CommitteeMember{Address: addr1, VotingPower: new(big.Int).SetUint64(1)}
+	val2 := types.CommitteeMember{Address: addr2, VotingPower: new(big.Int).SetUint64(1)}
 
-	valSet := newDefaultSet([]common.Address{addr1, addr2}, config.RoundRobin)
-	if valSet == nil {
+	committeeSet, err := NewSet(types.Committee{val1, val2}, config.RoundRobin, val1.Address)
+	if committeeSet == nil || err != nil {
 		t.Errorf("the format of validator set is invalid")
 		t.FailNow()
 	}
 
 	// check size
-	if size := valSet.Size(); size != 2 {
+	if size := committeeSet.Size(); size != 2 {
 		t.Errorf("the size of validator set is wrong: have %v, want 2", size)
 	}
 	// test get by index
-	if val := valSet.GetByIndex(uint64(0)); !reflect.DeepEqual(val, val1) {
+	if val, err := committeeSet.GetByIndex(0); err != nil || !reflect.DeepEqual(val, val1) {
 		t.Errorf("validator mismatch: have %v, want %v", val, val1)
 	}
 	// test get by invalid index
-	if val := valSet.GetByIndex(uint64(2)); val != nil {
-		t.Errorf("validator mismatch: have %v, want nil", val)
+	if _, err := committeeSet.GetByIndex(2); err != consensus.ErrCommitteeMemberNotFound {
+		t.Errorf("validator mismatch: have %s, want nil", err)
 	}
 	// test get by address
-	if _, val := valSet.GetByAddress(addr2); !reflect.DeepEqual(val, val2) {
+	if _, val, err := committeeSet.GetByAddress(addr2); err != nil || !reflect.DeepEqual(val, val2) {
 		t.Errorf("validator mismatch: have %v, want %v", val, val2)
 	}
 	// test get by invalid address
 	invalidAddr := common.HexToAddress("0x9535b2e7faaba5288511d89341d94a38063a349b")
-	if _, val := valSet.GetByAddress(invalidAddr); val != nil {
-		t.Errorf("validator mismatch: have %v, want nil", val)
+	if _, _, err := committeeSet.GetByAddress(invalidAddr); err != consensus.ErrCommitteeMemberNotFound {
+		t.Errorf("validator mismatch: have %s, want error", err)
 	}
 	// test get proposer
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val1) {
+	if val := committeeSet.GetProposer(0); !reflect.DeepEqual(val, val2) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val1)
 	}
 	// test calculate proposer
 	lastProposer := addr1
-	valSet.CalcProposer(lastProposer, uint64(0))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val2) {
+	committeeSet, _ = NewSet(types.Committee{val1, val2}, config.RoundRobin, lastProposer)
+	if val := committeeSet.GetProposer(0); !reflect.DeepEqual(val, val2) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val2)
 	}
-	valSet.CalcProposer(lastProposer, uint64(3))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val1) {
+	if val := committeeSet.GetProposer(3); !reflect.DeepEqual(val, val1) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val1)
 	}
 	// test empty last proposer
 	lastProposer = common.Address{}
-	valSet.CalcProposer(lastProposer, uint64(3))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val2) {
+	committeeSet, _ = NewSet(types.Committee{val1, val2}, config.RoundRobin, lastProposer)
+	if val := committeeSet.GetProposer(3); !reflect.DeepEqual(val, val2) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val2)
 	}
 }
 
 func testEmptyValSet(t *testing.T) {
-	valSet := NewSet(ExtractValidators([]byte{}), config.RoundRobin)
-	if valSet == nil {
-		t.Errorf("validator set should not be nil")
-	}
-}
-
-func testAddAndRemoveValidator(t *testing.T) {
-	valSet := NewSet(ExtractValidators([]byte{}), config.RoundRobin)
-	if !valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
-		t.Error("the validator should be added")
-	}
-	if valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
-		t.Error("the existing validator should not be added")
-	}
-	valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 1))))
-	valSet.AddValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 0))))
-	if len(valSet.List()) != 3 {
-		t.Error("the size of validator set should be 3")
-	}
-
-	for i, v := range valSet.List() {
-		expected := common.BytesToAddress([]byte(fmt.Sprintf("%d", i)))
-		if v.Address() != expected {
-			t.Errorf("the order of validators is wrong: have %v, want %v", v.Address().Hex(), expected.Hex())
-		}
-	}
-
-	if !valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
-		t.Error("the validator should be removed")
-	}
-	if valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 2)))) {
-		t.Error("the non-existing validator should not be removed")
-	}
-	if len(valSet.List()) != 2 {
-		t.Error("the size of validator set should be 2")
-	}
-	valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 1))))
-	if len(valSet.List()) != 1 {
-		t.Error("the size of validator set should be 1")
-	}
-	valSet.RemoveValidator(common.BytesToAddress([]byte(fmt.Sprintf("%d", 0))))
-	if len(valSet.List()) != 0 {
-		t.Error("the size of validator set should be 0")
+	valSet, err := NewSet(types.Committee{}, config.RoundRobin, common.Address{})
+	if valSet != nil || err != ErrEmptyCommitteeSet {
+		t.Errorf("validator set should be nil and error returned")
 	}
 }
 
@@ -195,31 +159,29 @@ func testStickyProposer(t *testing.T) {
 	b2 := common.Hex2Bytes(testAddress2)
 	addr1 := common.BytesToAddress(b1)
 	addr2 := common.BytesToAddress(b2)
-	val1 := New(addr1)
-	val2 := New(addr2)
+	val1 := types.CommitteeMember{Address: addr1, VotingPower: new(big.Int).SetUint64(1)}
+	val2 := types.CommitteeMember{Address: addr2, VotingPower: new(big.Int).SetUint64(1)}
 
-	valSet := newDefaultSet([]common.Address{addr1, addr2}, config.Sticky)
-
+	set, err := NewSet(types.Committee{val1, val2}, config.Sticky, addr1)
+	if err != nil {
+		t.Error("error returned when creating committee set")
+	}
 	// test get proposer
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val1) {
+	if val := set.GetProposer(0); !reflect.DeepEqual(val, val1) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val1)
 	}
 	// test calculate proposer
-	lastProposer := addr1
-	valSet.CalcProposer(lastProposer, uint64(0))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val1) {
+	if val := set.GetProposer(0); !reflect.DeepEqual(val, val1) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val1)
 	}
 
-	valSet.CalcProposer(lastProposer, uint64(1))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val2) {
+	if val := set.GetProposer(1); !reflect.DeepEqual(val, val2) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val2)
 	}
 
 	// test empty last proposer
-	lastProposer = common.Address{}
-	valSet.CalcProposer(lastProposer, uint64(3))
-	if val := valSet.GetProposer(); !reflect.DeepEqual(val, val2) {
+	set, _ = NewSet(types.Committee{val1, val2}, config.Sticky, common.Address{})
+	if val := set.GetProposer(1); !reflect.DeepEqual(val, val2) {
 		t.Errorf("proposer mismatch: have %v, want %v", val, val2)
 	}
 }

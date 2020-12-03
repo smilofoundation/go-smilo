@@ -49,3 +49,10 @@ func (slice Addresses) Less(i, j int) bool {
 func (slice Addresses) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
+
+// ACHash returns the Autonity Contract Finalize transaction Hash.
+func ACHash(b *big.Int) common.Hash {
+	hash := BigToHash(b)
+	hash[0] = 0xAC
+	return hash
+}

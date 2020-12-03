@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn"
 	"io"
 	"math/big"
 	"unsafe"
@@ -300,38 +301,84 @@ func (r Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, num
 	signer := MakeSigner(config, new(big.Int).SetUint64(number))
 
 	logIndex := uint(0)
-	if len(txs) != len(r) {
-		return errors.New("transaction and receipt count mismatch")
-	}
-	for i := 0; i < len(r); i++ {
-		// The transaction hash can be retrieved from the transaction itself
-		r[i].TxHash = txs[i].Hash()
-
-		// block location fields
-		r[i].BlockHash = hash
-		r[i].BlockNumber = new(big.Int).SetUint64(number)
-		r[i].TransactionIndex = uint(i)
-
-		// The contract address can be derived from the transaction itself
-		if txs[i].To() == nil {
-			// Deriving the signer is expensive, only do if it's actually needed
-			from, _ := Sender(signer, txs[i])
-			r[i].ContractAddress = crypto.CreateAddress(from, txs[i].Nonce())
+	if config.Tendermint != nil && config.AutonityContractConfig != nil {
+		//	The last receipt has no associated transaction. It is the Autonity Contract finalize internal call receipt.
+		if len(txs)+1 < len(r) {
+			return errors.New("transaction and receipt count mismatch")
 		}
-		// The used gas can be calculated based on previous r
-		if i == 0 {
-			r[i].GasUsed = r[i].CumulativeGasUsed
-		} else {
-			r[i].GasUsed = r[i].CumulativeGasUsed - r[i-1].CumulativeGasUsed
+		for i := 0; i < len(r); i++ {
+			// The transaction hash can be retrieved from the transaction itself
+			if i == len(txs) {
+				// Autonity Contract receipt, TxHash needs to be regenerated.
+				r[i].TxHash = cmn.ACHash(new(big.Int).SetUint64(number))
+			} else {
+				r[i].TxHash = txs[i].Hash()
+			}
+
+			// block location fields
+			r[i].BlockHash = hash
+			r[i].BlockNumber = new(big.Int).SetUint64(number)
+			r[i].TransactionIndex = uint(i)
+
+			// The contract address can be derived from the transaction itself
+			if i < len(txs) {
+				if txs[i].To() == nil {
+					// Deriving the signer is expensive, only do if it's actually needed
+					from, _ := Sender(signer, txs[i])
+					r[i].ContractAddress = crypto.CreateAddress(from, txs[i].Nonce())
+				}
+			}
+			// The used gas can be calculated based on previous r
+			if i == 0 {
+				r[i].GasUsed = r[i].CumulativeGasUsed
+			} else {
+				r[i].GasUsed = r[i].CumulativeGasUsed - r[i-1].CumulativeGasUsed
+			}
+			// The derived log fields can simply be set from the block and transaction
+			for j := 0; j < len(r[i].Logs); j++ {
+				r[i].Logs[j].BlockNumber = number
+				r[i].Logs[j].BlockHash = hash
+				r[i].Logs[j].TxHash = r[i].TxHash
+				r[i].Logs[j].TxIndex = uint(i)
+				r[i].Logs[j].Index = logIndex
+				logIndex++
+			}
 		}
-		// The derived log fields can simply be set from the block and transaction
-		for j := 0; j < len(r[i].Logs); j++ {
-			r[i].Logs[j].BlockNumber = number
-			r[i].Logs[j].BlockHash = hash
-			r[i].Logs[j].TxHash = r[i].TxHash
-			r[i].Logs[j].TxIndex = uint(i)
-			r[i].Logs[j].Index = logIndex
-			logIndex++
+	} else {
+
+		if len(txs) != len(r) {
+			return errors.New("transaction and receipt count mismatch")
+		}
+		for i := 0; i < len(r); i++ {
+			// The transaction hash can be retrieved from the transaction itself
+			r[i].TxHash = txs[i].Hash()
+
+			// block location fields
+			r[i].BlockHash = hash
+			r[i].BlockNumber = new(big.Int).SetUint64(number)
+			r[i].TransactionIndex = uint(i)
+
+			// The contract address can be derived from the transaction itself
+			if txs[i].To() == nil {
+				// Deriving the signer is expensive, only do if it's actually needed
+				from, _ := Sender(signer, txs[i])
+				r[i].ContractAddress = crypto.CreateAddress(from, txs[i].Nonce())
+			}
+			// The used gas can be calculated based on previous r
+			if i == 0 {
+				r[i].GasUsed = r[i].CumulativeGasUsed
+			} else {
+				r[i].GasUsed = r[i].CumulativeGasUsed - r[i-1].CumulativeGasUsed
+			}
+			// The derived log fields can simply be set from the block and transaction
+			for j := 0; j < len(r[i].Logs); j++ {
+				r[i].Logs[j].BlockNumber = number
+				r[i].Logs[j].BlockHash = hash
+				r[i].Logs[j].TxHash = r[i].TxHash
+				r[i].Logs[j].TxIndex = uint(i)
+				r[i].Logs[j].Index = logIndex
+				logIndex++
+			}
 		}
 	}
 	return nil

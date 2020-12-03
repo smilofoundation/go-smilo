@@ -2,27 +2,25 @@ package committee
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
-func stickyProposer(valSet Set, proposer common.Address, round uint64) Validator {
+func stickyProposer(valSet Set, proposer common.Address, round int64) types.CommitteeMember {
 	size := valSet.Size()
-	if size == 0 {
-		return nil
-	}
-
-	seed := round
+	seed := int(round)
 	if proposer != (common.Address{}) {
 		seed = calcSeed(valSet, proposer, round)
 	}
 
-	pick := seed % uint64(size)
-	return valSet.GetByIndex(pick)
+	pick := seed % size
+	selectedProposer, _ := valSet.GetByIndex(pick)
+	return selectedProposer
 }
 
-func calcSeed(valSet Set, proposer common.Address, round uint64) uint64 {
+func calcSeed(valSet Set, proposer common.Address, round int64) int {
 	offset := 0
-	if idx, val := valSet.GetByAddress(proposer); val != nil {
+	if idx, _, err := valSet.GetByAddress(proposer); err == nil {
 		offset = idx
 	}
-	return uint64(offset) + round
+	return offset + int(round)
 }

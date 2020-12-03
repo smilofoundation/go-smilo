@@ -19,6 +19,7 @@ package eth
 import (
 	"context"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -323,6 +324,10 @@ func (b *EthAPIBackend) AccountManager() *accounts.Manager {
 
 func (b *EthAPIBackend) AutonityContract() *autonity.Contract {
 	return b.eth.blockchain.GetAutonityContract()
+}
+
+func (b *EthAPIBackend) AutonityContractTendermint() *autonity_tendermint.Contract {
+	return b.eth.blockchain.GetAutonityContractTendermint()
 }
 
 func (b *EthAPIBackend) ExtRPCEnabled() bool {
