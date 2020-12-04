@@ -136,7 +136,7 @@ func TestValidateAutonityContract_AddDefaulTest_Success(t *testing.T) {
 			},
 		},
 	}
-	contractConfig = contractConfig.AddDefault()
+	contractConfig = contractConfig.AddDefault("")
 	if reflect.DeepEqual(contractConfig.Users[0].Address, common.Address{}) {
 		t.Fatal("Failed to parse enode")
 	}

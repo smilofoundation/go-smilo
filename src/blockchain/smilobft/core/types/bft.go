@@ -34,7 +34,7 @@ var (
 	// BFTDigest represents a hash of "Istanbul practical byzantine fault tolerance"
 	// to identify whether the block is from BFT consensus engine
 	//TODO differentiate the digest between IBFT and Tendermint
-	BFTDigest = common.HexToHash("0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365")
+	BFTDigest        = common.HexToHash("0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365")
 	TendermintDigest = common.HexToHash("0x0000000000000000536d696c6f2054656e6465726d696e74204d61696e6e6574") // Smilo Tendermint Mainnet
 
 	BFTExtraVanity = 32 // Fixed number of extra-data bytes reserved for validator vanity

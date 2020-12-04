@@ -717,10 +717,10 @@ func getGenesisAndKeys(n int) (*core.Genesis, []*ecdsa.PrivateKey) {
 	genesis.Config.Ethash = nil
 	genesis.Difficulty = defaultDifficulty
 	genesis.Nonce = emptyNonce.Uint64()
-	genesis.Mixhash = types.BFTDigest
+	genesis.Mixhash = types.TendermintDigest
 
 	AppendValidators(genesis, addrs)
-	err := genesis.Config.AutonityContractConfig.AddDefault("").Validate()
+	err := genesis.Config.AutonityContractConfig.AddDefault("0.4.0").Validate()
 	if err != nil {
 		panic(err)
 	}

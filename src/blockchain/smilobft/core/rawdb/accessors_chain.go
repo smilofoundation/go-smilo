@@ -72,7 +72,7 @@ func WriteEnodeWhitelist(db ethdb.KeyValueWriter, whitelist *types.Nodes) {
 }
 
 // ReadEnodeWhitelist retrieve the list of permitted enodes
-func ReadEnodeWhitelist(db ethdb.KeyValueReader) *types.Nodes {
+func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) *types.Nodes {
 	var strList []string
 	nodes := &types.Nodes{List: make([]*enode.Node, 0)}
 
@@ -86,7 +86,7 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader) *types.Nodes {
 	}
 	log.Warn("ReadEnodeWhitelist, strList, ", "strList", strList)
 
-	nodes = types.NewNodes(strList, false)
+	nodes = types.NewNodes(strList, EnableNodePermissionFlag)
 	return nodes
 }
 

@@ -684,7 +684,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 		// Subscribe to Autonity updates events
 		log.Warn("eth/backend.go, Start(), Will Subscribe to Autonity updates events")
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
-		savedList := rawdb.ReadEnodeWhitelist(s.chainDb)
+		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.EnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
 		go s.glienickeEventLoop(srvr)
 		srvr.UpdateWhitelist(savedList.List)

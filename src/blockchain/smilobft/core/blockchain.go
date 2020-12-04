@@ -2444,8 +2444,8 @@ func (bc *BlockChain) UpdateEnodeWhitelist(newWhitelist *types.Nodes) {
 	go bc.autonityFeed.Send(WhitelistEvent{Whitelist: newWhitelist.List})
 }
 
-func (bc *BlockChain) ReadEnodeWhitelist() *types.Nodes {
-	return rawdb.ReadEnodeWhitelist(bc.db)
+func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
+	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
 }
 
 func (bc *BlockChain) PutKeyValue(key []byte, value []byte) error {

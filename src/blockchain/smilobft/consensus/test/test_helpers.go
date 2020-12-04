@@ -122,7 +122,7 @@ func makeGenesis(validators []*testNode) *core.Genesis {
 	genesis.Difficulty = big.NewInt(1)
 	genesis.Timestamp = 0
 	genesis.Nonce = 0
-	genesis.Mixhash = types.BFTDigest
+	genesis.Mixhash = types.TendermintDigest
 
 	genesis.Config = params.SmiloTestChainConfig
 	genesis.Config.Tendermint = &params.TendermintConfig{}

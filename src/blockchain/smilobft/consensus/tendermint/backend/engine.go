@@ -122,7 +122,7 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 		return errInvalidNonce
 	}
 	// Ensure that the mix digest is zero as we don't have fork protection currently
-	if header.MixDigest != types.BFTDigest {
+	if header.MixDigest != types.TendermintDigest {
 		return errInvalidMixDigest
 	}
 	// Ensure that the block doesn't contain any uncles which are meaningless in BFT
@@ -309,7 +309,7 @@ func (sb *Backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 	// unused fields, force to set to empty
 	header.Coinbase = sb.Address()
 	header.Nonce = emptyNonce
-	header.MixDigest = types.BFTDigest
+	header.MixDigest = types.TendermintDigest
 
 	// copy the parent extra data as the header extra data
 	number := header.Number.Uint64()

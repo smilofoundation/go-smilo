@@ -92,7 +92,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 			},
 		)
 	}
-	err := gspec.Config.AutonityContractConfig.AddDefault().Validate()
+	err := gspec.Config.AutonityContractConfig.AddDefault("").Validate()
 	if err != nil {
 		return nil, nil, err
 	}

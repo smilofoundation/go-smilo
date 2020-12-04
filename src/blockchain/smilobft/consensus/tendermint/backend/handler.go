@@ -169,11 +169,11 @@ func (sb *Backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 				return false, nil
 			}
 			newRequestedBlock := request.Block
-			if newRequestedBlock.Header().MixDigest == types.BFTDigest {
+			if newRequestedBlock.Header().MixDigest == types.TendermintDigest {
 				log.Debug("Speaker already proposed this block", "hash", newRequestedBlock.Hash(), "sender", addr, "msg", msg.String())
 				return true, nil
 			} else {
-				log.Debug("newRequestedBlock.Header().MixDigest != types.BFTDigest", "MixDigest", newRequestedBlock.Header().MixDigest, "BFTDigest", types.BFTDigest)
+				log.Debug("newRequestedBlock.Header().MixDigest != types.BFTDigest", "MixDigest", newRequestedBlock.Header().MixDigest, "TendermintDigest", types.TendermintDigest)
 			}
 		}
 	} else {

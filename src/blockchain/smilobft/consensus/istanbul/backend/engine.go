@@ -661,7 +661,7 @@ func (sb *Backend) retrieveSavedValidators(number uint64, chain consensus.ChainR
 
 	istanbulExtra, err := types.ExtractBFTHeaderExtra(header)
 	if err != nil {
-		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "errUnknownBlock", errUnknownBlock)
+		sb.logger.Error("Error when ExtractBFTHeaderExtra , ", "err", err)
 		return nil, err
 	}
 

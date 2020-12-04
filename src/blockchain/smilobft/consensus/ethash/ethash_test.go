@@ -31,7 +31,7 @@ func TestTestMode(t *testing.T) {
 	t.Skip()
 	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
 
-	ethash := NewTester(nil, false)
+	ethash := NewTester()
 	defer ethash.Close()
 
 	results := make(chan struct{})
@@ -54,7 +54,7 @@ func TestCacheFileEvict(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpdir)
-	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest}, nil, false)
+	e := New(Config{CachesInMem: 3, CachesOnDisk: 10, CacheDir: tmpdir, PowMode: ModeTest})
 	defer e.Close()
 
 	workers := 8
