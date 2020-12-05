@@ -447,13 +447,14 @@ func (g *Genesis) SetBFT() error {
 
 		sort.Sort(committee)
 		g.Committee = committee
+		g.Mixhash = types.TendermintDigest
 
 		log.Info("starting BFT consensus", "validators", committee)
 	} else {
 		log.Warn("core/genesis.go, SetBFT(), consensus invalid for call or AutonityContractConfig is nil, is this right ? ", "g.Config", g.Config)
 	}
 
-	log.Info("starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()))
+	log.Info("starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()), "Mixhash", g.Mixhash.Hex())
 
 	// we have to use '1' to have TD == BlockNumber for xBFT consensus
 	g.mu.Lock()

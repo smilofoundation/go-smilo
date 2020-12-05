@@ -686,7 +686,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
 		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.EnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
-		go s.glienickeEventLoop(srvr)
+		go s.glienickeEventLoop(srvr, srvr.EnableNodePermissionFlag)
 		srvr.UpdateWhitelist(savedList.List)
 	} else {
 		log.Warn("eth/backend.go, Start(), EnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
@@ -717,7 +717,12 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 
 // Whitelist updating loop. Act as a relay between state processing logic and DevP2P
 // for updating the list of authorized enodes
-func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
+func (s *Smilo) glienickeEventLoop(server *p2p.Server, EnableNodePermissionFlag bool) {
+
+	savedList := rawdb.ReadEnodeWhitelist(s.chainDb, false)
+	log.Info("Reading Whitelist", "list", savedList.StrList)
+	server.UpdateWhitelist(savedList.List)
+
 	for {
 		select {
 		case event := <-s.glienickeCh:

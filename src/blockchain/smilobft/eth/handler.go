@@ -64,12 +64,6 @@ const (
 
 var (
 	syncChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the sync progress challenge
-)
-
-var (
-	// errIncompatibleConfig is returned if the requested protocols and configs are
-	// not compatible (low protocol version restrictions and high requirements).
-	//errIncompatibleConfig = errors.New("incompatible configuration")
 	errUnauthorizedPeer = errors.New("peer is not authorized")
 )
 
@@ -456,7 +450,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if syncer, ok := pm.blockchain.Engine().(consensus.Syncer); ok && pm.blockchain.Config().Tendermint != nil {
 		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 		syncer.ResetPeerCache(address)
-		syncer.SyncPeer(address)
+		//syncer.SyncPeer(address)
 	} else {
 		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
 	}
