@@ -763,6 +763,8 @@ func makeHeader(parent *types.Block, config *config.Config) *types.Header {
 		Extra:      parent.Extra(),
 		Time:       new(big.Int).Add(big.NewInt(int64(parent.Time())), new(big.Int).SetUint64(config.BlockPeriod)).Uint64(),
 		Difficulty: defaultDifficulty,
+		MixDigest:  types.TendermintDigest,
+		Round:      0,
 	}
 	return header
 }

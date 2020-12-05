@@ -20,6 +20,7 @@ package types
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"io"
 	"math/big"
 	"reflect"
@@ -84,7 +85,6 @@ type Header struct {
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
 	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
-
 
 	/*
 		PoS header fields, round & committedSeals not taken into account
@@ -158,7 +158,7 @@ func (h *Header) Hash() common.Hash {
 		if sportHeader := SportFilteredHeader(h, true); sportHeader != nil {
 			return rlpHash(sportHeader)
 		}
-	} else if h.MixDigest == BFTDigest ||  h.MixDigest == TendermintDigest{
+	} else if h.MixDigest == BFTDigest || h.MixDigest == TendermintDigest {
 		// Seal is reserved in extra-data. To prove block is signed by the proposer.
 		if posHeader := BFTFilteredHeader(h, true); posHeader != nil {
 			return rlpHash(posHeader)
@@ -214,67 +214,71 @@ func (h *Header) SanityCheck() error {
 }
 
 //TODO: do we need to do this ? can we implement it all as a Extradata and avoid this this horrible workaround inherited by Autonity ??
-//
-//// DecodeRLP decodes the Ethereum
-//func (h *Header) DecodeRLP(s *rlp.Stream) error {
-//	origin := &originalHeader{}
-//	if err := s.Decode(origin); err != nil {
-//		return err
-//	}
-//
-//	hExtra := &headerExtra{}
-//	if origin.MixDigest == TendermintDigest {
-//		if err := rlp.DecodeBytes(origin.Extra, hExtra); err == nil {
-//			h.CommittedSeals = hExtra.CommittedSeals
-//			h.Committee = hExtra.Committee
-//			h.PastCommittedSeals = hExtra.PastCommittedSeals
-//			h.ProposerSeal = hExtra.ProposerSeal
-//			h.Round = hExtra.Round
-//		}
-//	}
-//
-//	h.ParentHash = origin.ParentHash
-//	h.UncleHash = origin.UncleHash
-//	h.Coinbase = origin.Coinbase
-//	h.Root = origin.Root
-//	h.TxHash = origin.TxHash
-//	h.ReceiptHash = origin.ReceiptHash
-//	h.Bloom = origin.Bloom
-//	h.Difficulty = origin.Difficulty
-//	h.Number = origin.Number
-//	h.GasLimit = origin.GasLimit
-//	h.GasUsed = origin.GasUsed
-//	h.Time = origin.Time
-//	h.MixDigest = origin.MixDigest
-//	h.Nonce = origin.Nonce
-//	h.Extra = origin.Extra
-//
-//	return nil
-//}
-//
-//// EncodeRLP serializes b into the Ethereum RLP block format.
-//func (h *Header) EncodeRLP(w io.Writer) error {
-//	hExtra := headerExtra{
-//		Committee:          h.Committee,
-//		ProposerSeal:       h.ProposerSeal,
-//		Round:              h.Round,
-//		CommittedSeals:     h.CommittedSeals,
-//		PastCommittedSeals: h.PastCommittedSeals,
-//	}
-//
-//	original := h.original()
-//	if h.MixDigest == BFTDigest {
-//		extra, err := rlp.EncodeToBytes(hExtra)
-//		if err != nil {
-//			return err
-//		}
-//		original.Extra = extra
-//	} else {
-//		original.Extra = h.Extra
-//	}
-//
-//	return rlp.Encode(w, *original)
-//}
+
+// DecodeRLP decodes the Ethereum
+func (h *Header) DecodeRLP(s *rlp.Stream) error {
+	origin := &originalHeader{}
+	if err := s.Decode(origin); err != nil {
+		return err
+	}
+
+	hExtra := &headerExtra{}
+	if origin.MixDigest == TendermintDigest {
+		err := rlp.DecodeBytes(origin.Extra, hExtra)
+		if err != nil {
+			log.Error("could not DecodeBytes origin.Extra")
+			return err
+		}
+		h.CommittedSeals = hExtra.CommittedSeals
+		h.Committee = hExtra.Committee
+		h.PastCommittedSeals = hExtra.PastCommittedSeals
+		h.ProposerSeal = hExtra.ProposerSeal
+		h.Round = hExtra.Round
+	}
+
+	h.ParentHash = origin.ParentHash
+	h.UncleHash = origin.UncleHash
+	h.Coinbase = origin.Coinbase
+	h.Root = origin.Root
+	h.TxHash = origin.TxHash
+	h.ReceiptHash = origin.ReceiptHash
+	h.Bloom = origin.Bloom
+	h.Difficulty = origin.Difficulty
+	h.Number = origin.Number
+	h.GasLimit = origin.GasLimit
+	h.GasUsed = origin.GasUsed
+	h.Time = origin.Time
+	h.MixDigest = origin.MixDigest
+	h.Nonce = origin.Nonce
+	h.Extra = origin.Extra
+
+	return nil
+}
+
+// EncodeRLP serializes b into the Ethereum RLP block format.
+func (h *Header) EncodeRLP(w io.Writer) error {
+	hExtra := headerExtra{
+		Committee:          h.Committee,
+		ProposerSeal:       h.ProposerSeal,
+		Round:              h.Round,
+		CommittedSeals:     h.CommittedSeals,
+		PastCommittedSeals: h.PastCommittedSeals,
+	}
+
+	original := h.original()
+	if h.MixDigest == TendermintDigest {
+		extra, err := rlp.EncodeToBytes(hExtra)
+		if err != nil {
+			log.Error("could not EncodeToBytes")
+			return err
+		}
+		original.Extra = extra
+	} else {
+		original.Extra = h.Extra
+	}
+
+	return rlp.Encode(w, *original)
+}
 
 func (h *Header) original() *originalHeader {
 	return &originalHeader{

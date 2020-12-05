@@ -420,6 +420,7 @@ func TestWriteCommittedSeals(t *testing.T) {
 	var expectedErr error
 
 	h := &types.Header{}
+	h.MixDigest = types.TendermintDigest
 
 	// normal case
 	err := types.WriteCommittedSeals(h, [][]byte{expectedCommittedSeal})

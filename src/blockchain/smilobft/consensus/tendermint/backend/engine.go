@@ -59,8 +59,6 @@ var (
 	errInvalidCoinbase = errors.New("invalid coinbase")
 	// errInvalidDifficulty is returned if the difficulty of a block is not 1
 	errInvalidDifficulty = errors.New("invalid difficulty")
-	// errInvalidExtraDataFormat is returned when the extra data format is incorrect
-	errInvalidExtraDataFormat = errors.New("invalid extra data format")
 	// errInvalidMixDigest is returned if a block's mix digest is not BFT digest.
 	errInvalidMixDigest = errors.New("invalid BFT mix digest")
 	// errInvalidNonce is returned if a block's nonce is invalid
@@ -110,11 +108,6 @@ func (sb *Backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	// Don't waste time checking blocks from the future
 	if big.NewInt(int64(header.Time)).Cmp(big.NewInt(now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
-	}
-
-	// Ensure that the extra data format is satisfied
-	if _, err := types.ExtractBFTHeaderExtra(header); err != nil {
-		return errInvalidExtraDataFormat
 	}
 
 	// Ensure that the coinbase is valid
@@ -338,13 +331,13 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 		sb.blockchain = chain.(*core.BlockChain) // in the case of Finalize() called before the engine start()
 	}
 
-	committeeSet, receipt, err := sb.AutonityContractFinalize(header, chain, state, txs, receipts)
+	committeeSet, _, err := sb.AutonityContractFinalize(header, chain, state, txs, receipts)
 	if err != nil {
 		sb.logger.Error("AutonityContractFinalize", "err", err.Error())
 		return nil,  err
 	}
 
-	receipts = append(receipts, receipt)
+	//receipts = append(receipts, receipt)
 
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
@@ -380,6 +373,7 @@ func (sb *Backend) AutonityContractFinalize(header *types.Header, chain consensu
 	}
 
 	committeeSet, receipt, err := sb.blockchain.GetAutonityContractTendermint().FinalizeAndGetCommittee(txs, receipts, header, state)
+
 	if err != nil {
 		sb.logger.Error("Autonity Contract finalize returns err", "err", err)
 		return nil, nil, err

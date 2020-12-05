@@ -264,11 +264,14 @@ func (c *core) measureHeightRoundMetrics(round int64) {
 
 // startRound starts a new round. if round equals to 0, it means to starts a new height
 func (c *core) startRound(ctx context.Context, round int64) {
-
+	height := new(big.Int)
 	c.measureHeightRoundMetrics(round)
 	lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
-	height := new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
-
+	if lastCommittedProposalBlock != nil {
+		height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
+	} else {
+		log.Warn("startRound block 0", "round",round)
+	}
 	// Set initial FSM state
 	c.setInitialState(round)
 	// c.setStep(propose) will process the pending unmined blocks sent by the backed.Seal() and set c.lastestPendingRequest

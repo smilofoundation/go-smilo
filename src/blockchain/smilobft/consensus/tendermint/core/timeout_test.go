@@ -130,6 +130,7 @@ func TestHandleTimeoutPrecommit(t *testing.T) {
 		messages := newMessagesMap()
 		curRoundMessages := messages.getOrCreate(1)
 		mockBackend := NewMockBackend(ctrl)
+		mockBackend.EXPECT().LastCommittedProposal().Times(1)
 		mockBackend.EXPECT().Post(gomock.Any()).AnyTimes()
 		engine := core{
 			logger:           logger,

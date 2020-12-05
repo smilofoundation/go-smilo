@@ -225,6 +225,9 @@ func (sb *Backend) Gossip(ctx context.Context, valSet committee.Set, payload []b
 
 	if sb.broadcaster != nil && len(targets) > 0 {
 		ps := sb.broadcaster.FindPeers(targets)
+		if len(ps) == 0 {
+			log.Warn("Gossip FindPeers returned zero peers ....")
+		}
 		for addr, p := range ps {
 			ms, ok := sb.recentMessages.Get(addr)
 			var m *lru.ARCCache
@@ -344,7 +347,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
 		var (
-			receipts   types.Receipts
+			receipts types.Receipts
 
 			usedGas        = new(uint64)
 			gp             = new(core.GasPool).AddGas(block.GasLimit())
@@ -371,9 +374,10 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 			state.Prepare(tx.Hash(), block.Hash(), i)
 			// Might be vulnerable to DoS Attack depending on gaslimit
 			// Todo : Double check
-			receipt, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
-			if receiptErr != nil {
-				return 0, receiptErr
+			receipt, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
+			if err != nil {
+				sb.logger.Error("Error when ApplyTransaction ", "err", err)
+				return 0, err
 			}
 			receipts = append(receipts, receipt)
 		}
