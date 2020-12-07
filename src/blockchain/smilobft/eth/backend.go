@@ -139,7 +139,7 @@ func (s *Smilo) SetContractBackend(backend bind.ContractBackend) {
 // New creates a new Smilo object (including the
 // initialisation of the common Smilo object)
 func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Engine) consensus.Engine) (*Smilo, error) {
-	log.Info("$$$$$$$ Going to creates a new Smilo backend config object ")
+	log.Info("$$$$$$$ Going to create a new Smilo backend config object ")
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.Smilo in light sync mode, use les.LightEthereum")

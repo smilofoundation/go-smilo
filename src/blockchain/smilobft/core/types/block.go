@@ -430,6 +430,7 @@ func CopyHeader(h *Header) *Header {
 	}
 
 	if h.MixDigest == TendermintDigest {
+		//log.Debug("CopyHeader, PoS fields deep copy section", "len(h.Committee)", len(h.Committee))
 		/* PoS fields deep copy section*/
 		if len(h.Committee) > 0 {
 			cpy.Committee = make([]CommitteeMember, len(h.Committee))

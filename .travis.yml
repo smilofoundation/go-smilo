@@ -62,6 +62,17 @@ jobs:
       script:
         - go run src/blockchain/smilobft/build/ci.go install
         - chmod +x ci_tendermint_tests.sh && ./ci_tendermint_tests.sh
+    - stage: test
+      os: linux
+      dist: xenial
+      go: 1.15.x
+      env:
+        - TENDERMINT_SLOW
+      git:
+        submodules: false # avoid cloning ethereum/tests
+      script:
+        - go run src/blockchain/smilobft/build/ci.go install
+        - chmod +x ci_tendermint_slow_tests.sh && ./ci_tendermint_slow_tests.sh
 
     # This builder only tests tendermint consensus on latest version of Go
     - stage: test_legacy
