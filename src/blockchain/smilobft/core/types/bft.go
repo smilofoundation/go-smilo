@@ -119,7 +119,7 @@ func BFTFilteredHeader(h *Header, keepSeal bool) *Header {
 		newHeader.CommittedSeals = [][]byte{}
 		newHeader.Round = 0
 		newHeader.Extra = []byte{}
-	}else {
+	} else {
 		bftExtra, err := ExtractBFTHeaderExtra(newHeader)
 		if err != nil {
 			return nil
@@ -172,9 +172,10 @@ func Ecrecover(header *Header) (common.Address, error) {
 	var err error
 	if header.MixDigest == TendermintDigest {
 		addr, err = GetSignatureAddress(SigHash(header).Bytes(), header.ProposerSeal)
-	}else {
+	} else {
 		// Retrieve the signature from the header extra-data
-		bftExtra, err := ExtractBFTHeaderExtra(header)
+		var bftExtra *BFTExtra
+		bftExtra, err = ExtractBFTHeaderExtra(header)
 		if err != nil {
 			return common.Address{}, err
 		}
@@ -230,7 +231,7 @@ func WriteSeal(h *Header, seal []byte) error {
 		}
 		h.ProposerSeal = make([]byte, len(seal))
 		copy(h.ProposerSeal, seal)
-	}else {
+	} else {
 		if len(seal)%BFTExtraSeal != 0 { // TODO :  len(seal) != BFTExtraSeal
 			return ErrInvalidSignature
 		}

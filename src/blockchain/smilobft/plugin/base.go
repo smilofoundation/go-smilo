@@ -109,7 +109,7 @@ func (bp *basePlugin) load() error {
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Cmd:              command,
 		AutoMTLS:         true,
-		Logger:           &logDelegate{bp.logger.New("from", "plugin")},
+		//Logger:           &logDelegate{bp.logger.New("from", "plugin")},
 	})
 
 	bp.pluginWorkspace = unPackDir
@@ -254,17 +254,17 @@ func (*logDelegate) IsError() bool {
 	return true
 }
 
-func (ld *logDelegate) With(args ...interface{}) hclog.Logger {
-	return &logDelegate{ld.eLogger.New(args...)}
-}
+//func (ld *logDelegate) With(args ...interface{}) hclog.Logger {
+//	return &logDelegate{ld.eLogger.New(args...)}
+//}
 
-func (ld *logDelegate) Named(name string) hclog.Logger {
-	return ld
-}
-
-func (ld *logDelegate) ResetNamed(name string) hclog.Logger {
-	return ld
-}
+//func (ld *logDelegate) Named(name string) hclog.Logger {
+//	return ld
+//}
+//
+//func (ld *logDelegate) ResetNamed(name string) hclog.Logger {
+//	return ld
+//}
 
 func (ld *logDelegate) SetLevel(level hclog.Level) {
 }

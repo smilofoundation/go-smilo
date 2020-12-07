@@ -70,7 +70,7 @@ func (b *EthAPIBackend) SetHead(number uint64) {
 	b.eth.blockchain.SetHead(number)
 }
 
-func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
+func (b *EthAPIBackend) HeaderByNumber(_ context.Context, number rpc.BlockNumber) (*types.Header, error) {
 	// Pending block is only known by the miner
 	if number == rpc.PendingBlockNumber {
 		block := b.eth.miner.PendingBlock()
@@ -100,11 +100,11 @@ func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, blockNrOrHash 
 	return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
-func (b *EthAPIBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+func (b *EthAPIBackend) HeaderByHash(_ context.Context, hash common.Hash) (*types.Header, error) {
 	return b.eth.blockchain.GetHeaderByHash(hash), nil
 }
 
-func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
+func (b *EthAPIBackend) BlockByNumber(_ context.Context, number rpc.BlockNumber) (*types.Block, error) {
 	// Pending block is only known by the miner
 	if number == rpc.PendingBlockNumber {
 		block := b.eth.miner.PendingBlock()
@@ -117,7 +117,7 @@ func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumbe
 	return b.eth.blockchain.GetBlockByNumber(uint64(number)), nil
 }
 
-func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+func (b *EthAPIBackend) BlockByHash(_ context.Context, hash common.Hash) (*types.Block, error) {
 	return b.eth.blockchain.GetBlockByHash(hash), nil
 }
 
@@ -183,11 +183,11 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockN
 	return nil, nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
-func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
+func (b *EthAPIBackend) GetReceipts(_ context.Context, hash common.Hash) (types.Receipts, error) {
 	return b.eth.blockchain.GetReceiptsByHash(hash), nil
 }
 
-func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
+func (b *EthAPIBackend) GetLogs(_ context.Context, hash common.Hash) ([][]*types.Log, error) {
 	receipts := b.eth.blockchain.GetReceiptsByHash(hash)
 	if receipts == nil {
 		return nil, nil
@@ -203,7 +203,7 @@ func (b *EthAPIBackend) GetTd(blockHash common.Hash) *big.Int {
 	return b.eth.blockchain.GetTdByHash(blockHash)
 }
 
-func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state vm.SmiloAPIState, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error) {
+func (b *EthAPIBackend) GetEVM(_ context.Context, msg core.Message, state vm.SmiloAPIState, header *types.Header, vmCfg vm.Config) (*vm.EVM, func() error, error) {
 	statedb := state.(EthAPIState)
 	from := statedb.state.GetOrNewStateObject(msg.From())
 	from.SetBalance(math.MaxBig256, header.Number)
@@ -247,7 +247,7 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 	return b.eth.BlockChain().SubscribeLogsEvent(ch)
 }
 
-func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+func (b *EthAPIBackend) SendTx(_ context.Context, signedTx *types.Transaction) error {
 	// validation for node need to happen here and cannot be done as a part of
 	// validateTx in tx_pool.go as tx_pool validation will happen in every node
 	if b.hexNodeId != "" && !types.ValidateNodeForTxn(b.hexNodeId, signedTx.From()) {
@@ -272,12 +272,12 @@ func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction 
 	return b.eth.txPool.Get(hash)
 }
 
-func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+func (b *EthAPIBackend) GetTransaction(_ context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(b.eth.ChainDb(), txHash)
 	return tx, blockHash, blockNumber, index, nil
 }
 
-func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
+func (b *EthAPIBackend) GetPoolNonce(_ context.Context, addr common.Address) (uint64, error) {
 	return b.eth.txPool.Nonce(addr), nil
 }
 
@@ -343,7 +343,7 @@ func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
 	return params.BloomBitsBlocks, sections
 }
 
-func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
+func (b *EthAPIBackend) ServiceFilter(_ context.Context, session *bloombits.MatcherSession) {
 	for i := 0; i < bloomFilterThreads; i++ {
 		go session.Multiplex(bloomRetrievalBatch, bloomRetrievalWait, b.eth.bloomRequests)
 	}
@@ -509,4 +509,8 @@ func (s EthAPIState) GetCodeHash(addr common.Address) common.Hash {
 		return s.privateState.GetCodeHash(addr)
 	}
 	return s.state.GetCodeHash(addr)
+}
+
+func (b *EthAPIBackend) IsSelfInWhitelist() error {
+	return b.eth.protocolManager.IsSelfInWhitelist()
 }

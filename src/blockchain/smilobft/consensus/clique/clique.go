@@ -321,6 +321,7 @@ func (c *Clique) verifyHeader(chain consensus.ChainReader, header *types.Header,
 	}
 	// Ensure that the mix digest is zero as we don't have fork protection currently
 	if header.MixDigest != (common.Hash{}) {
+		log.Error("mix digest is NOT zero", "err", errInvalidMixDigest, "header.MixDigest", header.MixDigest.Hex())
 		return errInvalidMixDigest
 	}
 	// Ensure that the block doesn't contain any uncles which are meaningless in PoA

@@ -1,12 +1,12 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Modifier interface {
@@ -22,6 +22,7 @@ type ModifyCommitteeEngine struct {
 func (*ModifyCommitteeEngine) VerifyHeader(_ consensus.ChainReader, _ *types.Header, _ bool) error {
 	return nil
 }
+
 //
 //func (c *ModifyCommitteeEngine) FinalizeAndAssemble(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts *[]*types.Receipt) (*types.Block, error) {
 //	// create a normal block and check for errors

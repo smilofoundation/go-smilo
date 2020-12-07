@@ -1,12 +1,12 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type VerifySelfProposalAlwaysTrueBackend struct {

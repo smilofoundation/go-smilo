@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 )
 
 type addressKeyMap map[common.Address]*ecdsa.PrivateKey

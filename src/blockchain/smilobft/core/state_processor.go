@@ -42,10 +42,10 @@ import (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config           *params.ChainConfig // Chain configuration options
-	bc               *BlockChain         // Canonical block chain
-	engine           consensus.Engine    // Consensus engine used for block rewards
-	autonityContract *autonity.Contract
+	config                     *params.ChainConfig // Chain configuration options
+	bc                         *BlockChain         // Canonical block chain
+	engine                     consensus.Engine    // Consensus engine used for block rewards
+	autonityContract           *autonity.Contract
 	autonityContractTendermint *autonity_tendermint.Contract
 }
 
@@ -95,7 +95,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 		if err == nil {
 			contractMinGasPrice.SetUint64(minGasPrice)
 		}
-	} else if  p.bc.Config().Tendermint != nil  && p.autonityContractTendermint != nil {
+	} else if p.bc.Config().Tendermint != nil && p.autonityContractTendermint != nil {
 		minGasPrice, err := p.autonityContractTendermint.GetMinimumGasPrice(block, statedb)
 		if err == nil {
 			contractMinGasPrice.SetUint64(minGasPrice)
@@ -109,13 +109,13 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
-		if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil ) && p.autonityContract != nil {
+		if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil) && p.autonityContract != nil {
 			if contractMinGasPrice.Uint64() != 0 {
 				if tx.GasPrice().Cmp(contractMinGasPrice) == -1 {
 					return nil, nil, nil, 0, errors.New("autonityContract, gas price must be greater minGasPrice")
 				}
 			}
-		} else if p.bc.Config().Tendermint != nil  && p.autonityContractTendermint != nil {
+		} else if p.bc.Config().Tendermint != nil && p.autonityContractTendermint != nil {
 			if contractMinGasPrice.Uint64() != 0 {
 				if tx.GasPrice().Cmp(contractMinGasPrice) == -1 {
 					return nil, nil, nil, 0, errors.New("autonityContractTendermint, gas price must be greater minGasPrice")
@@ -149,7 +149,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 			log.Error("Could not ApplyPerformRedistribution on smart contract, ", "err", err)
 			return nil, nil, nil, 0, err
 		}
-	} else if p.bc.chainConfig.Tendermint != nil && p.autonityContractTendermint != nil{
+	} else if p.bc.chainConfig.Tendermint != nil && p.autonityContractTendermint != nil {
 		// what to do here ?
 	} else {
 		msg := "Wont set Istanbul Tendermint SportDAO ApplyPerformRedistribution, is this correct ? "

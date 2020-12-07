@@ -168,7 +168,7 @@ func (c *core) handleProposal(ctx context.Context, msg *Message) error {
 				voteForProposal = c.lockedRound <= vr || h == c.lockedValue.Hash()
 			}
 
-			c.logger.Debug("prevote, Line 28 in Algorithm 1 of The latest gossip on BFT consensus", "vr", vr,  "voteForProposal", voteForProposal)
+			c.logger.Debug("prevote, Line 28 in Algorithm 1 of The latest gossip on BFT consensus", "vr", vr, "voteForProposal", voteForProposal)
 
 			c.sendPrevote(ctx, voteForProposal)
 			c.setStep(prevote)

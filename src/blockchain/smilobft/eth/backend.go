@@ -283,7 +283,7 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if checkpoint == nil {
 		checkpoint = params.TrustedCheckpoints[genesisHash]
 	}
-	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.EnableNodePermissionFlag); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.EnableNodePermissionFlag, &ctx.NodeKey().PublicKey); err != nil {
 		return nil, err
 	}
 	var MinBlocksEmptyMining = big.NewInt(20000000)

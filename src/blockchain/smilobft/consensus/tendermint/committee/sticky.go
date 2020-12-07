@@ -1,8 +1,9 @@
 package committee
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func stickyProposer(valSet Set, proposer common.Address, round int64) types.CommitteeMember {

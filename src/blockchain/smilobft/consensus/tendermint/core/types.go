@@ -18,9 +18,10 @@ package core
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Engine interface {
@@ -31,4 +32,3 @@ type Engine interface {
 func (p *Proposal) Hash() common.Hash {
 	return p.ProposalBlock.Hash()
 }
-

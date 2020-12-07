@@ -334,7 +334,7 @@ func (sb *Backend) Finalize(chain consensus.ChainReader, header *types.Header, s
 	committeeSet, _, err := sb.AutonityContractFinalize(header, chain, state, txs, receipts)
 	if err != nil {
 		sb.logger.Error("AutonityContractFinalize", "err", err.Error())
-		return nil,  err
+		return nil, err
 	}
 
 	//receipts = append(receipts, receipt)

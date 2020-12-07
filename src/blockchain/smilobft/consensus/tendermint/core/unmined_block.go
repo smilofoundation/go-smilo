@@ -17,7 +17,6 @@
 package core
 
 import (
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )

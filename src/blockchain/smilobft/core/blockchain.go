@@ -265,7 +265,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			return GetHashFn(ref, chain)
 		})
 		bc.processor.SetAutonityContract(bc.autonityContract)
-	} else if chainConfig.Tendermint != nil && chainConfig.AutonityContractConfig != nil{
+	} else if chainConfig.Tendermint != nil && chainConfig.AutonityContractConfig != nil {
 		bc.autonityContractTendermint = autonity_tendermint.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity_tendermint.ChainContext) func(n uint64) common.Hash {
 			return GetHashFn(ref, chain)
 		})
@@ -2405,7 +2405,9 @@ func (bc *BlockChain) GetTransactionLookup(hash common.Hash) *rawdb.LegacyTxLook
 // Config retrieves the chain's fork configuration.
 func (bc *BlockChain) Config() *params.ChainConfig             { return bc.chainConfig }
 func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
-func (bc *BlockChain) GetAutonityContractTendermint() *autonity_tendermint.Contract { return bc.autonityContractTendermint }
+func (bc *BlockChain) GetAutonityContractTendermint() *autonity_tendermint.Contract {
+	return bc.autonityContractTendermint
+}
 
 // Engine retrieves the blockchain's consensus engine.
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }

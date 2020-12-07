@@ -18,11 +18,12 @@ package types
 
 import (
 	"bytes"
-	"github.com/davecgh/go-spew/spew"
 	"go-smilo/src/blockchain/smilobft/cmn/debug"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"

@@ -3,7 +3,6 @@ package autonity
 import (
 	"errors"
 	"math/big"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -303,7 +302,7 @@ func (ac *Contract) GetMinimumGasPrice(block *types.Block, db *state.StateDB) (u
 		return ac.bc.Config().AutonityContractConfig.MinGasPrice, nil
 	}
 
-	return ac.callGetMinimumGasPrice(db,  block.Header())
+	return ac.callGetMinimumGasPrice(db, block.Header())
 }
 
 func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB, price *big.Int) error {
@@ -441,8 +440,14 @@ func (ac *Contract) ApplyPerformRedistribution(transactions types.Transactions, 
 	return ac.PerformRedistribution(header, statedb, blockGas)
 }
 
+func emptyAddress(addr common.Address) bool {
+	return addr == common.Address{}
+}
+
 func (ac *Contract) Address() common.Address {
-	if reflect.DeepEqual(ac.address, common.Address{}) {
+	if ac == nil {
+		panic("cannot get Address() of nil, autonity.Contract is nil, why ?")
+	} else if emptyAddress(ac.address) {
 		addr, err := ac.bc.Config().AutonityContractConfig.GetContractAddress()
 		if err != nil {
 			log.Error("Cant get contract address", "err", err)

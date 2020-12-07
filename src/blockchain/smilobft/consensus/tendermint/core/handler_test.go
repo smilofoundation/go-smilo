@@ -2,11 +2,12 @@ package core
 
 import (
 	"context"
-	"github.com/golang/mock/gomock"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"testing"
+
+	"github.com/golang/mock/gomock"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

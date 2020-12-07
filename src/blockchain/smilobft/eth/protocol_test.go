@@ -49,7 +49,12 @@ var testAccount, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6
 
 // Tests that handshake failures are detected and reported correctly.
 func TestStatusMsgErrors63(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, nil)
+	totalPeers := 3
+	var p2pPeers []string
+	for i := 0; i < totalPeers; i++ {
+		p2pPeers = append(p2pPeers, newTestP2PPeer(fmt.Sprintf("peer %d", i)).Info().Enode)
+	}
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, p2pPeers)
 	var (
 		genesis = pm.blockchain.Genesis()
 		head    = pm.blockchain.CurrentHeader()
@@ -101,7 +106,12 @@ func TestStatusMsgErrors63(t *testing.T) {
 }
 
 func TestStatusMsgErrors64(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, nil)
+	totalPeers := 3
+	var p2pPeers []string
+	for i := 0; i < totalPeers; i++ {
+		p2pPeers = append(p2pPeers, newTestP2PPeer(fmt.Sprintf("peer %d", i)).Info().Enode)
+	}
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, p2pPeers)
 	var (
 		genesis = pm.blockchain.Genesis()
 		head    = pm.blockchain.CurrentHeader()
@@ -184,8 +194,8 @@ func TestForkIDSplit(t *testing.T) {
 		blocksNoFork, _  = core.GenerateChain(configNoFork, genesisNoFork, engine, dbNoFork, 2, nil)
 		blocksProFork, _ = core.GenerateChain(configProFork, genesisProFork, engine, dbProFork, 2, nil)
 
-		ethNoFork, _  = NewProtocolManager(configNoFork, nil, downloader.FullSync, 1, new(cmn.TypeMux), new(testTxPool), engine, chainNoFork, dbNoFork, 1, nil, false)
-		ethProFork, _ = NewProtocolManager(configProFork, nil, downloader.FullSync, 1, new(cmn.TypeMux), new(testTxPool), engine, chainProFork, dbProFork, 1, nil, false)
+		ethNoFork, _  = NewProtocolManager(configNoFork, nil, downloader.FullSync, 1, new(cmn.TypeMux), new(testTxPool), engine, chainNoFork, dbNoFork, 1, nil, false, nil)
+		ethProFork, _ = NewProtocolManager(configProFork, nil, downloader.FullSync, 1, new(cmn.TypeMux), new(testTxPool), engine, chainProFork, dbProFork, 1, nil, false, nil)
 	)
 	ethNoFork.Start(1000)
 	ethProFork.Start(1000)
@@ -283,7 +293,12 @@ func TestSendTransactions63(t *testing.T) { testSendTransactions(t, 63) }
 func TestSendTransactions64(t *testing.T) { testSendTransactions(t, 64) }
 
 func testSendTransactions(t *testing.T, protocol int) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, nil)
+	totalPeers := 3
+	var p2pPeers []string
+	for i := 0; i < totalPeers; i++ {
+		p2pPeers = append(p2pPeers, newTestP2PPeer(fmt.Sprintf("peer %d", i)).Info().Enode)
+	}
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil, p2pPeers)
 	defer pm.Stop()
 
 	// Fill the pool with big transactions.

@@ -18,13 +18,13 @@ package core
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/pkg/errors"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
 )
 
 type ConsensusMsg interface {

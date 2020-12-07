@@ -63,8 +63,6 @@ var (
 	errFailedDecodePrevote = errors.New("failed to decode PREVOTE")
 	// errFailedDecodePrecommit is returned when the PRECOMMIT message is malformed.
 	errFailedDecodePrecommit = errors.New("failed to decode PRECOMMIT")
-	// errFailedDecodeVote is returned for when PREVOTE or PRECOMMIT is malformed.
-	errFailedDecodeVote = errors.New("failed to decode vote")
 	// errNilPrevoteSent is returned when timer could be stopped in time
 	errNilPrevoteSent = errors.New("timer expired and nil prevote sent")
 	// errNilPrecommitSent is returned when timer could be stopped in time
@@ -251,7 +249,7 @@ func (c *core) commit(round int64, messages *roundMessages) {
 	}
 }
 
-// Metric collecton of round change and height change.
+// Metric collection of round change and height change.
 func (c *core) measureHeightRoundMetrics(round int64) {
 	if round == 0 {
 		// in case of height change, round changed too, so count it also.
@@ -270,7 +268,7 @@ func (c *core) startRound(ctx context.Context, round int64) {
 	if lastCommittedProposalBlock != nil {
 		height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
 	} else {
-		log.Warn("startRound block 0", "round",round)
+		log.Warn("startRound block 0", "round", round)
 	}
 	// Set initial FSM state
 	c.setInitialState(round)

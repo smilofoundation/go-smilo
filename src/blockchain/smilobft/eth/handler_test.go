@@ -564,7 +564,7 @@ func testCheckpointChallenge(t *testing.T, syncmode downloader.SyncMode, checkpo
 	if err != nil {
 		t.Fatalf("failed to create new blockchain: %v", err)
 	}
-	pm, err := NewProtocolManager(config, cht, syncmode, DefaultConfig.NetworkId, new(cmn.TypeMux), new(testTxPool), ethash.NewFaker(), blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
+	pm, err := NewProtocolManager(config, cht, syncmode, DefaultConfig.NetworkId, new(cmn.TypeMux), new(testTxPool), ethash.NewFaker(), blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag, nil)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}
@@ -665,30 +665,35 @@ func testBroadcastBlock(t *testing.T, totalPeers, broadcastExpected int) {
 	if err := config.AutonityContractConfig.AddDefault("").Validate(); err != nil {
 		t.Fatal(err)
 	}
+	//gspec.Difficulty = big.NewInt(1)
+
+	//genesis := gspec.MustCommit(db)
 
 	blockchain, err := core.NewBlockChain(db, nil, config, pow, vm.Config{}, nil)
 	if err != nil {
 		t.Fatalf("failed to create new blockchain: %v", err)
 	}
-	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
+	pm, err := NewProtocolManager(config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, new(testTxPool), pow, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag, nil)
 	if err != nil {
 		t.Fatalf("failed to start test protocol manager: %v", err)
 	}
+
 	pm.Start(1000)
 	defer pm.Stop()
 	var peers []*testPeer
+
 	for i := 0; i < totalPeers; i++ {
 		peer, errc := newTestPeer(p2pPeers[i], eth63, pm, true)
 		go func() {
 			for err := range errc {
-				fmt.Println(fmt.Println("testPeerErr", err))
+				fmt.Println("testPeerErr", err)
 			}
-
 		}()
 		defer peer.close()
 		peers = append(peers, peer)
 	}
 	chain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, 1, func(i int, gen *core.BlockGen) {})
+
 	pm.BroadcastBlock(chain[0], true /*propagate*/)
 
 	errCh := make(chan error, totalPeers)

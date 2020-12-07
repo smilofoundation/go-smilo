@@ -17,9 +17,9 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // "messagesMap" for a lack of better name.

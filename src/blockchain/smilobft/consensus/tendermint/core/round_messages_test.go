@@ -2,9 +2,10 @@ package core
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestMessagesMap_newMessageMap(t *testing.T) {

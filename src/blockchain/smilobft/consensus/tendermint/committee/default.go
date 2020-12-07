@@ -77,6 +77,7 @@ func NewSet(members types.Committee, policy config.ProposerPolicy, lastProposer 
 
 func copyMembers(members types.Committee) types.Committee {
 	membersCopy := make(types.Committee, len(members))
+	//nolint
 	for i, val := range members {
 		membersCopy[i] = val
 	}

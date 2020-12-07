@@ -9,8 +9,8 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
