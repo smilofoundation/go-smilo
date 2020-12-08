@@ -23,6 +23,13 @@ GO ?= 1.12
 build: clean
 	go build -o go-smilo main.go
 
+vendor-get:
+	go get github.com/nomad-software/vend
+
+vendor:
+	go mod vendor
+	vend
+
 test: clean ## Run tests
 	go test ./src/blockchain/... -timeout=10m
 

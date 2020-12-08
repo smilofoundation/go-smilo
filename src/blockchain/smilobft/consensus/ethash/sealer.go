@@ -65,12 +65,15 @@ func (ethash *Ethash) Seal(chain consensus.ChainReader, block *types.Block, stop
 	if threads < 0 {
 		threads = 0 // Allows disabling local mining without extra logic around local/remote
 	}
-	var pend sync.WaitGroup
+	var (
+		pend   sync.WaitGroup
+		locals = make(chan *types.Block)
+	)
 	for i := 0; i < threads; i++ {
 		pend.Add(1)
 		go func(id int, nonce uint64) {
 			defer pend.Done()
-			ethash.mine(block, id, nonce, abort, found)
+			ethash.mine(block, id, nonce, abort, locals)
 		}(i, uint64(ethash.rand.Int63()))
 	}
 	// Wait until sealing is terminated or a nonce is found
@@ -102,7 +105,7 @@ func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan s
 		hash    = ethash.SealHash(header).Bytes()
 		target  = new(big.Int).Div(two256, header.Difficulty)
 		number  = header.Number.Uint64()
-		dataset = ethash.dataset(number)
+		dataset = ethash.dataset(number, false)
 	)
 	// Start generating random nonces until we abort or find a good one
 	var (

@@ -3,6 +3,7 @@ package params
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/cmn/acdefault"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -54,20 +55,30 @@ type AutonityContractGenesis struct {
 	Users       []User         `json:"users" toml:",omitempty"`
 }
 
-func (ac *AutonityContractGenesis) AddDefault() *AutonityContractGenesis {
+func (ac *AutonityContractGenesis) AddDefault(autonityVersion string) *AutonityContractGenesis {
+	ABI := DefaultABI
+	Bytecode := DefaultBytecode
+	Deployer := DefaultDeployer
+	Operator := DefaultGovernance
+	if autonityVersion == "0.4.0" {
+		ABI = acdefault.ABI()
+		Bytecode = acdefault.Bytecode()
+		Deployer = acdefault.Deployer()
+		Operator = acdefault.Governance()
+	}
+
 	if len(ac.Bytecode) == 0 || len(ac.ABI) == 0 {
 		log.Info("Default Validator smart contract set")
-		ac.ABI = DefaultABI
-		ac.Bytecode = DefaultBytecode
+		ac.ABI = ABI
+		ac.Bytecode = Bytecode
 	} else {
 		log.Info("User specified Validator smart contract set")
 	}
 	if reflect.DeepEqual(ac.Deployer, common.Address{}) {
-		ac.Deployer = DefaultDeployer
+		ac.Deployer = Deployer
 	}
-
 	if reflect.DeepEqual(ac.Operator, common.Address{}) {
-		ac.Operator = DefaultGovernance
+		ac.Operator = Operator
 	}
 
 	for i := range ac.Users {
@@ -78,6 +89,8 @@ func (ac *AutonityContractGenesis) AddDefault() *AutonityContractGenesis {
 				log.Error("Error parsing enode", "enode", ac.Users[i].Enode, "err", err)
 			}
 		}
+
+		//TODO: Do we need to check if enodeToAddress corresponds to the address provided (in case is not {})
 	}
 	return ac
 }
@@ -86,17 +99,25 @@ func (ac *AutonityContractGenesis) Validate() error {
 	if len(ac.Bytecode) == 0 || len(ac.ABI) == 0 {
 		return errors.New("autonity contract is empty")
 	}
+
 	if reflect.DeepEqual(ac.Deployer, common.Address{}) {
 		return errors.New("deployer is empty")
 	}
+
 	if reflect.DeepEqual(ac.Operator, common.Address{}) {
 		return errors.New("governance operator is empty")
 	}
+
 	for i := range ac.Users {
 		if err := ac.Users[i].Validate(); err != nil {
 			return err
 		}
 	}
+
+	if len(ac.GetValidatorUsers()) == 0 {
+		return errors.New("validators list is empty")
+	}
+
 	return nil
 }
 
@@ -120,7 +141,7 @@ func (u *User) Validate() error {
 		return errors.New("incorrect user type")
 	}
 
-	if reflect.DeepEqual(u.Address, common.Address{}) && len(u.Enode) == 0 {
+	if reflect.DeepEqual(u.Address, common.Address{}) && len(u.Enode) == 0 { //TODO: Check if && is correct here
 		return errors.New("user.enode or user.address must be defined")
 	}
 
@@ -137,7 +158,7 @@ func (u *User) Validate() error {
 			return fmt.Errorf("fail to parse enode for account %v, error:%v", u.Address, err)
 		}
 
-		//todo do we need this check?
+		//todo do we need this check? --> I think we do!
 		//if reflect.DeepEqual(u.Address, common.Address{}) {
 		//	return errors.New("if both user.enode and user.address are defined, then the derived address from user.enode must be equal to user.address")
 		//}
@@ -161,7 +182,7 @@ func (ac *AutonityContractGenesis) GetValidatorUsers() []User {
 func (ac *AutonityContractGenesis) GetStakeHolderUsers() []User {
 	var users []User
 	for i := range ac.Users {
-		if ac.Users[i].Type == UserStakeHolder {
+		if ac.Users[i].Type == UserStakeHolder { //TODO: Validators are also stakeholders -> Fix this!
 			users = append(users, ac.Users[i])
 		}
 	}

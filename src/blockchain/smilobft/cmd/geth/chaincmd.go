@@ -256,7 +256,11 @@ func initGenesis(ctx *cli.Context) error {
 
 	if genesis.Config.AutonityContractConfig != nil {
 		log.Info("$$$$$$$$$$ Init, AutonityContractConfig, ", "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig)
-		if err := genesis.Config.AutonityContractConfig.AddDefault().Validate(); err != nil {
+		consensusVersion := ""
+		if genesis.Config.Tendermint != nil {
+			consensusVersion = "0.4.0"
+		}
+		if err := genesis.Config.AutonityContractConfig.AddDefault(consensusVersion).Validate(); err != nil {
 			spew.Dump(genesis.Config.AutonityContractConfig)
 			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
 		}

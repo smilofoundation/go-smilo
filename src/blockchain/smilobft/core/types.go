@@ -18,6 +18,7 @@ package core
 
 import (
 	"go-smilo/src/blockchain/smilobft/contracts/autonity"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"go-smilo/src/blockchain/smilobft/core/state"
@@ -51,4 +52,5 @@ type Processor interface {
 	// the processor (coinbase) and any included uncles.
 	Process(block *types.Block, statedb, privateState *state.StateDB, cfg vm.Config) (types.Receipts, types.Receipts, []*types.Log, uint64, error)
 	SetAutonityContract(contract *autonity.Contract)
+	SetAutonityContractTendermint(contract *autonity_tendermint.Contract)
 }

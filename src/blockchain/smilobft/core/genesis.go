@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 	"sync"
 
@@ -69,6 +70,9 @@ type Genesis struct {
 	GasUsed    uint64      `json:"gasUsed"`
 	ParentHash common.Hash `json:"parentHash"`
 
+	//PoS Fields
+	Committee types.Committee `json:"committee"           gencodec:"required"`
+
 	mu sync.RWMutex
 }
 
@@ -106,6 +110,9 @@ type genesisSpecMarshaling struct {
 	Number     math.HexOrDecimal64
 	Difficulty *math.HexOrDecimal256
 	Alloc      map[common.UnprefixedAddress]GenesisAccount
+
+	Committee    []common.UnprefixedAddress
+	VotingPowers []math.HexOrDecimal64
 }
 
 type genesisAccountMarshaling struct {
@@ -195,7 +202,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 		if err != nil {
 			return genesis.Config, common.Hash{}, err
 		}
-		log.Info("********** genesis **********", "hash", block.Hash())
+		log.Info("********** genesis **********", "hash", block.Hash(), "block.Header().Committee", block.Header().Committee)
 
 		return genesis.Config, block.Hash(), nil
 	}
@@ -336,12 +343,11 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		MixDigest:  g.Mixhash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
+		Committee:  g.Committee,
+		Round:      0,
 	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
-	}
-	if g.Difficulty == nil {
-		head.Difficulty = params.GenesisDifficulty
 	}
 	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true)
@@ -352,30 +358,32 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 // Commit writes the block and state of a genesis specification to the database.
 // The block is committed as the canonical head block.
 func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
-	block := g.ToBlock(db)
-	if block.Number().Sign() != 0 {
-		return nil, fmt.Errorf("can't commit genesis block with number > 0")
-	}
 	config := g.Config
 	if config == nil {
 		config = params.AllEthashProtocolChanges
 	}
+
 	if err := config.CheckConfigForkOrder(); err != nil {
 		return nil, err
 	}
+
 	if g.Config != nil && (g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) {
-		log.Warn("core/genesis.go, Commit(), Will SetBFT ")
+		log.Warn("Genesis, core/genesis.go, Commit(), Will SetBFT ")
 		err := g.SetBFT()
 		if err != nil {
-			log.Error("core/genesis.go, Commit(), Could not SetBFT ", "err", err)
+			log.Error("Genesis, core/genesis.go, Commit(), Could not SetBFT ", "err", err)
 			return nil, err
 		}
 	} else {
-		msg := "Wont set Istanbul Tendermint SportDAO Commit, is this correct ? "
+		msg := "Genesis, Wont set Istanbul Tendermint SportDAO Commit, is this correct ? "
 		log.Warn(msg, "g.Config", g.Config)
 		//panic(msg)
 	}
 
+	block := g.ToBlock(db)
+	if block.Number().Sign() != 0 {
+		return nil, fmt.Errorf("can't commit genesis block with number > 0")
+	}
 	g.mu.RLock()
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
 	g.mu.RUnlock()
@@ -387,8 +395,8 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	rawdb.WriteHeadHeaderHash(db, block.Hash())
 
 	if config.AutonityContractConfig != nil {
-		log.Warn("AutonityContractConfig is defined, will get AutonityContractConfig.Users and WriteEnodeWhitelist")
-		enodes := []string{}
+		log.Warn("Genesis, AutonityContractConfig is defined, will get AutonityContractConfig.Users and WriteEnodeWhitelist")
+		enodes := make([]string, 0, len(g.Config.AutonityContractConfig.Users))
 		for _, v := range config.AutonityContractConfig.Users {
 			if v.Enode != "" {
 				enodes = append(enodes, v.Enode)
@@ -396,7 +404,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		}
 
 		rawdb.WriteEnodeWhitelist(db, types.NewNodes(enodes, true))
-		log.Warn("AutonityContractConfig is defined, WriteEnodeWhitelist, ", "len(enodes)", len(enodes), "enodes", enodes)
+		log.Warn("Genesis, AutonityContractConfig is defined, WriteEnodeWhitelist, ", "len(enodes)", len(enodes), "enodes", enodes)
 	}
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	return block, nil
@@ -404,9 +412,9 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 
 // SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values
 func (g *Genesis) SetBFT() error {
-	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.SportDAO != nil || g.Config.Tendermint != nil) && g.Config.AutonityContractConfig != nil {
+	if (g.Config.Sport != nil || g.Config.Istanbul != nil || g.Config.SportDAO != nil) && g.Config.AutonityContractConfig != nil {
 
-		log.Debug("goint to SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values")
+		log.Debug("Genesis, going to SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values")
 
 		var validators []string
 		for _, v := range g.Config.AutonityContractConfig.Users {
@@ -420,11 +428,35 @@ func (g *Genesis) SetBFT() error {
 			}
 			g.SetExtraData(extraData)
 		}
+
+		log.Info("Genesis, starting BFT consensus", "committee", validators)
+
+	} else if g.Config.Tendermint != nil && g.Config.AutonityContractConfig != nil {
+		var committee types.Committee
+		for _, v := range g.Config.AutonityContractConfig.Users {
+			if v.Type == params.UserValidator {
+				member := types.CommitteeMember{
+					Address:     v.Address,
+					VotingPower: new(big.Int).SetUint64(v.Stake),
+				}
+				committee = append(committee, member)
+			}
+		}
+
+		if len(committee) == 0 { // we already have this check before, but just to make sure..
+			return fmt.Errorf("autonity Network requires at least 1 validator")
+		}
+
+		sort.Sort(committee)
+		g.Committee = committee
+		g.Mixhash = types.TendermintDigest
+
+		log.Info("Genesis, starting Tendermint consensus", "committee", committee)
 	} else {
-		log.Warn("core/genesis.go, SetBFT(), consensus invalid for call or AutonityContractConfig is nil, is this right ? ", "g.Config", g.Config)
+		log.Warn("Genesis, core/genesis.go, SetBFT(), consensus invalid for call or AutonityContractConfig is nil, is this right ? ", "g.Config", g.Config)
 	}
 
-	log.Info("starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()))
+	log.Info("Genesis, starting BFT consensus", "extraData", common.Bytes2Hex(g.GetExtraData()), "Mixhash", g.Mixhash.Hex())
 
 	// we have to use '1' to have TD == BlockNumber for xBFT consensus
 	g.mu.Lock()

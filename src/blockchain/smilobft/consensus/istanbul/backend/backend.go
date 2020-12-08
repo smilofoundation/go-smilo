@@ -414,13 +414,13 @@ func (sb *Backend) Close() error {
 
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	state, vaultstate, err := sb.blockchain.State()
+	state, _, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
 	}
 
-	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state, vaultstate)
+	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state)
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil

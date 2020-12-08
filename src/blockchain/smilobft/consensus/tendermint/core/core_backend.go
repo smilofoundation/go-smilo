@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
@@ -88,7 +88,7 @@ func (c *core) Protocol() (protocolName string, extraMsgCodes uint64) {
 
 // Synchronize new connected peer with current height state
 func (c *core) SyncPeer(address common.Address) {
-	if c.IsValidator(address) {
+	if c.IsMember(address) {
 		c.backend.SyncPeer(address, c.GetCurrentHeightMessages())
 	}
 }
@@ -106,22 +106,22 @@ type Backend interface {
 	// Address returns the owner's address
 	Address() common.Address
 
-	// Validators returns the validator set
-	Validators(number uint64) validator.Set
+	// Validators returns the committee set
+	Committee(number uint64) (committee.Set, error)
 
 	Subscribe(types ...interface{}) *cmn.TypeMuxSubscription
 
 	Post(ev interface{})
 
 	// Broadcast sends a message to all validators (include self)
-	Broadcast(ctx context.Context, valSet validator.Set, payload []byte) error
+	Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error
 
 	// Gossip sends a message to all validators (exclude self)
-	Gossip(ctx context.Context, valSet validator.Set, payload []byte)
+	Gossip(ctx context.Context, valSet committee.Set, payload []byte)
 
 	// Commit delivers an approved proposal to backend.
 	// The delivered proposal will be put into blockchain.
-	Commit(proposalBlock types.Block, seals [][]byte) error
+	Commit(proposalBlock *types.Block, round int64, seals [][]byte) error
 
 	// VerifyProposal verifies the proposal. If a consensus.ErrFutureBlock error is returned,
 	// the time difference of the proposal and current time is also returned.
@@ -146,11 +146,13 @@ type Backend interface {
 	// Setter for proposed block hash
 	SetProposedBlockHash(hash common.Hash)
 
+	AddSeal(block *types.Block) (*types.Block, error)
+
 	SyncPeer(address common.Address, messages []*Message)
 
 	ResetPeerCache(address common.Address)
 
-	AskSync(set validator.Set)
+	AskSync(set committee.Set)
 
 	HandleUnhandledMsgs(ctx context.Context)
 

@@ -44,4 +44,11 @@ var (
 
 	// ErrNotEnoughTransactions is returned if block being created does not have at least 1 transaction in it
 	ErrNotEnoughTransactions = errors.New("block does not have enough transactions")
+
+	// ErrInconsistentCommitteeSet is returned if the committee set is inconsistent
+	ErrInconsistentCommitteeSet = errors.New("inconsistent committee set")
+
+	// ErrCommitteeMemberNotFound is returned if the committee member is missing from
+	// the committee set.
+	ErrCommitteeMemberNotFound = errors.New("committee member not found")
 )

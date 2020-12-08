@@ -18,16 +18,10 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"io"
-	"math/big"
+	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-
-	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 type Engine interface {
@@ -35,120 +29,6 @@ type Engine interface {
 	Stop() error
 }
 
-type Proposal struct {
-	Round      *big.Int
-	Height     *big.Int
-	ValidRound *big.Int
-	// RLP decode sets nil to 0, so 0 = false and 1 = true
-	IsValidRoundNil *big.Int
-	ProposalBlock   *types.Block
-	logger          log.Logger
-}
-
-func NewProposal(r *big.Int, h *big.Int, vr *big.Int, p *types.Block, logger log.Logger) *Proposal {
-	return &Proposal{
-		Round:           r,
-		Height:          h,
-		ValidRound:      vr,
-		IsValidRoundNil: big.NewInt(0),
-		ProposalBlock:   p,
-		logger:          logger,
-	}
-}
-
 func (p *Proposal) Hash() common.Hash {
 	return p.ProposalBlock.Hash()
-}
-
-// EncodeRLP serializes b into the Ethereum RLP format.
-func (p *Proposal) EncodeRLP(w io.Writer) error {
-	if p.ValidRound.Int64() == -1 {
-		p.ValidRound = nil
-		p.IsValidRoundNil = big.NewInt(1)
-	}
-
-	if p.ProposalBlock == nil {
-		p.logger.Error("encode nil proposal block",
-			"height", p.Height.String(),
-			"round", p.Round.String(),
-			"isValidRoundNil", p.IsValidRoundNil.String(),
-			"validRound", p.ValidRound.String(),
-		)
-	}
-
-	return rlp.Encode(w, []interface{}{
-		p.Round,
-		p.Height,
-		p.ValidRound,
-		p.IsValidRoundNil,
-		p.ProposalBlock,
-	})
-}
-
-// DecodeRLP implements rlp.Decoder, and load the consensus fields from a RLP stream.
-func (p *Proposal) DecodeRLP(s *rlp.Stream) error {
-	var proposal struct {
-		Round           *big.Int
-		Height          *big.Int
-		ValidRound      *big.Int
-		IsValidRoundNil *big.Int
-		ProposalBlock   *types.Block
-	}
-
-	if err := s.Decode(&proposal); err != nil {
-		return err
-	}
-
-	if proposal.ValidRound.Int64() == 0 && proposal.IsValidRoundNil.Int64() == 1 {
-		proposal.ValidRound = big.NewInt(-1)
-	}
-
-	p.Round = proposal.Round
-	p.Height = proposal.Height
-	p.ValidRound = proposal.ValidRound
-	p.IsValidRoundNil = proposal.IsValidRoundNil
-	p.ProposalBlock = proposal.ProposalBlock
-
-	if proposal.ProposalBlock == nil {
-		p.logger.Error("decode nil proposal block",
-			"height", p.Height.String(),
-			"round", p.Round.String(),
-			"isValidRoundNil", p.IsValidRoundNil.String(),
-			"validRound", p.ValidRound.String(),
-		)
-	}
-
-	return nil
-}
-
-type Vote struct {
-	Round             *big.Int
-	Height            *big.Int
-	ProposedBlockHash common.Hash
-}
-
-// EncodeRLP serializes b into the Ethereum RLP format.
-func (sub *Vote) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, []interface{}{sub.Round, sub.Height, sub.ProposedBlockHash})
-}
-
-// DecodeRLP implements rlp.Decoder, and load the consensus fields from a RLP stream.
-func (sub *Vote) DecodeRLP(s *rlp.Stream) error {
-	var vote struct {
-		Round             *big.Int
-		Height            *big.Int
-		ProposedBlockHash common.Hash
-	}
-
-	if err := s.Decode(&vote); err != nil {
-		return err
-	}
-	sub.Round = vote.Round
-	sub.Height = vote.Height
-	sub.ProposedBlockHash = vote.ProposedBlockHash
-	return nil
-}
-
-func (sub *Vote) String() string {
-	return fmt.Sprintf("{Round: %v, Height: %v ProposedBlockHash: %v}", sub.Round, sub.Height, sub.ProposedBlockHash.String())
 }

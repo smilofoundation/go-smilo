@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"math/big"
 	"sync"
 	"time"
@@ -33,7 +34,6 @@ import (
 	tendermintConfig "go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
@@ -47,7 +47,7 @@ import (
 const (
 	// fetcherID is the ID indicates the block is from BFT engine
 	fetcherID = "tendermint"
-	// ring buffer to be able to handle at maximum 10 rounds, 20 validators and 3 messages types
+	// ring buffer to be able to handle at maximum 10 rounds, 20 committee and 3 messages types
 	ringCapacity = 10 * 20 * 3
 )
 
@@ -157,17 +157,17 @@ func (sb *Backend) Address() common.Address {
 	return sb.address
 }
 
-func (sb *Backend) Validators(number uint64) validator.Set {
-	proposerPolicy := sb.config.GetProposerPolicy()
-	validators, err := sb.retrieveSavedValidators(number, sb.blockchain)
+func (sb *Backend) Committee(number uint64) (committee.Set, error) {
+	validators, err := sb.savedCommittee(number, sb.blockchain)
 	if err != nil {
-		return validator.NewSet(nil, proposerPolicy)
+		sb.logger.Error("could not retrieve saved committee", "height", number, "err", err)
+		return nil, err
 	}
-	return validator.NewSet(validators, proposerPolicy)
+	return validators, nil
 }
 
 // Broadcast implements tendermint.Backend.Broadcast
-func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload []byte) error {
+func (sb *Backend) Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error {
 	// send to others
 	sb.Gossip(ctx, valSet, payload)
 	// send to self
@@ -180,40 +180,46 @@ func (sb *Backend) Broadcast(ctx context.Context, valSet validator.Set, payload 
 	return nil
 }
 
-func (sb *Backend) AskSync(valSet validator.Set) {
+func (sb *Backend) AskSync(valSet committee.Set) {
 	sb.logger.Info("Broadcasting consensus sync-me")
 
 	targets := make(map[common.Address]struct{})
-	for _, val := range valSet.List() {
-		if val.Address() != sb.Address() {
-			targets[val.Address()] = struct{}{}
+	for _, val := range valSet.Committee() {
+		if val.Address != sb.Address() {
+			targets[val.Address] = struct{}{}
 		}
 	}
 
 	if sb.broadcaster != nil && len(targets) > 0 {
 		ps := sb.broadcaster.FindPeers(targets)
-		count := 0
+		var count uint64
 		for addr, p := range ps {
 			//ask to quorum nodes to sync, 1 must then be honest and updated
-			if count == valSet.Quorum() {
+			if count >= valSet.Quorum() {
 				break
 			}
 			sb.logger.Info("Asking sync to", "addr", addr)
 			go p.Send(tendermintSyncMsg, []byte{}) //nolint
-			count++
+
+			_, member, err := valSet.GetByAddress(addr)
+			if err != nil {
+				sb.logger.Error("could not retrieve member from address")
+				continue
+			}
+			count += member.VotingPower.Uint64()
 		}
 	}
 }
 
 // Broadcast implements tendermint.Backend.Gossip
-func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []byte) {
+func (sb *Backend) Gossip(ctx context.Context, valSet committee.Set, payload []byte) {
 	hash := types.RLPHash(payload)
 	sb.knownMessages.Add(hash, true)
 
 	targets := make(map[common.Address]struct{})
-	for _, val := range valSet.List() {
-		if val.Address() != sb.Address() {
-			targets[val.Address()] = struct{}{}
+	for _, val := range valSet.Committee() {
+		if val.Address != sb.Address() {
+			targets[val.Address] = struct{}{}
 		}
 	}
 
@@ -249,7 +255,7 @@ func (sb *Backend) Gossip(ctx context.Context, valSet validator.Set, payload []b
 }
 
 // Commit implements tendermint.Backend.Commit
-func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
+func (sb *Backend) Commit(proposal *types.Block, round int64, seals [][]byte) error {
 	// Check if the proposal is a valid block
 	block := &proposal
 	if block == nil {
@@ -257,14 +263,18 @@ func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 		return errInvalidProposal
 	}
 
-	h := block.Header()
+	h := (*block).Header()
 	// Append seals into extra-data
 	err := types.WriteCommittedSeals(h, seals)
 	if err != nil {
 		return err
 	}
+
+	if err := types.WriteRound(h, round); err != nil {
+		return err
+	}
 	// update block's header
-	block = block.WithSeal(h)
+	updatedBlock := (*block).WithSeal(h)
 
 	sb.logger.Info("Committed", "address", sb.Address(), "hash", proposal.Hash(), "number", proposal.Number().Uint64())
 	// - if the proposed and committed blocks are the same, send the proposed hash
@@ -273,18 +283,18 @@ func (sb *Backend) Commit(proposal types.Block, seals [][]byte) error {
 	// -- if success, the ChainHeadEvent event will be broadcasted, try to build
 	//    the next block and the previous Seal() will be stopped.
 	// -- otherwise, a error will be returned and a round change event will be fired.
-	if sb.proposedBlockHash == block.Hash() && sb.commitCh != nil {
+	if sb.proposedBlockHash == updatedBlock.Hash() && sb.commitCh != nil {
 		// feed block hash to Seal() and wait the Seal() result
-		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed block hash", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
-		sb.commitCh <- block
+		sb.logger.Debug("SUCCESS to compare proposedBlockHash with actual sealed updatedBlock hash", "proposedBlockHash", sb.proposedBlockHash, "updatedBlock.Hash", updatedBlock.Hash())
+		sb.commitCh <- updatedBlock
 		return nil
 	}
 
 	if sb.broadcaster != nil {
-		sb.logger.Debug("broadcaster Enqueue fetcherID block")
-		sb.broadcaster.Enqueue(fetcherID, block)
+		sb.logger.Debug("broadcaster Enqueue fetcherID updatedBlock")
+		sb.broadcaster.Enqueue(fetcherID, updatedBlock)
 	} else {
-		sb.logger.Debug("Failed broadcast Enqueue fetcherID block, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "block.Hash", block.Hash())
+		sb.logger.Debug("Failed broadcast Enqueue fetcherID updatedBlock, wtf ? ", "proposedBlockHash", sb.proposedBlockHash, "updatedBlock.Hash", updatedBlock.Hash())
 	}
 	return nil
 }
@@ -337,8 +347,7 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	// ignore errEmptyCommittedSeals error because we don't have the committed seals yet
 	if err == nil || err == types.ErrEmptyCommittedSeals {
 		var (
-			receipts   types.Receipts
-			validators []common.Address
+			receipts types.Receipts
 
 			usedGas        = new(uint64)
 			gp             = new(core.GasPool).AddGas(block.GasLimit())
@@ -353,107 +362,68 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 			log.Error("VerifyProposal, could not get StateAt ", "block.Number", block.Header().Number, "header.MixDigest", block.Header().MixDigest, "header.Extra", block.Header().Extra)
 			return 0, stateErr
 		}
-		if header.Number.Uint64() > 1 {
 
-			// Validate the body of the proposal
-			if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
-				sb.logger.Error("Error when ValidateBody ", "err", err)
-				return 0, err
-			}
-
-			// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
-			// Instead only the transactions are applied to the copied state
-			for i, tx := range block.Transactions() {
-				state.Prepare(tx.Hash(), block.Hash(), i)
-				// Might be vulnerable to DoS Attack depending on gaslimit
-				// Todo : Double check
-				receipt, _, receiptErr := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
-				if receiptErr != nil {
-					sb.logger.Error("Error when ApplyTransaction ", "receiptErr", receiptErr)
-					return 0, receiptErr
-				}
-				receipts = append(receipts, receipt)
-			}
+		// Validate the body of the proposal
+		if err = sb.blockchain.Validator().ValidateBody(block); err != nil {
+			return 0, err
 		}
 
-		// Here the order of applying transaction matters
-		// We need to ensure that the block transactions applied before the Autonity contract
-		if proposalNumber == 1 {
-			//Apply the same changes from consensus/tendermint/backend/engine.go:getValidator()349-369
-			sb.logger.Info("Autonity Contract Deployer in test state", "Address", sb.blockchain.Config().AutonityContractConfig.Deployer)
-
-			_, err = sb.blockchain.GetAutonityContract().DeployAutonityContract(sb.blockchain, header, state)
+		// sb.blockchain.Processor().Process() was not called because it calls back Finalize() and would have modified the proposal
+		// Instead only the transactions are applied to the copied state
+		for i, tx := range block.Transactions() {
+			state.Prepare(tx.Hash(), block.Hash(), i)
+			// Might be vulnerable to DoS Attack depending on gaslimit
+			// Todo : Double check
+			receipt, _, err := core.ApplyTransaction(sb.blockchain.Config(), sb.blockchain, nil, gp, state, vaultstate, header, tx, usedGas, *sb.vmConfig)
 			if err != nil {
-				sb.logger.Error("Error when DeployAutonityContract Autonity Contract ", "err", err)
+				sb.logger.Error("Error when ApplyTransaction ", "err", err)
 				return 0, err
 			}
-		} else if proposalNumber > 1 {
-			err = sb.blockchain.GetAutonityContract().ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), state)
-			if err != nil {
-				sb.logger.Error("Error when ApplyPerformRedistribution Autonity Contract ", "err", err)
-				return 0, err
-			}
+			receipts = append(receipts, receipt)
 		}
 
+		state.Prepare(cmn.ACHash(block.Number()), block.Hash(), len(block.Transactions()))
+		block, err := sb.Finalize(sb.blockchain, header, state, block.Transactions(), nil, receipts)
+		if err != nil {
+			sb.logger.Error("Error when Finalize ", "err", err)
+			return 0, err
+		}
+		committeeSet := header.Committee
+		//receipts = append(receipts, receipt)
 		//Validate the state of the proposal
 		if err = sb.blockchain.Validator().ValidateState(block, parent, state, receipts, *usedGas); err != nil {
 			sb.logger.Error("Error when ValidateState ", "err", err)
 			return 0, err
 		}
 
-		if proposalNumber > 1 {
-			validators, err = sb.blockchain.GetAutonityContract().ContractGetValidators(sb.blockchain, header, state)
-			if err != nil {
-				sb.logger.Error("Error when ContractGetValidators ", "err", err)
-
-				return 0, err
-			}
-		} else {
-			validators, err = sb.retrieveSavedValidators(1, sb.blockchain) //genesis block and block #1 have the same validators
-			if err != nil {
-				sb.logger.Error("Error when retrieveSavedValidators ", "err", err)
-				return 0, err
-			}
-		}
-
-		// Verify the validator set by comparing the validators in extra data and Soma-contract
-		log.Debug("VerifyProposal, types.ExtractBFTHeaderExtra", "len(header.Extra)", len(header.Extra))
-		if len(header.Extra) < types.BFTExtraVanity {
-			panic("VerifyProposal, types.ExtractBFTHeaderExtra")
-		}
-		tendermintExtra, _ := types.ExtractBFTHeaderExtra(header)
-
 		//Perform the actual comparison
-		totalvalidatorsExtra := len(tendermintExtra.Validators)
-		totalValidators := len(validators)
-		if totalvalidatorsExtra != totalValidators {
-			log.Error("*&*&*&*&*& errInconsistentValidatorSet, Perform the actual comparison", "totalvalidatorsExtra", totalvalidatorsExtra, "totalValidators", totalValidators)
-			return 0, errInconsistentValidatorSet
+		if len(header.Committee) != len(committeeSet) {
+			sb.logger.Error("wrong committee set",
+				"proposalNumber", proposalNumber,
+				"extraLen", len(header.Committee),
+				"currentLen", len(committeeSet),
+				"committee", header.Committee,
+				"current", committeeSet,
+			)
+			return 0, consensus.ErrInconsistentCommitteeSet
 		}
 
-		log.Debug("log all autonity Validators and validators on ExtraData")
-		for i := range validators {
-			val := validators[i]
-			validatorExtra := tendermintExtra.Validators[i]
-			log.Debug("validator each ", "validator", val, "validatorExtra", validatorExtra)
-		}
-
-		for i := range validators {
-			val := validators[i]
-			found := false
-			for j := range tendermintExtra.Validators {
-				validatorExtra := tendermintExtra.Validators[j]
-				if val == validatorExtra {
-					found = true
-					break
-				}
-			}
-			if !found {
-				log.Error("*&*&*&*&*& errInconsistentValidatorSet, !found, Perform the actual comparison", "tendermintExtra.Validators[i] ", tendermintExtra.Validators[i], "validators[i]", validators[i], "val", val)
-				return 0, errInconsistentValidatorSet
+		for i := range committeeSet {
+			if header.Committee[i].Address != committeeSet[i].Address ||
+				header.Committee[i].VotingPower.Cmp(committeeSet[i].VotingPower) != 0 {
+				sb.logger.Error("wrong committee member in the set",
+					"index", i,
+					"currentVerifier", sb.address.String(),
+					"proposalNumber", proposalNumber,
+					"headerCommittee", header.Committee[i],
+					"computedCommittee", committeeSet[i],
+					"fullHeader", header.Committee,
+					"fullComputed", committeeSet,
+				)
+				return 0, consensus.ErrInconsistentCommitteeSet
 			}
 		}
-		// At this stage extradata field is consistent with the validator list returned by Soma-contract
+		// At this stage committee field is consistent with the validator list returned by Soma-contract
 
 		return 0, nil
 	} else if err == consensus.ErrFutureBlock {
@@ -518,22 +488,23 @@ func (sb *Backend) HasBadProposal(hash common.Hash) bool {
 }
 
 func (sb *Backend) GetContractAddress() common.Address {
-	return sb.blockchain.GetAutonityContract().Address()
+	return sb.blockchain.GetAutonityContractTendermint().Address()
 }
 
 func (sb *Backend) GetContractABI() string {
-	return sb.blockchain.Config().AutonityContractConfig.ABI
+	// after the contract is upgradable, call it from contract object rather than from conf.
+	return sb.blockchain.GetAutonityContractTendermint().GetContractABI()
 }
 
 // Whitelist for the current block
 func (sb *Backend) WhiteList() []string {
-	state, vaultstate, err := sb.blockchain.State()
+	state, _, err := sb.blockchain.State()
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil
 	}
 
-	enodes, err := sb.blockchain.GetAutonityContract().GetWhitelist(sb.blockchain.CurrentBlock(), state, vaultstate)
+	enodes, err := sb.blockchain.GetAutonityContractTendermint().GetWhitelist(sb.blockchain.CurrentBlock(), state)
 	if err != nil {
 		sb.logger.Error("Failed to get block white list", "err", err)
 		return nil

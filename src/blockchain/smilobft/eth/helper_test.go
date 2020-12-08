@@ -78,9 +78,8 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 			Alloc:  core.GenesisAlloc{testBank: {Balance: big.NewInt(1000000)}},
 		}
 	)
-	gspec.Config.AutonityContractConfig = &params.AutonityContractGenesis{
-		Users: []params.User{},
-	}
+	gspec.Config.AutonityContractConfig = &params.AutonityContractGenesis{}
+
 
 	for i := range peers {
 		gspec.Config.AutonityContractConfig.Users = append(
@@ -92,7 +91,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 			},
 		)
 	}
-	err := gspec.Config.AutonityContractConfig.AddDefault().Validate()
+	err := gspec.Config.AutonityContractConfig.AddDefault("").Validate()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,7 +106,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	if _, err := blockchain.InsertChain(chain); err != nil {
 		panic(err)
 	}
-	pm, err := NewProtocolManager(gspec.Config, nil, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag)
+	pm, err := NewProtocolManager(gspec.Config, nil, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, 1, nil, DefaultConfig.EnableNodePermissionFlag,nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -206,7 +205,7 @@ func newTestProtocolManagerConsensus(consensusAlgo string,
 		engine = ethash.NewFaker()
 	}
 
-	pm, err := NewProtocolManager(&config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, &testTxPool{added: nil}, engine, blockchain, db, 1, nil, false)
+	pm, err := NewProtocolManager(&config, nil, downloader.FullSync, DefaultConfig.NetworkId, evmux, &testTxPool{added: nil}, engine, blockchain, db, 1, nil, false, nil)
 	if err != nil {
 		return nil, nil, err
 	}

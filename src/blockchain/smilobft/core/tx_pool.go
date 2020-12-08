@@ -19,6 +19,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"math"
 	"math/big"
 	"sort"
@@ -144,6 +145,7 @@ type blockChain interface {
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
 	GetAutonityContract() *autonity.Contract
+	GetAutonityContractTendermint() *autonity_tendermint.Contract
 	Config() *params.ChainConfig
 }
 
@@ -613,7 +615,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		log.Error("ErrInsufficientFunds", "from", from.String(), "TX COST", tx.Cost(), "TX-Hash", tx.Hash().Hex(), "balance", pool.currentState.GetBalance(from), "tx.Value()", tx.Value())
 		return ErrInsufficientFunds
 	}
-	if (pool.chain.Config().Istanbul != nil || pool.chain.Config().SportDAO != nil || pool.chain.Config().Tendermint != nil) && pool.chain.GetAutonityContract() != nil {
+	if (pool.chain.Config().Istanbul != nil || pool.chain.Config().SportDAO != nil) && pool.chain.GetAutonityContract() != nil {
 		// Ensure the transaction has more gas than the basic tx fee.
 		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true, pool.istanbul)
 		if err != nil {
@@ -621,7 +623,27 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		}
 
 		if pool.chain.GetAutonityContract() != nil {
-			if gp, err := pool.chain.GetAutonityContract().GetMinimumGasPrice(pool.chain.CurrentBlock(), pool.currentState, pool.currentState); err == nil {
+			if gp, err := pool.chain.GetAutonityContract().GetMinimumGasPrice(pool.chain.CurrentBlock(), pool.currentState); err == nil {
+				if new(big.Int).SetUint64(gp).Cmp(tx.GasPrice()) > 0 {
+					return errors.New("too low gas price from autonity config")
+				}
+			} else {
+				fmt.Println("gp, err", err)
+			}
+		}
+
+		if tx.Gas() < intrGas {
+			return ErrIntrinsicGas
+		}
+	} else if pool.chain.Config().Tendermint != nil || pool.chain.GetAutonityContractTendermint() != nil {
+		// Ensure the transaction has more gas than the basic tx fee.
+		intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true, pool.istanbul)
+		if err != nil {
+			return err
+		}
+
+		if pool.chain.GetAutonityContractTendermint() != nil {
+			if gp, err := pool.chain.GetAutonityContractTendermint().GetMinimumGasPrice(pool.chain.CurrentBlock(), pool.currentState); err == nil {
 				if new(big.Int).SetUint64(gp).Cmp(tx.GasPrice()) > 0 {
 					return errors.New("too low gas price from autonity config")
 				}

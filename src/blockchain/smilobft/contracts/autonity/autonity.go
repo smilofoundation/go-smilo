@@ -3,7 +3,6 @@ package autonity
 import (
 	"errors"
 	"math/big"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -50,8 +49,8 @@ type Blockchainer interface {
 	UpdateEnodeWhitelist(newWhitelist *types.Nodes)
 	ReadEnodeWhitelist(EnableNodePermissionFlag bool) *types.Nodes
 
-	UpdateBlacklist(newBlacklist *types.Nodes)
-	ReadBlacklist(TxPoolBlacklistFlag bool) *types.Nodes
+	PutKeyValue(key []byte, value []byte) error
+	GetKeyValue(key []byte) ([]byte, error)
 }
 
 type Contract struct {
@@ -236,8 +235,8 @@ func (ac *Contract) ContractGetValidators(chain consensus.ChainReader, header *t
 
 var ErrAutonityContract = errors.New("could not call Autonity contract")
 
-func (ac *Contract) UpdateEnodesWhitelist(state, vaultstate *state.StateDB, block *types.Block) error {
-	newWhitelist, err := ac.GetWhitelist(block, state, vaultstate)
+func (ac *Contract) UpdateEnodesWhitelist(state *state.StateDB, block *types.Block) error {
+	newWhitelist, err := ac.GetWhitelist(block, state)
 	if err != nil {
 		log.Error("could not call contract", "err", err)
 		return ErrAutonityContract
@@ -247,7 +246,7 @@ func (ac *Contract) UpdateEnodesWhitelist(state, vaultstate *state.StateDB, bloc
 	return nil
 }
 
-func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.StateDB) (*types.Nodes, error) {
+func (ac *Contract) GetWhitelist(block *types.Block, db *state.StateDB) (*types.Nodes, error) {
 	var (
 		newWhitelist *types.Nodes
 		err          error
@@ -258,7 +257,7 @@ func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.State
 		newWhitelist = ac.bc.ReadEnodeWhitelist(false)
 	} else {
 		// call retrieveWhitelist contract function
-		newWhitelist, err = ac.callGetWhitelist(db, vaultstate, block.Header())
+		newWhitelist, err = ac.callGetWhitelist(db, block.Header())
 	}
 
 	return newWhitelist, err
@@ -266,7 +265,7 @@ func (ac *Contract) GetWhitelist(block *types.Block, db, vaultstate *state.State
 
 //blockchain
 
-func (ac *Contract) callGetWhitelist(state, vaultstate *state.StateDB, header *types.Header) (*types.Nodes, error) {
+func (ac *Contract) callGetWhitelist(state *state.StateDB, header *types.Header) (*types.Nodes, error) {
 	// Needs to be refactored somehow
 	deployer := ac.bc.Config().AutonityContractConfig.Deployer
 	sender := vm.AccountRef(deployer)
@@ -298,12 +297,12 @@ func (ac *Contract) callGetWhitelist(state, vaultstate *state.StateDB, header *t
 	return types.NewNodes(returnedEnodes, false), nil
 }
 
-func (ac *Contract) GetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB) (uint64, error) {
+func (ac *Contract) GetMinimumGasPrice(block *types.Block, db *state.StateDB) (uint64, error) {
 	if block.Number().Uint64() <= 1 {
 		return ac.bc.Config().AutonityContractConfig.MinGasPrice, nil
 	}
 
-	return ac.callGetMinimumGasPrice(db, vaultstate, block.Header())
+	return ac.callGetMinimumGasPrice(db, block.Header())
 }
 
 func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state.StateDB, price *big.Int) error {
@@ -314,7 +313,7 @@ func (ac *Contract) SetMinimumGasPrice(block *types.Block, db, vaultstate *state
 	return ac.callSetMinimumGasPrice(db, vaultstate, block.Header(), price)
 }
 
-func (ac *Contract) callGetMinimumGasPrice(state, vaultstate *state.StateDB, header *types.Header) (uint64, error) {
+func (ac *Contract) callGetMinimumGasPrice(state *state.StateDB, header *types.Header) (uint64, error) {
 	// Needs to be refactored somehow
 	deployer := ac.bc.Config().AutonityContractConfig.Deployer
 	sender := vm.AccountRef(deployer)
@@ -441,8 +440,14 @@ func (ac *Contract) ApplyPerformRedistribution(transactions types.Transactions, 
 	return ac.PerformRedistribution(header, statedb, blockGas)
 }
 
+func emptyAddress(addr common.Address) bool {
+	return addr == common.Address{}
+}
+
 func (ac *Contract) Address() common.Address {
-	if reflect.DeepEqual(ac.address, common.Address{}) {
+	if ac == nil {
+		panic("cannot get Address() of nil, autonity.Contract is nil, why ?")
+	} else if emptyAddress(ac.address) {
 		addr, err := ac.bc.Config().AutonityContractConfig.GetContractAddress()
 		if err != nil {
 			log.Error("Cant get contract address", "err", err)

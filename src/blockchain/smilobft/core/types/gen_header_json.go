@@ -7,6 +7,8 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -49,7 +51,44 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Extra = h.Extra
 	enc.MixDigest = h.MixDigest
 	enc.Nonce = h.Nonce
-	enc.Hash = h.Hash()
+
+	if h.MixDigest == TendermintDigest {
+		type ExtraHeader struct {
+			Committee          Committee       `json:"committee"           gencodec:"required"`
+			ProposerSeal       hexutil.Bytes   `json:"proposerSeal"        gencodec:"required"`
+			Round              hexutil.Uint64  `json:"round"               gencodec:"required"`
+			CommittedSeals     []hexutil.Bytes `json:"committedSeals"      gencodec:"required"`
+			PastCommittedSeals []hexutil.Bytes `json:"pastCommittedSeals"  gencodec:"required"`
+		}
+		var encExtra ExtraHeader
+
+		if h.Committee != nil {
+			encExtra.Committee = h.Committee
+		}
+		if h.ProposerSeal != nil {
+			encExtra.ProposerSeal = h.ProposerSeal
+		}
+		encExtra.Round = hexutil.Uint64(h.Round)
+		if encExtra.CommittedSeals != nil {
+			encExtra.CommittedSeals = make([]hexutil.Bytes, len(h.CommittedSeals))
+			for k, v := range h.CommittedSeals {
+				encExtra.CommittedSeals[k] = v
+			}
+		}
+		if h.PastCommittedSeals != nil {
+			encExtra.PastCommittedSeals = make([]hexutil.Bytes, len(h.PastCommittedSeals))
+			for k, v := range h.PastCommittedSeals {
+				encExtra.PastCommittedSeals[k] = v
+			}
+		}
+		extraBytes, err := json.Marshal(&encExtra)
+		if err != nil {
+			return nil, err
+		}
+		enc.Extra = extraBytes
+
+		enc.Hash = h.Hash()
+	}
 	return json.Marshal(&enc)
 }
 
@@ -124,17 +163,71 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'timestamp' for Header")
 	}
 	h.Time = uint64(*dec.Time)
+
 	if dec.Extra == nil {
 		return errors.New("missing required field 'extraData' for Header")
 	}
+
 	h.Extra = *dec.Extra
-	if dec.MixDigest == nil {
-		return errors.New("missing required field 'mixHash' for Header")
+
+	if h.MixDigest == TendermintDigest {
+		type ExtraHeader struct {
+			Committee          *Committee       `json:"committee"           gencodec:"required"`
+			ProposerSeal       *hexutil.Bytes   `json:"proposerSeal"        gencodec:"required"`
+			Round              *hexutil.Uint64  `json:"round"               gencodec:"required"`
+			CommittedSeals     *[]hexutil.Bytes `json:"committedSeals"      gencodec:"required"`
+			PastCommittedSeals *[]hexutil.Bytes `json:"pastCommittedSeals"  gencodec:"required"`
+		}
+
+		if dec.MixDigest != nil {
+			h.MixDigest = *dec.MixDigest
+		}
+
+		if dec.Nonce != nil {
+			h.Nonce = *dec.Nonce
+		}
+
+		var decExtra ExtraHeader
+		if err := json.Unmarshal(*dec.Extra, &decExtra); err != nil {
+			log.Error("on unmarshalling Header.extra", "err", err, "extra", []byte(*dec.Extra))
+		}
+
+		if decExtra.Committee != nil {
+			h.Committee = *decExtra.Committee
+		}
+
+		if decExtra.ProposerSeal != nil {
+			h.ProposerSeal = *decExtra.ProposerSeal
+		}
+		if decExtra.Round != nil {
+			h.Round = uint64(*decExtra.Round)
+		}
+		if decExtra.CommittedSeals == nil {
+			return errors.New("missing required field 'committedSeals' for Header")
+		}
+
+		if decExtra.CommittedSeals != nil {
+			h.CommittedSeals = make([][]byte, len(*decExtra.CommittedSeals))
+			for k, v := range *decExtra.CommittedSeals {
+				h.CommittedSeals[k] = v
+			}
+		}
+
+		if decExtra.PastCommittedSeals != nil {
+			h.PastCommittedSeals = make([][]byte, len(*decExtra.PastCommittedSeals))
+			for k, v := range *decExtra.PastCommittedSeals {
+				h.PastCommittedSeals[k] = v
+			}
+		}
+	} else {
+		if dec.MixDigest == nil {
+			return errors.New("missing required field 'mixHash' for Header")
+		}
+		h.MixDigest = *dec.MixDigest
+		if dec.Nonce == nil {
+			return errors.New("missing required field 'nonce' for Header")
+		}
+		h.Nonce = *dec.Nonce
 	}
-	h.MixDigest = *dec.MixDigest
-	if dec.Nonce == nil {
-		return errors.New("missing required field 'nonce' for Header")
-	}
-	h.Nonce = *dec.Nonce
 	return nil
 }

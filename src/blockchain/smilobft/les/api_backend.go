@@ -19,6 +19,7 @@ package les
 import (
 	"context"
 	"errors"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/cmn"
@@ -222,6 +223,11 @@ func (b *LesApiBackend) AccountManager() *accounts.Manager {
 	return b.eth.accountManager
 }
 func (b *LesApiBackend) AutonityContract() *autonity.Contract {
+	//todo add autonity contract integration to LES
+	return nil
+}
+
+func (b *LesApiBackend) AutonityContractTendermint() *autonity_tendermint.Contract {
 	//todo add autonity contract integration to LES
 	return nil
 }

@@ -12,26 +12,29 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 func TestCheckMessage(t *testing.T) {
 	t.Run("valid params given, nil returned", func(t *testing.T) {
 		c := &core{
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
+			round:  1,
+			height: big.NewInt(2),
 		}
 
-		err := c.checkMessage(big.NewInt(1), big.NewInt(2), propose)
+		err := c.checkMessage(1, big.NewInt(2), propose)
 		if err != nil {
 			t.Fatalf("have %v, want nil", err)
 		}
 	})
 
-	t.Run("given nil round, error returned", func(t *testing.T) {
-		c := &core{}
+	t.Run("given nil height, error returned", func(t *testing.T) {
+		c := &core{
+			round:  1,
+			height: big.NewInt(2),
+		}
 
-		err := c.checkMessage(nil, big.NewInt(2), propose)
+		err := c.checkMessage(1, nil, propose)
 		if err != errInvalidMessage {
 			t.Fatalf("have %v, want %v", err, errInvalidMessage)
 		}
@@ -39,10 +42,11 @@ func TestCheckMessage(t *testing.T) {
 
 	t.Run("given future height, error returned", func(t *testing.T) {
 		c := &core{
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
+			round:  1,
+			height: big.NewInt(2),
 		}
 
-		err := c.checkMessage(big.NewInt(2), big.NewInt(4), propose)
+		err := c.checkMessage(2, big.NewInt(4), propose)
 		if err != errFutureHeightMessage {
 			t.Fatalf("have %v, want %v", err, errFutureHeightMessage)
 		}
@@ -50,10 +54,11 @@ func TestCheckMessage(t *testing.T) {
 
 	t.Run("given old height, error returned", func(t *testing.T) {
 		c := &core{
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
+			round:  1,
+			height: big.NewInt(2),
 		}
 
-		err := c.checkMessage(big.NewInt(2), big.NewInt(2), propose)
+		err := c.checkMessage(2, big.NewInt(1), propose)
 		if err != errOldHeightMessage {
 			t.Fatalf("have %v, want %v", err, errOldHeightMessage)
 		}
@@ -61,10 +66,11 @@ func TestCheckMessage(t *testing.T) {
 
 	t.Run("given future round, error returned", func(t *testing.T) {
 		c := &core{
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
+			round:  1,
+			height: big.NewInt(3),
 		}
 
-		err := c.checkMessage(big.NewInt(3), big.NewInt(3), propose)
+		err := c.checkMessage(2, big.NewInt(3), propose)
 		if err != errFutureRoundMessage {
 			t.Fatalf("have %v, want %v", err, errFutureRoundMessage)
 		}
@@ -72,12 +78,65 @@ func TestCheckMessage(t *testing.T) {
 
 	t.Run("given old round, error returned", func(t *testing.T) {
 		c := &core{
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(2)),
+			round:  2,
+			height: big.NewInt(2),
 		}
 
-		err := c.checkMessage(big.NewInt(1), big.NewInt(2), propose)
+		err := c.checkMessage(1, big.NewInt(2), propose)
 		if err != errOldRoundMessage {
 			t.Fatalf("have %v, want %v", err, errOldRoundMessage)
+		}
+	})
+
+	t.Run("at propose step, given prevote for same view, error returned", func(t *testing.T) {
+		c := &core{
+			round:  2,
+			height: big.NewInt(2),
+			step:   propose,
+		}
+
+		err := c.checkMessage(2, big.NewInt(2), prevote)
+		if err != errFutureStepMessage {
+			t.Fatalf("have %v, want %v", err, errFutureStepMessage)
+		}
+	})
+
+	t.Run("at propose step, given precommit for same view, error returned", func(t *testing.T) {
+		c := &core{
+			round:  2,
+			height: big.NewInt(2),
+			step:   propose,
+		}
+
+		err := c.checkMessage(2, big.NewInt(2), precommit)
+		if err != errFutureStepMessage {
+			t.Fatalf("have %v, want %v", err, errFutureStepMessage)
+		}
+	})
+
+	t.Run("at prevote step, given precommit for same view, no error returned", func(t *testing.T) {
+		c := &core{
+			round:  2,
+			height: big.NewInt(2),
+			step:   prevote,
+		}
+
+		err := c.checkMessage(2, big.NewInt(2), precommit)
+		if err != nil {
+			t.Fatalf("have %v, want %v", err, nil)
+		}
+	})
+
+	t.Run("at precommit step, given prevote for same view, no error returned", func(t *testing.T) {
+		c := &core{
+			round:  2,
+			height: big.NewInt(2),
+			step:   precommit,
+		}
+
+		err := c.checkMessage(2, big.NewInt(2), prevote)
+		if err != nil {
+			t.Fatalf("have %v, want %v", err, nil)
 		}
 	})
 }
@@ -86,12 +145,17 @@ func TestStoreBacklog(t *testing.T) {
 	t.Run("backlog from self", func(t *testing.T) {
 		addr := common.HexToAddress("0x0987654321")
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			address:           addr,
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
+			logger:  log.New("backend", "test", "id", 0),
+			address: addr,
+			height:  big.NewInt(1),
+			step:    propose,
 		}
 
-		val := validator.New(addr)
+		val := types.CommitteeMember{
+			Address:     addr,
+			VotingPower: big.NewInt(1),
+		}
+
 		c.storeBacklog(nil, val)
 
 		if c.backlogs[val] != nil {
@@ -101,14 +165,13 @@ func TestStoreBacklog(t *testing.T) {
 
 	t.Run("vote message received", func(t *testing.T) {
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			address:           common.HexToAddress("0x1234567890"),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
+			logger:   log.New("backend", "test", "id", 0),
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
 		}
 
 		vote := &Vote{
-			Round:  big.NewInt(1),
+			Round:  1,
 			Height: big.NewInt(2),
 		}
 
@@ -118,11 +181,15 @@ func TestStoreBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  votePayload,
+			Code:       msgPrevote,
+			Msg:        votePayload,
+			decodedMsg: vote,
 		}
 
-		val := validator.New(common.HexToAddress("0x0987654321"))
+		val := types.CommitteeMember{
+			Address:     common.HexToAddress("0x0987654321"),
+			VotingPower: big.NewInt(1),
+		}
 		c.storeBacklog(msg, val)
 
 		pque := c.backlogs[val]
@@ -135,16 +202,15 @@ func TestStoreBacklog(t *testing.T) {
 
 	t.Run("proposal message received", func(t *testing.T) {
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
+			logger:   log.New("backend", "test", "id", 0),
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
 		}
 
 		proposal := &Proposal{
-			Round:         big.NewInt(1),
+			Round:         1,
 			Height:        big.NewInt(2),
-			ValidRound:    big.NewInt(1),
+			ValidRound:    1,
 			ProposalBlock: types.NewBlockWithHeader(&types.Header{}),
 		}
 
@@ -154,11 +220,15 @@ func TestStoreBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgProposal,
-			Msg:  proposalPayload,
+			Code:       msgProposal,
+			Msg:        proposalPayload,
+			decodedMsg: proposal,
 		}
 
-		val := validator.New(common.HexToAddress("0x0987654321"))
+		val := types.CommitteeMember{
+			Address:     common.HexToAddress("0x0987654321"),
+			VotingPower: big.NewInt(1),
+		}
 
 		c.storeBacklog(msg, val)
 		pque := c.backlogs[val]
@@ -173,9 +243,9 @@ func TestStoreBacklog(t *testing.T) {
 func TestProcessBacklog(t *testing.T) {
 	t.Run("valid proposal received", func(t *testing.T) {
 		proposal := &Proposal{
-			Round:         big.NewInt(1),
+			Round:         1,
 			Height:        big.NewInt(2),
-			ValidRound:    big.NewInt(1),
+			ValidRound:    1,
 			ProposalBlock: types.NewBlockWithHeader(&types.Header{}),
 		}
 
@@ -185,15 +255,16 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgProposal,
-			Msg:  proposalPayload,
+			Code:       msgProposal,
+			Msg:        proposalPayload,
+			decodedMsg: proposal,
 		}
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		valSet := newTestValidatorSet(1)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(1)
+		val, _ := committeeSet.GetByIndex(0)
 
 		expected := backlogEvent{
 			src: val,
@@ -208,11 +279,13 @@ func TestProcessBacklog(t *testing.T) {
 		})
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			step:     propose,
+			round:    1,
+			height:   big.NewInt(2),
 		}
 
 		c.storeBacklog(msg, val)
@@ -235,7 +308,7 @@ func TestProcessBacklog(t *testing.T) {
 
 	t.Run("valid vote received, processed at prevote step", func(t *testing.T) {
 		vote := &Vote{
-			Round:  big.NewInt(1),
+			Round:  1,
 			Height: big.NewInt(2),
 		}
 
@@ -245,15 +318,16 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  votePayload,
+			Code:       msgPrevote,
+			Msg:        votePayload,
+			decodedMsg: vote,
 		}
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		valSet := newTestValidatorSet(1)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(1)
+		val, _ := committeeSet.GetByIndex(0)
 
 		expected := backlogEvent{
 			src: val,
@@ -268,11 +342,13 @@ func TestProcessBacklog(t *testing.T) {
 		})
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(2)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			step:     propose,
+			round:    1,
+			height:   big.NewInt(2),
 		}
 		c.storeBacklog(msg, val)
 		c.processBacklog()
@@ -304,8 +380,8 @@ func TestProcessBacklog(t *testing.T) {
 
 	t.Run("same height, but old round", func(t *testing.T) {
 		nilRoundVote := &Vote{
-			Round:  big.NewInt(0),
-			Height: big.NewInt(0),
+			Round:  0,
+			Height: big.NewInt(1),
 		}
 
 		nilRoundVotePayload, err := Encode(nilRoundVote)
@@ -314,8 +390,9 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  nilRoundVotePayload,
+			Code:       msgPrevote,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
 		}
 
 		ctrl := gomock.NewController(t)
@@ -324,15 +401,16 @@ func TestProcessBacklog(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-		valSet := newTestValidatorSet(1)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(1)
+		val, _ := committeeSet.GetByIndex(0)
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(0)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			round:    1,
+			height:   big.NewInt(1),
 		}
 
 		c.storeBacklog(msg, val)
@@ -341,7 +419,7 @@ func TestProcessBacklog(t *testing.T) {
 
 	t.Run("future height message are not processed", func(t *testing.T) {
 		nilRoundVote := &Vote{
-			Round:  big.NewInt(2),
+			Round:  2,
 			Height: big.NewInt(4),
 		}
 
@@ -351,8 +429,9 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  nilRoundVotePayload,
+			Code:       msgPrevote,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
 		}
 
 		ctrl := gomock.NewController(t)
@@ -361,15 +440,16 @@ func TestProcessBacklog(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Post(gomock.Any()).Times(0)
 
-		valSet := newTestValidatorSet(2)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(2)
+		val, _ := committeeSet.GetByIndex(0)
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			round:    2,
+			height:   big.NewInt(3),
 		}
 
 		c.storeBacklog(msg, val)
@@ -378,7 +458,7 @@ func TestProcessBacklog(t *testing.T) {
 
 	t.Run("future height message are processed when height change", func(t *testing.T) {
 		nilRoundVote := &Vote{
-			Round:  big.NewInt(2),
+			Round:  2,
 			Height: big.NewInt(4),
 		}
 
@@ -388,12 +468,14 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  nilRoundVotePayload,
+			Code:       msgPrevote,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
 		}
 		msg2 := &Message{
-			Code: msgPrecommit,
-			Msg:  nilRoundVotePayload,
+			Code:       msgPrecommit,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
 		}
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -401,21 +483,22 @@ func TestProcessBacklog(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Post(gomock.Any()).Times(0)
 
-		valSet := newTestValidatorSet(2)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(2)
+		val, _ := committeeSet.GetByIndex(0)
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(2), big.NewInt(3)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			round:    2,
+			height:   big.NewInt(3),
 		}
 		c.storeBacklog(msg, val)
 		c.storeBacklog(msg2, val)
 		c.setStep(prevote)
 		c.processBacklog()
-		c.currentRoundState = NewRoundState(big.NewInt(2), big.NewInt(4))
+		c.setHeight(big.NewInt(4))
 
 		backendMock.EXPECT().Post(gomock.Any()).Times(2)
 		c.setStep(prevote)
@@ -426,7 +509,7 @@ func TestProcessBacklog(t *testing.T) {
 
 	t.Run("future round message are processed when round change", func(t *testing.T) {
 		nilRoundVote := &Vote{
-			Round:  big.NewInt(2),
+			Round:  2,
 			Height: big.NewInt(4),
 		}
 
@@ -436,8 +519,9 @@ func TestProcessBacklog(t *testing.T) {
 		}
 
 		msg := &Message{
-			Code: msgPrevote,
-			Msg:  nilRoundVotePayload,
+			Code:       msgPrevote,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
 		}
 
 		ctrl := gomock.NewController(t)
@@ -446,21 +530,25 @@ func TestProcessBacklog(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Post(gomock.Any()).Times(0)
 
-		valSet := newTestValidatorSet(2)
-		val := valSet.GetByIndex(0)
+		committeeSet := newTestCommitteeSet(2)
+		val, err := committeeSet.GetByIndex(0)
+		if err != nil {
+			t.Fatalf("have %v, want nil", err)
+		}
 
 		c := &core{
-			logger:            log.New("backend", "test", "id", 0),
-			backend:           backendMock,
-			address:           common.HexToAddress("0x1234567890"),
-			backlogs:          make(map[validator.Validator]*prque.Prque),
-			currentRoundState: NewRoundState(big.NewInt(1), big.NewInt(4)),
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			step:     prevote,
+			round:    1,
+			height:   big.NewInt(4),
 		}
 		c.storeBacklog(msg, val)
 		c.processBacklog()
 		backendMock.EXPECT().Post(gomock.Any()).Times(1)
-		c.currentRoundState = NewRoundState(big.NewInt(2), big.NewInt(4))
-		c.setStep(prevote)
+		c.setRound(2)
 		c.processBacklog()
 		timeout := time.NewTimer(2 * time.Second)
 		<-timeout.C

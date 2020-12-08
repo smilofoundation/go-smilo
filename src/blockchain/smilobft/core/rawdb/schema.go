@@ -44,9 +44,6 @@ var (
 	// enodeWhiteList contains the latest block saved enodes whitelist
 	enodeWhiteList = []byte("EnodesWhitelist")
 
-	// blackList contains the latest block saved blacklist addresses
-	blackList = []byte("Blacklist")
-
 	// Data item prefixes (use single byte to avoid mixing data types, avoid `i`, used for indexes).
 	headerPrefix       = []byte("h") // headerPrefix + num (uint64 big endian) + hash -> header
 	headerTDSuffix     = []byte("t") // headerPrefix + num (uint64 big endian) + hash + headerTDSuffix -> td

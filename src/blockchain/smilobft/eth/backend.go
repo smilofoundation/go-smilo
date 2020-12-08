@@ -139,7 +139,7 @@ func (s *Smilo) SetContractBackend(backend bind.ContractBackend) {
 // New creates a new Smilo object (including the
 // initialisation of the common Smilo object)
 func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Engine) consensus.Engine) (*Smilo, error) {
-	log.Info("$$$$$$$ Going to creates a new Smilo backend config object ")
+	log.Info("$$$$$$$ Going to create a new Smilo backend config object ")
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.Smilo in light sync mode, use les.LightEthereum")
@@ -283,7 +283,7 @@ func New(ctx *node.ServiceContext, config *Config, cons func(basic consensus.Eng
 	if checkpoint == nil {
 		checkpoint = params.TrustedCheckpoints[genesisHash]
 	}
-	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.EnableNodePermissionFlag); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist, config.EnableNodePermissionFlag, &ctx.NodeKey().PublicKey); err != nil {
 		return nil, err
 	}
 	var MinBlocksEmptyMining = big.NewInt(20000000)
@@ -686,7 +686,7 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 		s.glienickeSub = s.blockchain.SubscribeAutonityEvents(s.glienickeCh)
 		savedList := rawdb.ReadEnodeWhitelist(s.chainDb, srvr.EnableNodePermissionFlag)
 		log.Info("eth/backend.go, Start(), Reading Whitelist", "list", savedList.StrList)
-		go s.glienickeEventLoop(srvr)
+		go s.glienickeEventLoop(srvr, srvr.EnableNodePermissionFlag)
 		srvr.UpdateWhitelist(savedList.List)
 	} else {
 		log.Warn("eth/backend.go, Start(), EnableNodePermissionFlag false, will not Subscribe to Autonity updates events")
@@ -717,7 +717,12 @@ func (s *Smilo) Start(srvr *p2p.Server) error {
 
 // Whitelist updating loop. Act as a relay between state processing logic and DevP2P
 // for updating the list of authorized enodes
-func (s *Smilo) glienickeEventLoop(server *p2p.Server) {
+func (s *Smilo) glienickeEventLoop(server *p2p.Server, EnableNodePermissionFlag bool) {
+
+	savedList := rawdb.ReadEnodeWhitelist(s.chainDb, false)
+	log.Info("Reading Whitelist", "list", savedList.StrList)
+	server.UpdateWhitelist(savedList.List)
+
 	for {
 		select {
 		case event := <-s.glienickeCh:

@@ -19,6 +19,7 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"math/big"
 
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
@@ -89,34 +90,26 @@ func ReadEnodeWhitelist(db ethdb.KeyValueReader, EnableNodePermissionFlag bool) 
 	return nodes
 }
 
-// WriteBlacklist stores the list of permitted enodes
-func WriteBlacklist(db ethdb.KeyValueWriter, blacklist *types.Nodes) {
-	bytes, err := rlp.EncodeToBytes(blacklist.StrList)
-	if err != nil {
-		log.Crit("Failed to RLP encode addresses blacklist", "err", err)
+// PutKeyValue stores the key value to the chain data level db.
+func PutKeyValue(db ethdb.KeyValueWriter, key []byte, value []byte) error {
+	if err := db.Put(key, value); err != nil {
+		log.Crit("Failed to store state into level db.", "err", err)
+		return err
 	}
-	if err := db.Put(enodeWhiteList, bytes); err != nil {
-		log.Crit("Failed to store last header's hash", "err", err)
-	}
+	return nil
 }
 
-// ReadBlacklist retrieve the list of permitted enodes
-func ReadBlacklist(db ethdb.KeyValueReader, TxPoolBlacklistFlag bool) *types.Nodes {
-	var strList []string
-	nodes := &types.Nodes{List: make([]*enode.Node, 0)}
-
-	data, _ := db.Get(blackList)
-	if len(data) == 0 {
-		return nodes
+// GetKeyValue get the key value from chain data level db.
+func GetKeyValue(db ethdb.KeyValueReader, key []byte) ([]byte, error) {
+	bytes, err := db.Get(key)
+	if err != nil {
+		return nil, err
 	}
-	if err := rlp.Decode(bytes.NewReader(data), &strList); err != nil {
-		log.Error("Invalid blacklist", "err", err)
-		return nodes
-	}
-	log.Warn("ReadBlacklist, strList, ", "strList", strList)
 
-	nodes = types.NewNodes(strList, TxPoolBlacklistFlag)
-	return nodes
+	if len(bytes) <= 0 {
+		return nil, errors.New("no data found")
+	}
+	return bytes, nil
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.

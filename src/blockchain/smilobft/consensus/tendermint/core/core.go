@@ -19,9 +19,9 @@ package core
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"math"
 	"math/big"
 	"sync"
 	"time"
@@ -29,8 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
@@ -40,11 +40,11 @@ var (
 	// errNotFromProposer is returned when received message is supposed to be from
 	// proposer.
 	errNotFromProposer = errors.New("message does not come from proposer")
-	// errFutureHeightMessage is returned when currentRoundState view is earlier than the
+	// errFutureHeightMessage is returned when curRoundMessages view is earlier than the
 	// view of the received message.
 	errFutureHeightMessage = errors.New("future height message")
 	// errOldHeightMessage is returned when the received message's view is earlier
-	// than currentRoundState view.
+	// than curRoundMessages view.
 	errOldHeightMessage = errors.New("old height message")
 	// errOldRoundMessage message is returned when message is of the same Height but form a smaller round
 	errOldRoundMessage = errors.New("same height but old round message")
@@ -63,8 +63,6 @@ var (
 	errFailedDecodePrevote = errors.New("failed to decode PREVOTE")
 	// errFailedDecodePrecommit is returned when the PRECOMMIT message is malformed.
 	errFailedDecodePrecommit = errors.New("failed to decode PRECOMMIT")
-	// errFailedDecodeVote is returned for when PREVOTE or PRECOMMIT is malformed.
-	errFailedDecodeVote = errors.New("failed to decode vote")
 	// errNilPrevoteSent is returned when timer could be stopped in time
 	errNilPrevoteSent = errors.New("timer expired and nil prevote sent")
 	// errNilPrecommitSent is returned when timer could be stopped in time
@@ -73,31 +71,37 @@ var (
 	errMovedToNewRound = errors.New("timer expired and new round started")
 )
 
+const (
+	MaxRound = 99 // consequence of backlog priority
+)
+
 // New creates an Tendermint consensus core
 func New(backend Backend, config *config.Config) *core {
 	logger := log.New("addr", backend.Address().String())
+	messagesMap := newMessagesMap()
+	roundMessage := messagesMap.getOrCreate(0)
 	return &core{
-		config:                       config,
-		address:                      backend.Address(),
-		logger:                       logger,
-		backend:                      backend,
-		backlogs:                     make(map[validator.Validator]*prque.Prque),
-		pendingUnminedBlocks:         make(map[uint64]*types.Block),
-		pendingUnminedBlockCh:        make(chan *types.Block),
-		stopped:                      make(chan struct{}, 3),
-		isStarting:                   new(uint32),
-		isStarted:                    new(uint32),
-		isStopping:                   new(uint32),
-		isStopped:                    new(uint32),
-		valSet:                       new(validatorSet),
-		futureRoundsChange:           make(map[int64]int64),
-		currentHeightOldRoundsStates: make(map[int64]*roundState),
-		lockedRound:                  big.NewInt(-1),
-		validRound:                   big.NewInt(-1),
-		currentRoundState:            new(roundState),
-		proposeTimeout:               newTimeout(propose, logger),
-		prevoteTimeout:               newTimeout(prevote, logger),
-		precommitTimeout:             newTimeout(precommit, logger),
+		config:                config,
+		address:               backend.Address(),
+		logger:                logger,
+		backend:               backend,
+		backlogs:              make(map[types.CommitteeMember]*prque.Prque),
+		pendingUnminedBlocks:  make(map[uint64]*types.Block),
+		pendingUnminedBlockCh: make(chan *types.Block),
+		stopped:               make(chan struct{}, 3),
+		isStarting:            new(uint32),
+		isStarted:             new(uint32),
+		isStopping:            new(uint32),
+		isStopped:             new(uint32),
+		committeeSet:          nil,
+		futureRoundChange:     make(map[int64]map[common.Address]uint64),
+		messages:              messagesMap,
+		lockedRound:           -1,
+		validRound:            -1,
+		curRoundMessages:      roundMessage,
+		proposeTimeout:        newTimeout(propose, logger),
+		prevoteTimeout:        newTimeout(prevote, logger),
+		precommitTimeout:      newTimeout(precommit, logger),
 	}
 }
 
@@ -121,83 +125,55 @@ type core struct {
 	isStopping              *uint32
 	isStopped               *uint32
 
-	valSet *validatorSet
-
-	backlogs   map[validator.Validator]*prque.Prque
+	backlogs   map[types.CommitteeMember]*prque.Prque
 	backlogsMu sync.Mutex
-
-	currentRoundState *roundState
-
 	// map[Height]UnminedBlock
 	pendingUnminedBlocks     map[uint64]*types.Block
 	pendingUnminedBlocksMu   sync.Mutex
 	pendingUnminedBlockCh    chan *types.Block
 	isWaitingForUnminedBlock bool
 
+	//
+	// Tendermint FSM state fields
+	//
+
+	height       *big.Int
+	round        int64
+	committeeSet committee.Set
+	// height, round and committeeSet are the ONLY guarded fields.
+	// everything else MUST be accessed only by the main thread.
+	stateMu               sync.RWMutex
+	step                  Step
+	curRoundMessages      *roundMessages
+	messages              messagesMap
 	sentProposal          bool
 	sentPrevote           bool
 	sentPrecommit         bool
 	setValidRoundAndValue bool
 
-	lockedRound *big.Int
-	validRound  *big.Int
+	lockedRound int64
+	validRound  int64
 	lockedValue *types.Block
 	validValue  *types.Block
-
-	currentHeightOldRoundsStates   map[int64]*roundState
-	currentHeightOldRoundsStatesMu sync.RWMutex
 
 	proposeTimeout   *timeout
 	prevoteTimeout   *timeout
 	precommitTimeout *timeout
 
-	//map[futureRoundNumber]NumberOfMessagesReceivedForTheRound
-	futureRoundsChange map[int64]int64
+	futureRoundChange map[int64]map[common.Address]uint64
 }
 
 func (c *core) GetCurrentHeightMessages() []*Message {
-	c.currentHeightOldRoundsStatesMu.RLock()
-	defer c.currentHeightOldRoundsStatesMu.RUnlock()
-
-	msgs := make([][]*Message, len(c.currentHeightOldRoundsStates)+1)
-	var totalLen int
-	for i, state := range c.currentHeightOldRoundsStates {
-		msgs[i] = state.GetMessages()
-		totalLen += len(msgs[i])
-	}
-	msgs[len(msgs)-1] = c.currentRoundState.GetMessages()
-
-	totalLen += len(msgs[len(msgs)-1])
-
-	result := make([]*Message, 0, totalLen)
-	for _, ms := range msgs {
-		result = append(result, ms...)
-	}
-
-	return result
+	return c.messages.GetMessages()
 }
 
-func (c *core) IsValidator(address common.Address) bool {
-	_, val := c.valSet.GetByAddress(address)
-	return val != nil
+func (c *core) IsMember(address common.Address) bool {
+	_, _, err := c.CommitteeSet().GetByAddress(address)
+	return err == nil
 }
 
 func (c *core) finalizeMessage(msg *Message) ([]byte, error) {
 	var err error
-
-	//// Add sender address
-	//msg.Address = c.address
-	//
-	//// Add proof of consensus
-	//msg.CommittedSeal = []byte{}
-	//// Assign the CommittedSeal if it's a COMMIT message and proposal is not nil
-	//if msg.Code == msgPrecommit && c.currentRoundState.Proposal() != nil {
-	//	seal := PrepareCommittedSeal(c.currentRoundState.Proposal().Hash())
-	//	msg.CommittedSeal, err = c.backend.Sign(seal)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
 
 	// Sign message
 	data, err := msg.PayloadNoSig()
@@ -219,7 +195,7 @@ func (c *core) finalizeMessage(msg *Message) ([]byte, error) {
 }
 
 func (c *core) broadcast(ctx context.Context, msg *Message) {
-	logger := c.logger.New("step", c.currentRoundState.Step())
+	logger := c.logger.New("step", c.step)
 
 	payload, err := c.finalizeMessage(msg)
 	if err != nil {
@@ -229,47 +205,53 @@ func (c *core) broadcast(ctx context.Context, msg *Message) {
 
 	// Broadcast payload
 	logger.Debug("broadcasting", "msg", msg.String())
-	if err = c.backend.Broadcast(ctx, c.valSet.Copy(), payload); err != nil {
+	if err = c.backend.Broadcast(ctx, c.CommitteeSet(), payload); err != nil {
 		logger.Error("Failed to broadcast message", "msg", msg, "err", err)
 		return
 	}
 }
 
 func (c *core) isProposer() bool {
-	return c.valSet.IsProposer(c.address)
+	return c.CommitteeSet().IsProposer(c.Round(), c.address)
 }
 
-func (c *core) commit() {
+func (c *core) commit(round int64, messages *roundMessages) {
 	c.setStep(precommitDone)
 
-	proposal := c.currentRoundState.Proposal()
+	proposal := messages.Proposal()
+	if proposal == nil {
+		// Should never happen really.
+		c.logger.Error("core commit called with empty proposal ")
+		return
+	}
 
-	if proposal != nil {
-		if proposal.ProposalBlock != nil {
-			c.logger.Warn("commit a block", "hash", proposal.ProposalBlock.Header().Hash())
-		} else {
-			c.logger.Error("commit a NIL block",
-				"block", proposal.ProposalBlock,
-				"height", c.currentRoundState.height.String(),
-				"round", c.currentRoundState.round.String())
-		}
+	if proposal.ProposalBlock == nil {
+		// Again should never happen.
+		c.logger.Error("commit a NIL block",
+			"block", proposal.ProposalBlock,
+			"height", c.Height(),
+			"round", round)
+		return
+	}
 
-		committedSeals := make([][]byte, c.currentRoundState.Precommits.VotesSize(proposal.ProposalBlock.Hash()))
-		for i, v := range c.currentRoundState.Precommits.Values(proposal.ProposalBlock.Hash()) {
-			committedSeals[i] = make([]byte, types.BFTExtraSeal)
-			copy(committedSeals[i][:], v.CommittedSeal[:])
-		}
+	c.logger.Info("commit a block", "hash", proposal.ProposalBlock.Header().Hash())
 
-		if err := c.backend.Commit(*proposal.ProposalBlock, committedSeals); err != nil {
-			c.logger.Error("Failed to Commit block", "err", err)
-			return
-		}
+	committedSeals := make([][]byte, 0)
+	for _, v := range messages.CommitedSeals(proposal.ProposalBlock.Hash()) {
+		seal := make([]byte, types.BFTExtraSeal)
+		copy(seal[:], v.CommittedSeal[:])
+		committedSeals = append(committedSeals, seal)
+	}
+
+	if err := c.backend.Commit(proposal.ProposalBlock, round, committedSeals); err != nil {
+		c.logger.Error("failed to commit a block", "err", err)
+		return
 	}
 }
 
 // Metric collection of round change and height change.
-func (c *core) measureHeightRoundMetrics(round *big.Int) {
-	if round.Cmp(common.Big0) == 0 {
+func (c *core) measureHeightRoundMetrics(round int64) {
+	if round == 0 {
 		// in case of height change, round changed too, so count it also.
 		tendermintRoundChangeMeter.Mark(1)
 		tendermintHeightChangeMeter.Mark(1)
@@ -279,17 +261,19 @@ func (c *core) measureHeightRoundMetrics(round *big.Int) {
 }
 
 // startRound starts a new round. if round equals to 0, it means to starts a new height
-func (c *core) startRound(ctx context.Context, round *big.Int) {
-
+func (c *core) startRound(ctx context.Context, round int64) {
+	height := new(big.Int)
 	c.measureHeightRoundMetrics(round)
-	lastCommittedProposalBlock, lastCommittedProposalBlockProposer := c.backend.LastCommittedProposal()
-	height := new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
-
-	c.setCore(round, height, lastCommittedProposalBlockProposer)
-
+	lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
+	if lastCommittedProposalBlock != nil {
+		height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
+	} else {
+		log.Warn("startRound block 0", "round", round)
+	}
+	// Set initial FSM state
+	c.setInitialState(round)
 	// c.setStep(propose) will process the pending unmined blocks sent by the backed.Seal() and set c.lastestPendingRequest
 	c.setStep(propose)
-
 	c.logger.Debug("Starting new Round", "Height", height, "Round", round)
 
 	// If the node is the proposer for this round then it would propose validValue or a new block, otherwise,
@@ -326,103 +310,101 @@ func (c *core) startRound(ctx context.Context, round *big.Int) {
 			"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
 		c.sendProposal(ctx, p)
 	} else {
-		timeoutDuration := timeoutPropose(round.Int64())
-		c.proposeTimeout.scheduleTimeout(timeoutDuration, round.Int64(), height.Int64(), c.onTimeoutPropose)
+		timeoutDuration := timeoutPropose(round)
+		c.proposeTimeout.scheduleTimeout(timeoutDuration, round, c.Height(), c.onTimeoutPropose)
 		c.logger.Debug("Scheduled Propose Timeout", "Timeout Duration", timeoutDuration)
 	}
 }
 
-func (c *core) setCore(r *big.Int, h *big.Int, lastProposer common.Address) {
+func (c *core) setInitialState(r int64) {
 	// Start of new height where round is 0
-	if r.Int64() == 0 {
-		// Set the shared round values to initial values
-		c.lockedRound = big.NewInt(-1)
+	if r == 0 {
+		lastBlockMined, _ := c.backend.LastCommittedProposal()
+		c.setHeight(new(big.Int).Add(lastBlockMined.Number(), common.Big1))
+		committeeSet, err := c.backend.Committee(c.Height().Uint64())
+		if err != nil {
+			c.logger.Error("fatal error: could not retrieve saved committee")
+			panic(err)
+		}
+		c.setCommitteeSet(committeeSet)
+		c.lockedRound = -1
 		c.lockedValue = nil
-		c.validRound = big.NewInt(-1)
+		c.validRound = -1
 		c.validValue = nil
-
-		// Set validator set for height
-		valSet := c.backend.Validators(h.Uint64())
-		c.valSet.set(valSet)
-
-		// Assuming that round == 0 only when the node moves to a new height
-		// Therefore, resetting round related maps
-		c.currentHeightOldRoundsStatesMu.Lock()
-		c.currentHeightOldRoundsStates = make(map[int64]*roundState)
-		c.currentHeightOldRoundsStatesMu.Unlock()
-		c.futureRoundsChange = make(map[int64]int64)
+		c.messages.reset()
+		c.futureRoundChange = make(map[int64]map[common.Address]uint64)
 	}
-	// Reset all timeouts
+
 	c.proposeTimeout.reset(propose)
 	c.prevoteTimeout.reset(prevote)
 	c.precommitTimeout.reset(precommit)
-
-	// Get all rounds from c.futureRoundsChange and remove previous rounds
-	var i int64
-	for i = 0; i <= r.Int64(); i++ {
-		delete(c.futureRoundsChange, i)
-	}
-	// Add a copy of c.currentRoundState to c.currentHeightOldRoundsStates and then update c.currentRoundState
-	// We only add old round prevote messages to c.currentHeightOldRoundsStates, while future messages are sent to the
-	// backlog which are processed when the step is set to propose
-	if r.Int64() > 0 {
-		// This is a shallow copy, should be fine for now
-		c.currentHeightOldRoundsStatesMu.Lock()
-		c.currentHeightOldRoundsStates[r.Int64()-1] = c.currentRoundState
-		c.currentHeightOldRoundsStatesMu.Unlock()
-	}
-	c.currentRoundState.Update(r, h)
-
-	// Calculate new proposer
-	c.valSet.CalcProposer(lastProposer, r.Uint64())
+	c.curRoundMessages = c.messages.getOrCreate(r)
 	c.sentProposal = false
 	c.sentPrevote = false
 	c.sentPrecommit = false
 	c.setValidRoundAndValue = false
+	c.setRound(r)
 }
 
-func (c *core) acceptVote(roundState *roundState, step Step, hash common.Hash, msg Message) {
-	log.Debug("Going to acceptVote!!!!!!!! ", "step", step, "hash", hash, "roundState", roundState.GetCurrentProposalHash(), "msg", msg.String())
-	emptyHash := hash == (common.Hash{})
+func (c *core) acceptVote(roundMsgs *roundMessages, step Step, hash common.Hash, msg Message) {
+	log.Debug("Going to acceptVote!!!!!!!! ", "step", step, "hash", hash, "msg", msg.String())
 	switch step {
 	case prevote:
-		if emptyHash {
-			log.Debug("Going to acceptVote!!!!!!!! prevote, AddNilVote,", "step", step, "hash", hash, "roundState", roundState.GetCurrentProposalHash(), "msg", msg.String())
-			roundState.Prevotes.AddNilVote(msg)
-		} else {
-			log.Debug("Going to acceptVote!!!!!!!! prevote, AddVote,", "step", step, "hash", hash, "roundState", roundState.GetCurrentProposalHash(), "msg", msg.String())
-			roundState.Prevotes.AddVote(hash, msg)
-		}
+		log.Debug("Going to acceptVote!!!!!!!! prevote, AddVote,", "step", step, "hash", hash, "msg", msg.String())
+		roundMsgs.AddPrevote(hash, msg)
 	case precommit:
-		if emptyHash {
-			log.Debug("Going to acceptVote!!!!!!!! precommit, AddNilVote", "step", step, "hash", hash, "roundState", roundState.GetCurrentProposalHash(), "msg", msg.String())
-			roundState.Precommits.AddNilVote(msg)
-		} else {
-			log.Debug("Going to acceptVote!!!!!!!! precommit, ddVote", "step", step, "hash", hash, "roundState", roundState.GetCurrentProposalHash(), "msg", msg.String())
-			roundState.Precommits.AddVote(hash, msg)
-		}
+		log.Debug("Going to acceptVote!!!!!!!! precommit, ddVote", "step", step, "hash", hash, "msg", msg.String())
+		roundMsgs.AddPrecommit(hash, msg)
 	}
 }
 
 func (c *core) setStep(step Step) {
-	c.currentRoundState.SetStep(step)
+	c.logger.Debug("moving to step", "step", step.String(), "round", c.Round())
+	c.step = step
 	c.processBacklog()
 }
 
-func (c *core) stopFutureProposalTimer() {
-	if c.futureProposalTimer != nil {
-		c.futureProposalTimer.Stop()
-	}
-}
-
-func (c *core) Quorum(i int) bool {
-	return float64(i) >= math.Ceil(float64(2)/float64(3)*float64(c.valSet.Size()))
-}
-
 // PrepareCommittedSeal returns a committed seal for the given hash
-func PrepareCommittedSeal(hash common.Hash) []byte {
+func PrepareCommittedSeal(hash common.Hash, round int64, height *big.Int) []byte {
 	var buf bytes.Buffer
+	roundBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(roundBytes, uint64(round))
+	buf.Write(roundBytes)
+	buf.Write(height.Bytes())
 	buf.Write(hash.Bytes())
-	buf.Write([]byte{byte(msgPrecommit)})
 	return buf.Bytes()
+}
+
+func (c *core) setRound(round int64) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	c.round = round
+}
+
+func (c *core) setHeight(height *big.Int) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	c.height = height
+}
+func (c *core) setCommitteeSet(set committee.Set) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	c.committeeSet = set
+}
+
+func (c *core) Round() int64 {
+	c.stateMu.RLock()
+	defer c.stateMu.RUnlock()
+	return c.round
+}
+
+func (c *core) Height() *big.Int {
+	c.stateMu.RLock()
+	defer c.stateMu.RUnlock()
+	return c.height
+}
+func (c *core) CommitteeSet() committee.Set {
+	c.stateMu.RLock()
+	defer c.stateMu.RUnlock()
+	return c.committeeSet
 }

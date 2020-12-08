@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -41,10 +42,11 @@ import (
 //
 // StateProcessor implements Processor.
 type StateProcessor struct {
-	config           *params.ChainConfig // Chain configuration options
-	bc               *BlockChain         // Canonical block chain
-	engine           consensus.Engine    // Consensus engine used for block rewards
-	autonityContract *autonity.Contract
+	config                     *params.ChainConfig // Chain configuration options
+	bc                         *BlockChain         // Canonical block chain
+	engine                     consensus.Engine    // Consensus engine used for block rewards
+	autonityContract           *autonity.Contract
+	autonityContractTendermint *autonity_tendermint.Contract
 }
 
 // NewStateProcessor initialises a new StateProcessor.
@@ -58,6 +60,10 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 
 func (p *StateProcessor) SetAutonityContract(contract *autonity.Contract) {
 	p.autonityContract = contract
+}
+
+func (p *StateProcessor) SetAutonityContractTendermint(contract *autonity_tendermint.Contract) {
+	p.autonityContractTendermint = contract
 }
 
 // Process processes the state changes according to the Ethereum rules by running
@@ -84,8 +90,13 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 	}
 
 	var contractMinGasPrice = new(big.Int)
-	if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil || p.bc.Config().Tendermint != nil) && p.autonityContract != nil {
-		minGasPrice, err := p.autonityContract.GetMinimumGasPrice(block, statedb, privateState)
+	if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil) && p.autonityContract != nil {
+		minGasPrice, err := p.autonityContract.GetMinimumGasPrice(block, statedb)
+		if err == nil {
+			contractMinGasPrice.SetUint64(minGasPrice)
+		}
+	} else if p.bc.Config().Tendermint != nil && p.autonityContractTendermint != nil {
+		minGasPrice, err := p.autonityContractTendermint.GetMinimumGasPrice(block, statedb)
 		if err == nil {
 			contractMinGasPrice.SetUint64(minGasPrice)
 		}
@@ -98,10 +109,16 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 
-		if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil || p.bc.Config().Tendermint != nil) && p.autonityContract != nil {
+		if (p.bc.Config().Istanbul != nil || p.bc.Config().SportDAO != nil) && p.autonityContract != nil {
 			if contractMinGasPrice.Uint64() != 0 {
 				if tx.GasPrice().Cmp(contractMinGasPrice) == -1 {
 					return nil, nil, nil, 0, errors.New("autonityContract, gas price must be greater minGasPrice")
+				}
+			}
+		} else if p.bc.Config().Tendermint != nil && p.autonityContractTendermint != nil {
+			if contractMinGasPrice.Uint64() != 0 {
+				if tx.GasPrice().Cmp(contractMinGasPrice) == -1 {
+					return nil, nil, nil, 0, errors.New("autonityContractTendermint, gas price must be greater minGasPrice")
 				}
 			}
 		} else {
@@ -126,12 +143,14 @@ func (p *StateProcessor) Process(block *types.Block, statedb, privateState *stat
 			allLogs = append(allLogs, privateReceipt.Logs...)
 		}
 	}
-	if (p.bc.chainConfig.Istanbul != nil || p.bc.chainConfig.SportDAO != nil || p.bc.chainConfig.Tendermint != nil) && p.autonityContract != nil {
+	if (p.bc.chainConfig.Istanbul != nil || p.bc.chainConfig.SportDAO != nil) && p.autonityContract != nil {
 		err := p.autonityContract.ApplyPerformRedistribution(block.Transactions(), receipts, block.Header(), statedb)
 		if err != nil {
 			log.Error("Could not ApplyPerformRedistribution on smart contract, ", "err", err)
 			return nil, nil, nil, 0, err
 		}
+	} else if p.bc.chainConfig.Tendermint != nil && p.autonityContractTendermint != nil {
+		// what to do here ?
 	} else {
 		msg := "Wont set Istanbul Tendermint SportDAO ApplyPerformRedistribution, is this correct ? "
 		log.Warn(msg)

@@ -27,6 +27,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -84,6 +86,50 @@ type Header struct {
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
 	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+
+	/*
+		PoS header fields, round & committedSeals not taken into account
+		for computing the sigHash.
+	*/
+	Committee          Committee `json:"committee"           gencodec:"required"`
+	ProposerSeal       []byte    `json:"proposerSeal"        gencodec:"required"`
+	Round              uint64    `json:"round"               gencodec:"required"`
+	CommittedSeals     [][]byte  `json:"committedSeals"      gencodec:"required"`
+	PastCommittedSeals [][]byte  `json:"pastCommittedSeals"  gencodec:"required"`
+}
+
+type CommitteeMember struct {
+	Address     common.Address `json:"address"            gencodec:"required"       abi:"addr"`
+	VotingPower *big.Int       `json:"votingPower"        gencodec:"required"`
+}
+
+type Committee []CommitteeMember
+
+// originalHeader represents the ethereum blockchain header.
+type originalHeader struct {
+	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
+	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"`
+	Coinbase    common.Address `json:"miner"            gencodec:"required"`
+	Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
+	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
+	ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
+	Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+	Difficulty  *big.Int       `json:"difficulty"       gencodec:"required"`
+	Number      *big.Int       `json:"number"           gencodec:"required"`
+	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
+	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
+	Time        uint64         `json:"timestamp"        gencodec:"required"`
+	Extra       []byte         `json:"extraData"        gencodec:"required"`
+	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
+	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+}
+
+type headerExtra struct {
+	Committee          Committee `json:"committee"           gencodec:"required"`
+	ProposerSeal       []byte    `json:"proposerSeal"        gencodec:"required"`
+	Round              uint64    `json:"round"               gencodec:"required"`
+	CommittedSeals     [][]byte  `json:"committedSeals"      gencodec:"required"`
+	PastCommittedSeals [][]byte  `json:"pastCommittedSeals"  gencodec:"required"`
 }
 
 // field type overrides for gencodec
@@ -95,6 +141,12 @@ type headerMarshaling struct {
 	Time       hexutil.Uint64
 	Extra      hexutil.Bytes
 	Hash       common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
+	/*
+		PoS header fields type overriedes
+	*/
+	ProposerSeal       hexutil.Bytes
+	CommittedSeals     []hexutil.Bytes
+	PastCommittedSeals []hexutil.Bytes
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -107,7 +159,7 @@ func (h *Header) Hash() common.Hash {
 		if sportHeader := SportFilteredHeader(h, true); sportHeader != nil {
 			return rlpHash(sportHeader)
 		}
-	} else if h.MixDigest == BFTDigest {
+	} else if h.MixDigest == BFTDigest || h.MixDigest == TendermintDigest {
 		// Seal is reserved in extra-data. To prove block is signed by the proposer.
 		if posHeader := BFTFilteredHeader(h, true); posHeader != nil {
 			return rlpHash(posHeader)
@@ -160,6 +212,93 @@ func (h *Header) SanityCheck() error {
 		return fmt.Errorf("too large block extradata: size %d", eLen)
 	}
 	return nil
+}
+
+//TODO: do we need to do this ? can we implement it all as a Extradata and avoid this this horrible workaround inherited by Autonity ??
+
+// DecodeRLP decodes the Ethereum
+func (h *Header) DecodeRLP(s *rlp.Stream) error {
+	origin := &originalHeader{}
+	if err := s.Decode(origin); err != nil {
+		return err
+	}
+
+	hExtra := &headerExtra{}
+	if origin.MixDigest == TendermintDigest {
+		err := rlp.DecodeBytes(origin.Extra, hExtra)
+		if err != nil {
+			log.Error("could not DecodeBytes origin.Extra")
+			return err
+		}
+		h.CommittedSeals = hExtra.CommittedSeals
+		h.Committee = hExtra.Committee
+		h.PastCommittedSeals = hExtra.PastCommittedSeals
+		h.ProposerSeal = hExtra.ProposerSeal
+		h.Round = hExtra.Round
+	}
+
+	h.ParentHash = origin.ParentHash
+	h.UncleHash = origin.UncleHash
+	h.Coinbase = origin.Coinbase
+	h.Root = origin.Root
+	h.TxHash = origin.TxHash
+	h.ReceiptHash = origin.ReceiptHash
+	h.Bloom = origin.Bloom
+	h.Difficulty = origin.Difficulty
+	h.Number = origin.Number
+	h.GasLimit = origin.GasLimit
+	h.GasUsed = origin.GasUsed
+	h.Time = origin.Time
+	h.MixDigest = origin.MixDigest
+	h.Nonce = origin.Nonce
+	h.Extra = origin.Extra
+
+	return nil
+}
+
+// EncodeRLP serializes b into the Ethereum RLP block format.
+func (h *Header) EncodeRLP(w io.Writer) error {
+	hExtra := headerExtra{
+		Committee:          h.Committee,
+		ProposerSeal:       h.ProposerSeal,
+		Round:              h.Round,
+		CommittedSeals:     h.CommittedSeals,
+		PastCommittedSeals: h.PastCommittedSeals,
+	}
+
+	original := h.original()
+	if h.MixDigest == TendermintDigest {
+		extra, err := rlp.EncodeToBytes(hExtra)
+		if err != nil {
+			log.Error("could not EncodeToBytes")
+			return err
+		}
+		original.Extra = extra
+	} else {
+		original.Extra = h.Extra
+	}
+
+	return rlp.Encode(w, *original)
+}
+
+func (h *Header) original() *originalHeader {
+	return &originalHeader{
+		ParentHash:  h.ParentHash,
+		UncleHash:   h.UncleHash,
+		Coinbase:    h.Coinbase,
+		Root:        h.Root,
+		TxHash:      h.TxHash,
+		ReceiptHash: h.ReceiptHash,
+		Bloom:       h.Bloom,
+		Difficulty:  h.Difficulty,
+		Number:      h.Number,
+		GasLimit:    h.GasLimit,
+		GasUsed:     h.GasUsed,
+		Time:        h.Time,
+		Extra:       h.Extra,
+		MixDigest:   h.MixDigest,
+		Nonce:       h.Nonce,
+	}
 }
 
 func rlpHash(x interface{}) (h common.Hash) {
@@ -289,6 +428,42 @@ func CopyHeader(h *Header) *Header {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
 	}
+
+	if h.MixDigest == TendermintDigest {
+		//log.Debug("CopyHeader, PoS fields deep copy section", "len(h.Committee)", len(h.Committee))
+		/* PoS fields deep copy section*/
+		if len(h.Committee) > 0 {
+			cpy.Committee = make([]CommitteeMember, len(h.Committee))
+			for i, val := range h.Committee {
+				cpy.Committee[i] = CommitteeMember{
+					Address:     val.Address,
+					VotingPower: new(big.Int).Set(val.VotingPower),
+				}
+			}
+		}
+
+		if len(h.ProposerSeal) > 0 {
+			cpy.ProposerSeal = make([]byte, len(h.ProposerSeal))
+			copy(cpy.ProposerSeal, h.ProposerSeal)
+		}
+
+		if len(h.CommittedSeals) > 0 {
+			cpy.CommittedSeals = make([][]byte, len(h.CommittedSeals))
+			for i, val := range h.CommittedSeals {
+				cpy.CommittedSeals[i] = make([]byte, len(val))
+				copy(cpy.CommittedSeals[i], val)
+			}
+		}
+
+		if len(h.PastCommittedSeals) > 0 {
+			cpy.PastCommittedSeals = make([][]byte, len(h.PastCommittedSeals))
+			for i, val := range h.PastCommittedSeals {
+				cpy.PastCommittedSeals[i] = make([]byte, len(val))
+				copy(cpy.PastCommittedSeals[i], val)
+			}
+		}
+	}
+
 	return &cpy
 }
 
@@ -393,7 +568,13 @@ func CalcUncleHash(uncles []*Header) common.Hash {
 	if len(uncles) == 0 {
 		return EmptyUncleHash
 	}
-	return rlpHash(uncles)
+	// len(uncles) > 0 can only happen during tests.
+	// We revert to the original structure to keep compatibility with hardcoded hash values.
+	originalUncles := make([]*originalHeader, len(uncles))
+	for i := range uncles {
+		originalUncles[i] = uncles[i].original()
+	}
+	return rlpHash(originalUncles)
 }
 
 // WithSeal returns a new block with the data from b but the header replaced with

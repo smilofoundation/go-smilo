@@ -9,8 +9,8 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
@@ -19,17 +19,17 @@ func TestGetValidators(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	addr := common.HexToAddress("0x0123456789")
-	want := []common.Address{addr}
+	val := types.CommitteeMember{
+		Address:     common.HexToAddress("0x0123456789"),
+		VotingPower: new(big.Int).SetInt64(132),
+	}
 
-	val := validator.NewMockValidator(ctrl)
-	val.EXPECT().Address().Return(addr)
-
-	valSet := validator.NewMockSet(ctrl)
-	valSet.EXPECT().List().Return([]validator.Validator{val})
+	want := types.Committee{val}
+	committeeSet := committee.NewMockSet(ctrl)
+	committeeSet.EXPECT().Committee().Return(types.Committee{val})
 
 	backend := core.NewMockBackend(ctrl)
-	backend.EXPECT().Validators(uint64(1)).Return(valSet)
+	backend.EXPECT().Committee(uint64(1)).Return(committeeSet, nil)
 
 	API := &API{
 		tendermint: backend,
@@ -37,7 +37,7 @@ func TestGetValidators(t *testing.T) {
 
 	bn := rpc.BlockNumber(1)
 
-	got, err := API.GetValidators(&bn)
+	got, err := API.GetCommittee(&bn)
 	if err != nil {
 		t.Fatalf("expected <nil>, got %v", err)
 	}
@@ -47,7 +47,7 @@ func TestGetValidators(t *testing.T) {
 	}
 }
 
-func TestGetValidatorsAtHash(t *testing.T) {
+func TestGetCommitteeAtHash(t *testing.T) {
 	t.Run("unknown block given, error returned", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -61,39 +61,39 @@ func TestGetValidatorsAtHash(t *testing.T) {
 			chain: chain,
 		}
 
-		_, err := API.GetValidatorsAtHash(hash)
+		_, err := API.GetCommitteeAtHash(hash)
 		if err != errUnknownBlock {
 			t.Fatalf("expected %v, got %v", errUnknownBlock, err)
 		}
 	})
 
-	t.Run("valid block given, validators returned", func(t *testing.T) {
+	t.Run("valid block given, committee returned", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		addr := common.HexToAddress("0x0123456789")
-		want := []common.Address{addr}
+		val := types.CommitteeMember{
+			Address:     common.HexToAddress("0x0123456789"),
+			VotingPower: new(big.Int).SetInt64(132),
+		}
+		want := types.Committee{val}
 
 		hash := common.HexToHash("0x0123456789")
 
 		chain := consensus.NewMockChainReader(ctrl)
 		chain.EXPECT().GetHeaderByHash(hash).Return(&types.Header{Number: big.NewInt(1)})
 
-		val := validator.NewMockValidator(ctrl)
-		val.EXPECT().Address().Return(addr)
-
-		valSet := validator.NewMockSet(ctrl)
-		valSet.EXPECT().List().Return([]validator.Validator{val})
+		committeeSet := committee.NewMockSet(ctrl)
+		committeeSet.EXPECT().Committee().Return(types.Committee{val})
 
 		backend := core.NewMockBackend(ctrl)
-		backend.EXPECT().Validators(uint64(1)).Return(valSet)
+		backend.EXPECT().Committee(uint64(1)).Return(committeeSet, nil)
 
 		API := &API{
 			chain:      chain,
 			tendermint: backend,
 		}
 
-		got, err := API.GetValidatorsAtHash(hash)
+		got, err := API.GetCommitteeAtHash(hash)
 		if err != nil {
 			t.Fatalf("expected <nil>, got %v", err)
 		}

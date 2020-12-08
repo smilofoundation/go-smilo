@@ -20,6 +20,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"io"
 	"math/big"
 	mrand "math/rand"
@@ -188,8 +189,9 @@ type BlockChain struct {
 	shouldPreserve  func(*types.Block) bool        // Function used to determine whether should preserve the given block.
 	terminateInsert func(common.Hash, uint64) bool // Testing hook used to terminate ancient receipt chain insertion.
 
-	privateStateCache state.Database // Private state database to reuse between imports (contains state cache)
-	autonityContract  *autonity.Contract
+	privateStateCache          state.Database // Private state database to reuse between imports (contains state cache)
+	autonityContract           *autonity.Contract
+	autonityContractTendermint *autonity_tendermint.Contract
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -257,12 +259,17 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		return nil, err
 	}
 
-	if (chainConfig.Tendermint != nil || chainConfig.Istanbul != nil || chainConfig.SportDAO != nil) && chainConfig.AutonityContractConfig != nil {
+	if (chainConfig.Istanbul != nil || chainConfig.SportDAO != nil) && chainConfig.AutonityContractConfig != nil {
 		log.Warn("will set new Autonity contract", "chainConfig", chainConfig)
 		bc.autonityContract = autonity.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity.ChainContext) func(n uint64) common.Hash {
 			return GetHashFn(ref, chain)
 		})
 		bc.processor.SetAutonityContract(bc.autonityContract)
+	} else if chainConfig.Tendermint != nil && chainConfig.AutonityContractConfig != nil {
+		bc.autonityContractTendermint = autonity_tendermint.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity_tendermint.ChainContext) func(n uint64) common.Hash {
+			return GetHashFn(ref, chain)
+		})
+		bc.processor.SetAutonityContractTendermint(bc.autonityContractTendermint)
 	} else {
 		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "
 		log.Warn(logmsg, "chainConfig", chainConfig)
@@ -1360,17 +1367,22 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 
 	log.Warn("Call network permissioning logic before committing the state, UpdateEnodesWhitelist")
-	if bc.chainConfig.Istanbul != nil || bc.chainConfig.SportDAO != nil || bc.chainConfig.Tendermint != nil {
-		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, privateState, block)
+	if bc.chainConfig.Istanbul != nil || bc.chainConfig.SportDAO != nil {
+		err = bc.GetAutonityContract().UpdateEnodesWhitelist(state, block)
+		if err != nil && err != autonity.ErrAutonityContract {
+			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
+			return NonStatTy, err
+		}
+	} else if bc.chainConfig.Tendermint != nil {
+		err = bc.GetAutonityContractTendermint().UpdateEnodesWhitelist(state, block)
 		if err != nil && err != autonity.ErrAutonityContract {
 			log.Error("Could not UpdateEnodesWhitelist with SmartContract, ", "err", err)
 			return NonStatTy, err
 		}
 		// Measure network economic metrics.
 		if bc.chainConfig.Tendermint != nil {
-			bc.GetAutonityContract().MeasureMetricsOfNetworkEconomic(block.Header(), state)
+			bc.GetAutonityContractTendermint().MeasureMetricsOfNetworkEconomic(block.Header(), state)
 		}
-
 	} else {
 		msg := "Wont set Istanbul Tendermint SportDAO UpdateEnodesWhitelist, is this correct ? "
 		log.Warn(msg)
@@ -2393,6 +2405,9 @@ func (bc *BlockChain) GetTransactionLookup(hash common.Hash) *rawdb.LegacyTxLook
 // Config retrieves the chain's fork configuration.
 func (bc *BlockChain) Config() *params.ChainConfig             { return bc.chainConfig }
 func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
+func (bc *BlockChain) GetAutonityContractTendermint() *autonity_tendermint.Contract {
+	return bc.autonityContractTendermint
+}
 
 // Engine retrieves the blockchain's consensus engine.
 func (bc *BlockChain) Engine() consensus.Engine { return bc.engine }
@@ -2435,13 +2450,12 @@ func (bc *BlockChain) ReadEnodeWhitelist(openNetwork bool) *types.Nodes {
 	return rawdb.ReadEnodeWhitelist(bc.db, openNetwork)
 }
 
-func (bc *BlockChain) UpdateBlacklist(newBlacklist *types.Nodes) {
-	rawdb.WriteBlacklist(bc.db, newBlacklist)
-	go bc.autonityFeed.Send(WhitelistEvent{Whitelist: newBlacklist.List})
+func (bc *BlockChain) PutKeyValue(key []byte, value []byte) error {
+	return rawdb.PutKeyValue(bc.db, key, value)
 }
 
-func (bc *BlockChain) ReadBlacklist(TxPoolBlacklistFlag bool) *types.Nodes {
-	return rawdb.ReadBlacklist(bc.db, TxPoolBlacklistFlag)
+func (bc *BlockChain) GetKeyValue(key []byte) ([]byte, error) {
+	return rawdb.GetKeyValue(bc.db, key)
 }
 
 // SubscribeBlockProcessingEvent registers a subscription of bool where true means

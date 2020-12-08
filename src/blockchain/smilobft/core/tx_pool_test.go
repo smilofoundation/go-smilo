@@ -19,6 +19,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -82,6 +83,10 @@ func (bc *testBlockChain) Config() *params.ChainConfig {
 }
 
 func (bc *testBlockChain) GetAutonityContract() *autonity.Contract {
+	return nil
+}
+
+func (bc *testBlockChain) GetAutonityContractTendermint() *autonity_tendermint.Contract {
 	return nil
 }
 

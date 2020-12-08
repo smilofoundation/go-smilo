@@ -17,6 +17,7 @@
 package eth
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,13 +65,7 @@ const (
 
 var (
 	syncChallengeTimeout = 15 * time.Second // Time allowance for a node to reply to the sync progress challenge
-)
-
-var (
-	// errIncompatibleConfig is returned if the requested protocols and configs are
-	// not compatible (low protocol version restrictions and high requirements).
-	//errIncompatibleConfig = errors.New("incompatible configuration")
-	errUnauthorizedPeer = errors.New("peer is not authorized")
+	errUnauthorizedPeer  = errors.New("peer is not authorized")
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {
@@ -120,13 +115,14 @@ type ProtocolManager struct {
 	wg sync.WaitGroup
 
 	engine consensus.Engine
+	pub    *ecdsa.PublicKey
 
 	EnableNodePermissionFlag bool
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the Ethereum network.
-func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, EnableNodePermissionFlag bool) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCheckpoint, mode downloader.SyncMode, networkID uint64, mux *cmn.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database, cacheLimit int, whitelist map[uint64]common.Hash, EnableNodePermissionFlag bool, pub *ecdsa.PublicKey) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:                networkID,
@@ -144,6 +140,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		engine:                   engine,
 		EnableNodePermissionFlag: EnableNodePermissionFlag,
 		whitelistCh:              make(chan core.WhitelistEvent, 64),
+		pub:                      pub,
 	}
 
 	// Quorum
@@ -456,7 +453,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if syncer, ok := pm.blockchain.Engine().(consensus.Syncer); ok && pm.blockchain.Config().Tendermint != nil {
 		address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 		syncer.ResetPeerCache(address)
-		syncer.SyncPeer(address)
+		//syncer.SyncPeer(address)
 	} else {
 		log.Warn("eth/handler.go, handle(), NOT Tendermint, ELSE")
 	}
@@ -493,6 +490,39 @@ func (pm *ProtocolManager) handle(p *peer) error {
 			return err
 		}
 	}
+}
+
+func (pm *ProtocolManager) IsInWhitelist(id enode.ID, td uint64, logger log.Logger) error {
+	head := pm.blockchain.CurrentHeader()
+
+	whitelisted := false
+	pm.enodesWhitelistLock.RLock()
+	for _, enode := range pm.enodesWhitelist {
+		if id == enode.ID() {
+			whitelisted = true
+			break
+		}
+	}
+	pm.enodesWhitelistLock.RUnlock()
+
+	if !whitelisted && td <= head.Number.Uint64()+1 {
+		if logger != nil {
+			logger.Info("dropping unauthorized peer with old TD",
+				"whitelisted", whitelisted,
+				"enode", id,
+				"peersTD", td,
+				"currentTD", head.Number.Uint64()+1,
+			)
+		}
+
+		return errUnauthorizedPeer
+	}
+
+	return nil
+}
+
+func (pm *ProtocolManager) IsSelfInWhitelist() error {
+	return pm.IsInWhitelist(enode.PubkeyToIDV4(pm.pub), pm.NodeInfo().Difficulty.Uint64(), nil)
 }
 
 // handleMsg is invoked whenever an inbound message is received from a remote

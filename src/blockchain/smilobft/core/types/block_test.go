@@ -18,9 +18,12 @@ package types
 
 import (
 	"bytes"
+	"go-smilo/src/blockchain/smilobft/cmn/debug"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -60,7 +63,13 @@ func TestBlockEncoding(t *testing.T) {
 		t.Fatal("encode error: ", err)
 	}
 	if !bytes.Equal(ourBlockEnc, blockEnc) {
-		t.Errorf("encoded block mismatch:\ngot:  %x\nwant: %x", ourBlockEnc, blockEnc)
+		var blockRestored Block
+		if err := rlp.DecodeBytes(ourBlockEnc, &blockRestored); err != nil {
+			t.Fatal("decode error: ", err)
+		}
+
+		debug.Diff(blockRestored, block)
+		t.Errorf("encoded block mismatch:\ngot:  %x\nwant: %x\n%v\n%v", ourBlockEnc, blockEnc, spew.Sdump(block), len(block.Extra()))
 	}
 }
 

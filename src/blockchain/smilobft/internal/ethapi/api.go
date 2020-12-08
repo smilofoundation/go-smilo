@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/consensus/clique"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
 	"go-smilo/src/blockchain/smilobft/private"
 	"math/big"
 	"strings"
@@ -568,6 +569,10 @@ func (s *PublicBlockChainAPI) AutonityContract() *autonity.Contract {
 	return s.b.AutonityContract()
 }
 
+func (s *PublicBlockChainAPI) AutonityContractTendermint() *autonity_tendermint.Contract {
+	return s.b.AutonityContractTendermint()
+}
+
 // GetBalance returns the amount of wei for the given address in the state of the
 // given block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
 // block numbers are also allowed.
@@ -1090,23 +1095,28 @@ func FormatLogs(logs []vm.StructLog) []StructLogRes {
 // RPCMarshalHeader converts the given header to the RPC output .
 func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 	return map[string]interface{}{
-		"number":           (*hexutil.Big)(head.Number),
-		"hash":             head.Hash(),
-		"parentHash":       head.ParentHash,
-		"nonce":            head.Nonce,
-		"mixHash":          head.MixDigest,
-		"sha3Uncles":       head.UncleHash,
-		"logsBloom":        head.Bloom,
-		"stateRoot":        head.Root,
-		"miner":            head.Coinbase,
-		"difficulty":       (*hexutil.Big)(head.Difficulty),
-		"extraData":        hexutil.Bytes(head.Extra),
-		"size":             hexutil.Uint64(head.Size()),
-		"gasLimit":         hexutil.Uint64(head.GasLimit),
-		"gasUsed":          hexutil.Uint64(head.GasUsed),
-		"timestamp":        hexutil.Uint64(head.Time),
-		"transactionsRoot": head.TxHash,
-		"receiptsRoot":     head.ReceiptHash,
+		"number":             (*hexutil.Big)(head.Number),
+		"hash":               head.Hash(),
+		"parentHash":         head.ParentHash,
+		"nonce":              head.Nonce,
+		"mixHash":            head.MixDigest,
+		"sha3Uncles":         head.UncleHash,
+		"logsBloom":          head.Bloom,
+		"stateRoot":          head.Root,
+		"miner":              head.Coinbase,
+		"difficulty":         (*hexutil.Big)(head.Difficulty),
+		"extraData":          hexutil.Bytes(head.Extra),
+		"size":               hexutil.Uint64(head.Size()),
+		"gasLimit":           hexutil.Uint64(head.GasLimit),
+		"gasUsed":            hexutil.Uint64(head.GasUsed),
+		"timestamp":          hexutil.Uint64(head.Time),
+		"transactionsRoot":   head.TxHash,
+		"receiptsRoot":       head.ReceiptHash,
+		"committee":          head.Committee,
+		"pastCommittedSeals": head.PastCommittedSeals,
+		"committedSeals":     head.CommittedSeals,
+		"round":              head.Round,
+		"proposerSeal":       head.ProposerSeal,
 	}
 }
 

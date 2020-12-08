@@ -6,13 +6,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/validator"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
 var ErrUnauthorizedAddress = errors.New("unauthorized address")
 
-func CheckValidatorSignature(valSet validator.Set, data []byte, sig []byte) (common.Address, error) {
+func CheckValidatorSignature(valSet committee.Set, data []byte, sig []byte) (common.Address, error) {
 	// 1. Get signature address
 	signer, err := types.GetSignatureAddress(data, sig)
 	if err != nil {
@@ -21,9 +21,10 @@ func CheckValidatorSignature(valSet validator.Set, data []byte, sig []byte) (com
 	}
 
 	// 2. Check validator
-	if _, val := valSet.GetByAddress(signer); val != nil {
-		return val.Address(), nil
+	_, val, err := valSet.GetByAddress(signer)
+	if err != nil {
+		return common.Address{}, ErrUnauthorizedAddress
 	}
 
-	return common.Address{}, ErrUnauthorizedAddress
+	return val.Address, nil
 }

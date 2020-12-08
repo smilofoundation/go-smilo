@@ -23,6 +23,7 @@ type tmplData struct {
 	Package   string                   // Name of the package to place the generated file in
 	Contracts map[string]*tmplContract // List of contracts to generate into this file
 	Libraries map[string]string        // Map the bytecode's link pattern to the library name
+	Structs   map[string]*tmplStruct   // Contract struct type definitions
 }
 
 // tmplContract contains the data needed to generate an individual contract binding.
@@ -108,8 +109,16 @@ var (
 	_ = event.NewSubscription
 )
 
+{{$structs := .Structs}}
+{{range $structs}}
+	// {{.Name}} is an auto generated low-level Go binding around an user-defined struct.
+	type {{.Name}} struct {
+	{{range $field := .Fields}}
+	{{$field.Name}} {{$field.Type}}{{end}}
+	}
+{{end}}
+
 {{range $contract := .Contracts}}
-	{{$structs := $contract.Structs}}
 	// {{.Type}}ABI is the input ABI used to generate the binding from.
 	const {{.Type}}ABI = "{{.InputABI}}"
 
@@ -284,14 +293,6 @@ var (
 	func (_{{$contract.Type}} *{{$contract.Type}}TransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 		return _{{$contract.Type}}.Contract.contract.Transact(opts, method, params...)
 	}
-
-	{{range .Structs}}
-		// {{.Name}} is an auto generated low-level Go binding around an user-defined struct.
-		type {{.Name}} struct {
-		{{range $field := .Fields}}
-		{{$field.Name}} {{$field.Type}}{{end}}
-		}
-	{{end}}
 
 	{{range .Calls}}
 		// {{.Normalized.Name}} is a free data retrieval call binding the contract method 0x{{printf "%x" .Original.ID}}.
@@ -507,8 +508,8 @@ package {{.Package}};
 import org.smilo.geth.*;
 import java.util.*;
 
+{{$structs := .Structs}}
 {{range $contract := .Contracts}}
-{{$structs := $contract.Structs}}
 {{if not .Library}}public {{end}}class {{.Type}} {
 	// ABI is the input ABI used to generate the binding from.
 	public final static String ABI = "{{.InputABI}}";

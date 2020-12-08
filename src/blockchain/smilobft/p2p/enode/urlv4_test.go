@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 
 	"go-smilo/src/blockchain/smilobft/p2p/enr"
 
@@ -161,12 +160,21 @@ func hexPubkey(h string) *ecdsa.PublicKey {
 func TestParseNode(t *testing.T) {
 	for _, test := range parseNodeTests {
 		n, err := Parse(ValidSchemes, test.input)
-		if test.wantError != "" {
+		var gotErr string
+		if err != nil {
+			gotErr = strings.ReplaceAll(err.Error(), "\"", "")
+		}
+
+		wantError := strings.ReplaceAll(test.wantError, "\"", "")
+
+		if wantError != "" {
 			if err == nil {
-				t.Errorf("test %q:\n  got nil error, expected %#q", test.input, test.wantError)
+				t.Errorf("test %q:\n  got nil error, expected %#q", test.input, wantError)
+				continue
+			} else if !strings.Contains(gotErr, wantError) {
+				t.Errorf("test %q:\n  got error %#q, expected %#q\n%v", test.input, gotErr, wantError, n)
 				continue
 			}
-			require.Contains(t, err.Error(), test.wantError, "test %q:\n  got error %#q, expected %#q", test.input, err.Error(), test.wantError)
 		} else {
 			if err != nil {
 				t.Errorf("test %q:\n  unexpected error: %v", test.input, err)

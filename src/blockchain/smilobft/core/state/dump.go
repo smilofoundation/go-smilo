@@ -49,7 +49,9 @@ type Dump struct {
 }
 
 // iterativeDump is a 'collector'-implementation which dump output line-by-line iteratively
-type iterativeDump json.Encoder
+type iterativeDump struct {
+	*json.Encoder
+}
 
 // Collector interface which the state trie calls during iteration
 type collector interface {
@@ -57,15 +59,15 @@ type collector interface {
 	onAccount(common.Address, DumpAccount)
 }
 
-func (self *Dump) onRoot(root common.Hash) {
-	self.Root = fmt.Sprintf("%x", root)
+func (d *Dump) onRoot(root common.Hash) {
+	d.Root = fmt.Sprintf("%x", root)
 }
 
-func (self *Dump) onAccount(addr common.Address, account DumpAccount) {
-	self.Accounts[addr] = account
+func (d *Dump) onAccount(addr common.Address, account DumpAccount) {
+	d.Accounts[addr] = account
 }
 
-func (self iterativeDump) onAccount(addr common.Address, account DumpAccount) {
+func (d iterativeDump) onAccount(addr common.Address, account DumpAccount) {
 	dumpAccount := &DumpAccount{
 		Balance:   account.Balance,
 		Nonce:     account.Nonce,
@@ -79,10 +81,11 @@ func (self iterativeDump) onAccount(addr common.Address, account DumpAccount) {
 	if addr != (common.Address{}) {
 		dumpAccount.Address = &addr
 	}
-	(*json.Encoder)(&self).Encode(dumpAccount)
+	d.Encode(dumpAccount)
 }
-func (self iterativeDump) onRoot(root common.Hash) {
-	(*json.Encoder)(&self).Encode(struct {
+
+func (d iterativeDump) onRoot(root common.Hash) {
+	d.Encode(struct {
 		Root common.Hash `json:"root"`
 	}{root})
 }
@@ -156,5 +159,5 @@ func (s *StateDB) Dump(excludeCode, excludeStorage, excludeMissingPreimages bool
 
 // IterativeDump dumps out accounts as json-objects, delimited by linebreaks on stdout
 func (s *StateDB) IterativeDump(excludeCode, excludeStorage, excludeMissingPreimages bool, output *json.Encoder) {
-	s.dump(iterativeDump(*output), excludeCode, excludeStorage, excludeMissingPreimages)
+	s.dump(iterativeDump{output}, excludeCode, excludeStorage, excludeMissingPreimages)
 }
