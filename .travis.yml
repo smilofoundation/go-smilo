@@ -6,6 +6,9 @@ jobs:
     - stage: test
       env:
         - TENDERMINT_SLOW
+    - stage: test_legacy
+      env:
+        - TENDERMINT_SLOW
         - TENDERMINT_LEGACY
     - stage: build
       os: osx
@@ -61,7 +64,8 @@ jobs:
         submodules: false # avoid cloning ethereum/tests
       script:
         - go run src/blockchain/smilobft/build/ci.go install
-        - chmod +x ci_tendermint_tests.sh && ./ci_tendermint_tests.sh
+        - chmod +x ./ci_tendermint_tests.sh && chmod +x ./src/blockchain/smilobft/build/travis_keepalive.sh
+        - ./src/blockchain/smilobft/build/travis_keepalive.sh ./ci_tendermint_tests.sh
     - stage: test
       os: linux
       dist: xenial
@@ -72,7 +76,8 @@ jobs:
         submodules: false # avoid cloning ethereum/tests
       script:
         - go run src/blockchain/smilobft/build/ci.go install
-        - chmod +x ci_tendermint_slow_tests.sh && ./ci_tendermint_slow_tests.sh
+        - chmod +x ./ci_tendermint_slow_tests.sh && chmod +x ./src/blockchain/smilobft/build/travis_keepalive.sh
+        - ./src/blockchain/smilobft/build/travis_keepalive.sh ./ci_tendermint_slow_tests.sh
 
     # This builder only tests tendermint consensus on latest version of Go
     - stage: test_legacy
