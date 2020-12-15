@@ -4,6 +4,9 @@ const utils = require('./test-utils');
 //todo: move gas analysis to separate js file
 
 contract('Autonity', function (accounts) {
+    const roleValidator = 2;
+    const roleStakeHolder = 1;
+    const roleParticipant = 0;
     const validatorsList = [
         accounts[1],
         accounts[2],
@@ -19,6 +22,13 @@ contract('Autonity', function (accounts) {
         "enode://438a5c2cd8fdc2ecbc508bf7362e41c0f0c3754ba1d3267127a3756324caf45e6546b02140e2144b205aeb372c96c5df9641485f721dc7c5b27eb9e35f5d887b@172.25.0.14:30303",
         "enode://3ce6c053cb563bfd94f4e0e248510a07ccee1bc836c9784da1816dba4b10564e7be1ba42e0bd8d73c8f6274f8e9878dc13814adb381c823264265c06048b4b59@172.25.0.15:30303"
     ];
+    const freeEnodes = [
+        "enode://d860a01f9722d78051619d1e2351aba3f43f943f6f00718d1b9baa4101932a1f5011f16bb2b1bb35db20d6fe28fa0bf09636d26a87d31de9ec6203eeedb1f666@18.138.108.67:30303",
+        "enode://22a8232c3abc76a16ae9d6c3b164f98775fe226f0917b0ca871128a74a8e9630b458460865bab457221f1d448dd9791d24c4e5d88786180ac185df813a68d4de@3.209.45.79:30303",
+        "enode://ca6de62fce278f96aea6ec5a2daadb877e51651247cb96ee310a318def462913b653963c155a0ef6c7d50048bba6e6cea881130857413d9f50a621546b590758@34.255.23.113:30303",
+        "enode://279944d8dcd428dffaa7436f25ca0ca43ae19e7bcf94a8fb7d1641651f92d121e972ac2e8f381414b80cc8e5555811c2ec6e1a99bb009b3f53c4c69923e11bd8@35.158.244.151:30303",
+        "enode://8499da03c47d637b20eee24eec3c356c9a2e6148d6fe25ca195c7949ab8ec2c03e3556126b0d7ed644675e78c4318b08691b7b57de10e5f0d40d05b09238fa0a@52.187.207.27:30303"
+    ];
     const userTypes = [2, 2, 2, 2, 2];
     const stakes = [100, 90, 80, 110, 120];
     const commisionRate = [0, 0, 0, 0, 0];
@@ -32,7 +42,7 @@ contract('Autonity', function (accounts) {
 
     describe('Metrics', function() { // test failing
 
-        beforeEach(async function(){
+        beforeEach(async function() {
             token = await utils.deployContract(validatorsList, whiteList,
                 userTypes, stakes, commisionRate, operator, minGasPrice, bondPeriod, committeeSize, version, {from: accounts[8]} );
         });
@@ -155,7 +165,7 @@ contract('Autonity', function (accounts) {
         });
 
         it('test Governance operator can add/remove to whitelist', async function () {
-            let enode = "enode://testenode";
+            let enode = freeEnodes[0];
             let tx = await token.addValidator(accounts[8], 20, enode, {from: operator});
             // console.log("\tGas used to add validator to whitelist = " + tx.receipt.gasUsed.toString() + " gas");
             let getValidatorsResult = await token.getWhitelist({from: operator});
@@ -172,7 +182,7 @@ contract('Autonity', function (accounts) {
         it('test add validator and check that it is in get validator list', async function () {
             let expected = validatorsList.slice();
             expected.push(accounts[7]);
-            let tx = await token.addValidator(accounts[7], 100, "not nil enode", {from: operator});
+            let tx = await token.addValidator(accounts[7], 100, freeEnodes[0], {from: operator});
             // console.log("\tGas used to add new validator = " + tx.receipt.gasUsed.toString() + " gas");
             let getValidatorsResult = await token.getValidators({from: operator});
             assert.deepEqual(expected, getValidatorsResult);
@@ -188,8 +198,8 @@ contract('Autonity', function (accounts) {
             // Upgrades
             // test that a validator can't call the changeUserType function
             try {
-              await token.addParticipant(accounts[6], "some enode", {from: operator});
-              await token.addValidator(accounts[7], 100, "some enode", {from: operator});
+              await token.addParticipant(accounts[6], freeEnodes[0], {from: operator});
+              await token.addValidator(accounts[7], 100, freeEnodes[0], {from: operator});
               await token.changeUserType(accounts[6], 1, {from: accounts[6]});
               assert.fail('Expected throw not received');
             } catch (e) {
@@ -200,26 +210,38 @@ contract('Autonity', function (accounts) {
 
           it('test upgrades to userType', async function() {
             // participant -> stakeholder (0 -> 1)
-            await token.addParticipant(accounts[6], "some enode", {from: operator});
-            await token.changeUserType(accounts[6], 1, {from: operator});
+            await token.addParticipant(accounts[6], freeEnodes[0], {from: operator});
+            await token.changeUserType(accounts[6], roleStakeHolder, {from: operator});
             let thisUserType = await token.myUserType({from: accounts[6]});
-            assert (thisUserType == 1, "wrong user type");
+            assert (thisUserType == roleStakeHolder, "wrong user type");
             await token.removeUser(accounts[6], {from: operator});
 
-            // participant -> validator (0 -> 2)
-            await token.addParticipant(accounts[6], "some enode", {from: operator});
-            await token.changeUserType(accounts[6], 2, {from: operator});
+            // participant -> stakeholder -> validator (0 -> 1 -> 2)
+            try {
+                await token.addParticipant(accounts[6], freeEnodes[0], {from: operator});
+                await token.changeUserType(accounts[6], roleValidator, {from: operator});
+                assert.fail('Expected throw not received');
+            } catch (e) {
+                // user type shouldn't change since 0 stake of validator is not permitted.
+                thisUserType = await token.myUserType({from: accounts[6]});
+                assert (thisUserType == roleParticipant, "wrong user type");
+            }
+            // upgrade to stakeholder and mint stake for it.
+            await token.changeUserType(accounts[6], roleStakeHolder, {from: operator});
+            await token.mintStake(accounts[6], 20, {from: operator});
+            // upgrade to validator
+            await token.changeUserType(accounts[6], roleValidator, {from: operator});
             thisUserType = await token.myUserType({from: accounts[6]});
-            assert (thisUserType == 2, "wrong user type");
+            assert (thisUserType == roleValidator, "wrong user type");
             let thisUserStake = await token.getStake({from: accounts[6]});
-            assert (thisUserStake == 0);
+            assert (thisUserStake == 20);
             await token.removeUser(accounts[6], {from: operator});
 
             // stakeholder -> validator (1 -> 2)
-            await token.addStakeholder(accounts[6], "some enode", 100, {from: operator});
-            await token.changeUserType(accounts[6], 2, {from: operator});
+            await token.addStakeholder(accounts[6], freeEnodes[0], 100, {from: operator});
+            await token.changeUserType(accounts[6], roleValidator, {from: operator});
             thisUserType = await token.myUserType({from: accounts[6]});
-            assert (thisUserType == 2, "wrong user type");
+            assert (thisUserType == roleValidator, "wrong user type");
             thisUserStake = await token.getStake({from: accounts[6]});
             assert (thisUserStake == 100);
             await token.removeUser(accounts[6], {from: operator});
@@ -227,10 +249,10 @@ contract('Autonity', function (accounts) {
 
           it('test downgrades to userType', async function() {
             // valiator -> stakeholder (2 -> 1)
-            await token.addValidator(accounts[6], 100, "some enode", {from: operator});
-            await token.changeUserType(accounts[6], 1, {from: operator});
+            await token.addValidator(accounts[6], 100, freeEnodes[0], {from: operator});
+            await token.changeUserType(accounts[6], roleStakeHolder, {from: operator});
             let thisUserType = await token.myUserType({from: accounts[6]});
-            assert (thisUserType == 1, "wrong user type");
+            assert (thisUserType == roleStakeHolder, "wrong user type");
             let thisUserStake = await token.getStake({from: accounts[6]});
             assert (thisUserStake == 100);
             await token.removeUser(accounts[6], {from: operator});
@@ -238,38 +260,39 @@ contract('Autonity', function (accounts) {
             // validator -> participant (2 -> 0)
             try {
               // ensure that a validator with stake cannot be downgraded
-              await token.addValidator(accounts[6], 100, "some enode", {from: operator});
-              await token.changeUserType(accounts[6], 0, {from: operator});
+              await token.addValidator(accounts[6], 100, freeEnodes[0], {from: operator});
+              await token.changeUserType(accounts[6], roleParticipant, {from: operator});
               assert.fail('Expected throw not received');
             } catch (e) {
               await token.removeUser(accounts[6], {from: operator});
-              await token.addValidator(accounts[6], 0, "some enode", {from: operator});
-              await token.changeUserType(accounts[6], 0, {from: operator});
+              await token.addValidator(accounts[6], 10, freeEnodes[0], {from: operator});
+              await token.changeUserType(accounts[6], roleStakeHolder, {from: operator});
+              await token.redeemStake(accounts[6], 10, {from: operator});
+              await token.changeUserType(accounts[6], roleParticipant, {from: operator});
               thisUserType = await token.myUserType({from: accounts[6]});
-              assert (thisUserType == 0, "wrong user type");
+              assert (thisUserType == roleParticipant, "wrong user type");
               await token.removeUser(accounts[6], {from: operator});
             }
 
             // stakeholder -> participant (1 -> 0)
             try {
               // ensure that a participant with stake cannot be downgraded
-              await token.addStakeholder(accounts[6], "some enode", 100, {from: operator});
-              await token.changeUserType(accounts[6], 0, {from: operator});
+              await token.addStakeholder(accounts[6], freeEnodes[0], 100, {from: operator});
+              await token.changeUserType(accounts[6], roleParticipant, {from: operator});
               assert.fail('Expected throw not received');
             } catch (e) {
               await token.removeUser(accounts[6], {from: operator});
-              await token.addStakeholder(accounts[6], "some enode", 0, {from: operator});
-              await token.changeUserType(accounts[6], 0, {from: operator});
+              await token.addStakeholder(accounts[6], freeEnodes[0], 0, {from: operator});
+              await token.changeUserType(accounts[6], roleParticipant, {from: operator});
               thisUserType = await token.myUserType({from: accounts[6]});
-              assert (thisUserType == 0, "wrong user type");
+              assert (thisUserType == roleParticipant, "wrong user type");
               await token.removeUser(accounts[6], {from: operator});
             }
 
         });
 
-
         it('test create participant account check it and remove it', async function () {
-            let tx = await token.addParticipant(accounts[9], "some enode", {from: operator});
+            let tx = await token.addParticipant(accounts[9], freeEnodes[0], {from: operator});
             //console.log("\tGas used to add participant = " + tx.receipt.gasUsed.toString() + " gas");
             let addMemberResult = await token.checkMember(accounts[9]);
 
@@ -283,9 +306,9 @@ contract('Autonity', function (accounts) {
         });
 
         it('test non validator cannot add validator', async function () {
-
+            let enode = freeEnodes[0];
             try {
-                let r = await token.addValidator(accounts[7], {from: accounts[6]})
+                let r = await token.addValidator(accounts[7], 20, enode, {from: accounts[6]})
 
             } catch (e) {
                 let getValidatorsResult = await token.getValidators({from: operator});
@@ -298,9 +321,9 @@ contract('Autonity', function (accounts) {
 
         it('test that _createUser() does not allow duplicates', async function () {
             try {
-              await token._createUser(accounts[6], "some enode", 2, 100, 0, {from: operator});
+              await token._createUser(accounts[6], freeEnodes[0], roleValidator, 100, 0, {from: operator});
               // the duplicate
-              await token._createUser(accounts[6], "some enode", 2, 100, 0, {from: operator});
+              await token._createUser(accounts[6], freeEnodes[0], roleValidator, 100, 0, {from: operator});
               assert.fail('Expected throw not received');
             } catch (e) {
               return
@@ -308,7 +331,7 @@ contract('Autonity', function (accounts) {
         });
 
         it('test non Governance operator cannot add validator', async function () {
-            let enode = "enode://testenode";
+            let enode = freeEnodes[0];
             try {
                 let r = await token.addValidator(accounts[6], 20, enode, {from: accounts[6]});
                 assert.fail('Expected throw not received');
@@ -337,14 +360,14 @@ contract('Autonity', function (accounts) {
             let errorOnRemoveMember = false;
 
             try {
-                await token.addParticipant(accounts[8], "some enode", {from: accounts[7]});
+                await token.addParticipant(accounts[8], freeEnodes[0], {from: accounts[7]});
             } catch (e) {
                 errorOnAddNewMember = true
             }
             let addMemberResult = await token.checkMember(accounts[8]);
             assert(false === addMemberResult);
 
-            await token.addParticipant(accounts[8], "some enode", {from: operator});
+            await token.addParticipant(accounts[8], freeEnodes[0], {from: operator});
 
             addMemberResult = await token.checkMember(accounts[8]);
             assert(true === addMemberResult);
@@ -492,8 +515,85 @@ contract('Autonity', function (accounts) {
                 userTypes, stakes, commisionRate, operator, minGasPrice, bondPeriod, committeeSize, version,  { from:accounts[8]} );
         });
 
+        it('test user type downgraded when all stake redeemed', async function f() {
+            let initStake = 100;
+            await token.addValidator(accounts[8], initStake, freeEnodes[0], {from: operator});
+            let initialUserType = await token.myUserType({from: accounts[8]});
+            assert(initialUserType == roleValidator, "wrong user type");
+
+            await token.redeemStake(accounts[8], initStake, {from: operator});
+            let newUserType = await token.myUserType({from: accounts[8]});
+            assert (newUserType == roleStakeHolder, "wrong user type");
+        });
+
+        it('test user type not downgraded when not all stake redeemed', async function f() {
+            let initStake = 100;
+            await token.addValidator(accounts[8], initStake, freeEnodes[0], {from: operator});
+            let initialUserType = await token.myUserType({from: accounts[8]});
+            assert(initialUserType == roleValidator, "wrong user type");
+            await token.redeemStake(accounts[8], 50, {from: operator});
+
+            let userType = await token.myUserType({from: accounts[8]});
+            assert (userType == roleValidator, "wrong user type");
+        });
+
+        it('test user type downgraded when all stake transferred', async function f() {
+            let initStake = 100;
+            await token.addValidator(accounts[8], initStake, freeEnodes[0], {from: operator});
+            let initialUserType = await token.myUserType({from: accounts[8]});
+            assert(initialUserType == roleValidator, "wrong user type");
+            await token.send(accounts[2], initStake, {from: accounts[8]});
+            let userType = await token.myUserType({from: accounts[8]});
+            assert (userType == roleStakeHolder, "wrong user type");
+        });
+
+        it('test user type not downgraded when not all stake transferred', async function f() {
+            let initStake = 100;
+            await token.addValidator(accounts[8], initStake, freeEnodes[0], {from: operator});
+            let initialUserType = await token.myUserType({from: accounts[8]});
+            assert(initialUserType == roleValidator, "wrong user type");
+            await token.send(accounts[2], 50, {from: accounts[8]});
+            let userType = await token.myUserType({from: accounts[8]});
+            assert (userType == roleValidator, "wrong user type");
+        });
+
+        it('test user type downgrade of last validator in the network', async function f() {
+            let initStake = 100;
+            await token.addValidator(accounts[8], initStake, freeEnodes[0], {from: operator});
+            let initialUserType = await token.myUserType({from: accounts[8]});
+            assert(initialUserType == roleValidator, "wrong user type");
+
+            let balance = await token.getStake({from: accounts[1]});
+            await token.redeemStake(accounts[1], balance, {from: operator});
+
+            balance = await token.getStake({from: accounts[2]});
+            await token.redeemStake(accounts[2], balance, {from: operator});
+
+            balance = await token.getStake({from: accounts[3]});
+            await token.redeemStake(accounts[3], balance, {from: operator});
+
+            balance = await token.getStake({from: accounts[4]});
+            await token.redeemStake(accounts[4], balance, {from: operator});
+
+            balance = await token.getStake({from: accounts[5]});
+            await token.redeemStake(accounts[5], balance, {from: operator});
+
+            let getValidatorsResult = await token.getValidators({from: operator});
+            assert(getValidatorsResult.length == 1, "wrong number of validators");
+
+            try {
+                await token.redeemStake(accounts[8], initStake, {from: operator});
+                assert.fail('Expected throw not received');
+            } catch (e) {
+                let userType = await token.myUserType({from: accounts[8]});
+                assert(userType == roleValidator, "wrong user type");
+                let getValidatorsResult = await token.getValidators({from: operator});
+                assert(getValidatorsResult.length == 1, "wrong number of validators");
+            }
+        });
+
         it('test create account, add stake, check that it is added, remove stake', async function () {
-            await token.addStakeholder(accounts[7], "some enode", 0, {from: operator});
+            await token.addStakeholder(accounts[7], freeEnodes[0], 0, {from: operator});
             let getStakeResult = await token.getStake({from: accounts[7]});
             assert(0 == getStakeResult, "unexpected tokens");
 
@@ -513,7 +613,7 @@ contract('Autonity', function (accounts) {
 
         it('test create account, get error when redeem empty stake', async function () {
 
-            await token.addStakeholder(accounts[7], "some enode", 0, {from: operator});
+            await token.addStakeholder(accounts[7], freeEnodes[0], 0, {from: operator});
             let getStakeResult = await token.getStake({from: accounts[7]});
             assert(0 == getStakeResult, "unexpected tokens not minted");
 
@@ -548,11 +648,11 @@ contract('Autonity', function (accounts) {
             let commisionRate = getValidatorsResult[4];
             assert.deepEqual(getValidatorsResult[0], validatorsList);
 
-            await token.addStakeholder(accounts[7], "some enode", 0, {from: operator});
+            await token.addStakeholder(accounts[7], freeEnodes[0], 0, {from: operator});
             let getStakeResult = await token.getStake({from: accounts[7]});
             assert(0 == getStakeResult, "unexpected tokens");
 
-            await token.addStakeholder(accounts[6], "some enode", 0, {from: operator});
+            await token.addStakeholder(accounts[6], freeEnodes[0], 0, {from: operator});
             getStakeResult = await token.getStake({from: accounts[6]});
             assert(0 == getStakeResult, "unexpected tokens");
 
@@ -576,4 +676,123 @@ contract('Autonity', function (accounts) {
             await token.removeUser(accounts[5], {from: operator});
         });
     });
+
+    describe('Proposer selection, Normal case.', function() {
+
+        beforeEach(async function(){
+            token = await utils.deployContract(validatorsList, whiteList,
+                userTypes, stakes, commisionRate, operator, minGasPrice, bondPeriod, committeeSize, version,  { from:accounts[8]} );
+        });
+
+        it('get proposer, proposer should be determinated across nodes on same height and round.', async function () {
+            await token.computeCommittee({from: deployer});
+            let height;
+            for (height = 0; height < 10; height++) {
+                let round;
+                for (round = 0; round < 3; round ++){
+                    let proposer1 = await token.getProposer(height, round);
+                    let proposer2 = await token.getProposer(height, round);
+                    assert(proposer1 === proposer2, "proposer should be determinated on same height and round")
+                }
+            }
+        });
+
+    });
+
+    describe('Proposer selection, print and compare the scheduling rate with same stake.', function() {
+        let stakes = [100, 100, 100, 100, 100];
+        beforeEach(async function(){
+            token = await utils.deployContract(validatorsList, whiteList,
+                userTypes, stakes, commisionRate, operator, minGasPrice, bondPeriod, committeeSize, version,  { from:accounts[8]} );
+        });
+
+        it('get proposer, print and compare the scheduling rate with same stake.', async function () {
+            await token.computeCommittee({from: deployer});
+            let height;
+            let maxHeight = 10000;
+            let maxRound = 4;
+            let expectedRatioDelta = 0.01;
+            let counterMap = new Map();
+            for (height = 0; height < maxHeight; height++) {
+                let round;
+                for (round = 0; round < maxRound; round ++){
+                    let proposer = await token.getProposer(height, round);
+                    if (counterMap.has(proposer) === true) {
+                        counterMap.set(proposer, counterMap.get(proposer) + 1)
+                    } else {
+                        counterMap.set(proposer, 1)
+                    }
+                }
+            }
+
+            let totalStake = 0;
+            stakes.forEach(function (v, index) {
+               totalStake += v
+            });
+
+            validatorsList.forEach(function (addr, index) {
+                let stake = stakes[index];
+                let expectedRatio = stake / totalStake;
+                let scheduled = counterMap.get(addr);
+                let actualRatio = scheduled / (maxHeight * maxRound);
+                let delta = Math.abs(expectedRatio - actualRatio);
+                console.log("\t proposer: " + addr + " stake: " + stake + " was scheduled: " + scheduled + " times of " + maxHeight*maxRound + " times scheduling"
+                 + " expectedRatio: " + expectedRatio + " actualRatio: " + actualRatio + " delta: " + delta);
+
+                if (delta > expectedRatioDelta) {
+                    assert.fail("Unexpected proposer scheduling rate delta.")
+                }
+
+            });
+        });
+    });
+
+    describe('Proposer selection, print and compare the scheduling rate with different stake.', function() {
+        let stakes = [100, 200, 400, 800, 1600];
+        beforeEach(async function(){
+            token = await utils.deployContract(validatorsList, whiteList,
+                userTypes, stakes, commisionRate, operator, minGasPrice, bondPeriod, committeeSize, version,  { from:accounts[8]} );
+        });
+
+        it('get proposer, print and compare the scheduling rate with same stake.', async function () {
+            await token.computeCommittee({from: deployer});
+            let height;
+            let maxHeight = 10000;
+            let maxRound = 4;
+            let expectedRatioDelta = 0.01;
+            let counterMap = new Map();
+            for (height = 0; height < maxHeight; height++) {
+                let round;
+                for (round = 0; round < maxRound; round ++){
+                    let proposer = await token.getProposer(height, round);
+                    if (counterMap.has(proposer) === true) {
+                        counterMap.set(proposer, counterMap.get(proposer) + 1)
+                    } else {
+                        counterMap.set(proposer, 1)
+                    }
+                }
+            }
+
+            let totalStake = 0;
+            stakes.forEach(function (v, index) {
+                totalStake += v
+            });
+
+            validatorsList.forEach(function (addr, index) {
+                let stake = stakes[index];
+                let expectedRatio = stake / totalStake;
+                let scheduled = counterMap.get(addr);
+                let actualRatio = scheduled / (maxHeight * maxRound);
+                let delta = Math.abs(expectedRatio - actualRatio);
+                console.log("\t proposer: " + addr + " stake: " + stake + " was scheduled: " + scheduled + " times of " + maxHeight*maxRound + " times scheduling"
+                    + " expectedRatio: " + expectedRatio + " actualRatio: " + actualRatio + " delta: " + delta);
+
+                if (delta > expectedRatioDelta) {
+                    assert.fail("Unexpected proposer scheduling rate delta.")
+                }
+
+            });
+        });
+    });
+
 });

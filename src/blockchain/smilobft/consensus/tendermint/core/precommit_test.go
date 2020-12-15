@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"reflect"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/types"
 )
 
@@ -86,10 +86,7 @@ func TestSendPrecommit(t *testing.T) {
 		backendMock.EXPECT().Sign(gomock.Any()).Return([]byte{0x1}, nil)
 		backendMock.EXPECT().Sign(gomock.Eq(payloadNoSig)).Return([]byte{0x1}, nil)
 
-		payload, err := expectedMsg.Payload()
-		if err != nil {
-			t.Fatalf("Expected nil, got %v", err)
-		}
+		payload := expectedMsg.Payload()
 
 		backendMock.EXPECT().Broadcast(gomock.Any(), gomock.Any(), payload)
 
@@ -97,7 +94,7 @@ func TestSendPrecommit(t *testing.T) {
 			backend:          backendMock,
 			address:          addr,
 			logger:           logger,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			messages:         messages,
 			curRoundMessages: curRoundMessages,
 			round:            1,
@@ -153,10 +150,7 @@ func TestSendPrecommit(t *testing.T) {
 		backendMock.EXPECT().Sign(gomock.Any()).Return([]byte{0x1}, errors.New("seal sign error"))
 		backendMock.EXPECT().Sign(payloadNoSig).Return([]byte{0x1}, nil)
 
-		payload, err := expectedMsg.Payload()
-		if err != nil {
-			t.Fatalf("Expected nil, got %v", err)
-		}
+		payload := expectedMsg.Payload()
 
 		backendMock.EXPECT().Broadcast(gomock.Any(), gomock.Any(), payload)
 
@@ -166,7 +160,7 @@ func TestSendPrecommit(t *testing.T) {
 			logger:           logger,
 			curRoundMessages: curRoundMessages,
 			messages:         messages,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			height:           big.NewInt(2),
 			round:            1,
 		}
@@ -296,7 +290,7 @@ func TestHandlePrecommit(t *testing.T) {
 			round:            2,
 			height:           big.NewInt(3),
 			step:             precommit,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			precommitTimeout: newTimeout(precommit, logger),
 		}
 
@@ -332,7 +326,7 @@ func TestHandlePrecommit(t *testing.T) {
 			logger:           logger,
 			round:            1,
 			height:           big.NewInt(2),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			step:             precommit,
 			precommitTimeout: newTimeout(precommit, logger),
 		}
@@ -372,7 +366,7 @@ func TestHandlePrecommit(t *testing.T) {
 			round:            2,
 			height:           big.NewInt(3),
 			step:             precommit,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			precommitTimeout: newTimeout(precommit, logger),
 		}
 		backendMock.EXPECT().Post(gomock.Any()).Times(1)
@@ -470,16 +464,29 @@ func TestHandleCommit(t *testing.T) {
 
 	logger := log.New("backend", "test", "id", 0)
 
-	block := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(3)})
 	addr := common.HexToAddress("0x0123456789")
+	testCommittee, keys := generateCommittee(3)
+
+	firstKey := keys[testCommittee[0].Address]
+
+	h := &types.Header{Number: big.NewInt(3)}
+
+	// Sign the header so that types.Ecrecover works
+	seal, err := crypto.Sign(crypto.Keccak256(types.SigHash(h).Bytes()), firstKey)
+	require.NoError(t, err)
+
+	err = types.WriteSeal(h, seal)
+	require.NoError(t, err)
+
+	h.Committee = testCommittee
+
+	block := types.NewBlockWithHeader(h)
+	testCommittee = append(testCommittee, types.CommitteeMember{Address: addr, VotingPower: big.NewInt(1)})
+	committeeSet, err := newRoundRobinSet(testCommittee, testCommittee[0].Address)
+	require.NoError(t, err)
 
 	backendMock := NewMockBackend(ctrl)
 	backendMock.EXPECT().LastCommittedProposal().MinTimes(1).Return(block, addr)
-
-	committeeSet := committee.NewMockSet(ctrl)
-	committeeSet.EXPECT().IsProposer(gomock.Any(), addr).Return(false)
-
-	backendMock.EXPECT().Committee(gomock.Any()).Return(committeeSet, nil)
 
 	c := &core{
 		address:          addr,
@@ -491,11 +498,16 @@ func TestHandleCommit(t *testing.T) {
 		proposeTimeout:   newTimeout(propose, logger),
 		prevoteTimeout:   newTimeout(prevote, logger),
 		precommitTimeout: newTimeout(precommit, logger),
-		committeeSet:     committeeSet,
+		committee:        committeeSet,
 	}
 	c.handleCommit(context.Background())
 	if c.round != 0 || c.height.Cmp(big.NewInt(4)) != 0 {
 		t.Fatalf("Expected new round")
+	}
+	// to fix the data race detected by CI workflow.
+	err = c.proposeTimeout.stopTimer()
+	if err != nil {
+		t.Error(err)
 	}
 }
 

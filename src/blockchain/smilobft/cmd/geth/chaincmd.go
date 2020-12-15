@@ -258,9 +258,9 @@ func initGenesis(ctx *cli.Context) error {
 		log.Info("$$$$$$$$$$ Init, AutonityContractConfig, ", "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig)
 		consensusVersion := ""
 		if genesis.Config.Tendermint != nil {
-			consensusVersion = "0.4.0"
+			consensusVersion = "0.6.0"
 		}
-		if err := genesis.Config.AutonityContractConfig.AddDefault(consensusVersion).Validate(); err != nil {
+		if err := genesis.Config.AutonityContractConfig.Prepare(consensusVersion); err != nil {
 			spew.Dump(genesis.Config.AutonityContractConfig)
 			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
 		}
@@ -317,18 +317,8 @@ func setupBFTDefaults(genesis *core.Genesis) {
 	defaultConfig := config.DefaultConfig()
 
 	if genesis.Config.Tendermint != nil {
-		if genesis.Config.Tendermint.Epoch == 0 {
-			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
-		}
-		if genesis.Config.Tendermint.RequestTimeout == 0 {
-			genesis.Config.Tendermint.RequestTimeout = defaultConfig.RequestTimeout
-		}
 		if genesis.Config.Tendermint.BlockPeriod == 0 {
 			genesis.Config.Tendermint.BlockPeriod = defaultConfig.BlockPeriod
-		}
-
-		if genesis.Config.Tendermint.Epoch == 0 {
-			genesis.Config.Tendermint.Epoch = defaultConfig.Epoch
 		}
 	}
 

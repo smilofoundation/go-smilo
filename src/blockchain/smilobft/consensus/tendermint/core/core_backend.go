@@ -2,19 +2,17 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus"
+	"go-smilo/src/blockchain/smilobft/core/state"
+	"go-smilo/src/blockchain/smilobft/p2p"
+	"go-smilo/src/blockchain/smilobft/rpc"
 	"math/big"
 	"time"
 
-	"go-smilo/src/blockchain/smilobft/cmn"
-
 	"github.com/ethereum/go-ethereum/common"
-
-	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/core/state"
+	ethcore "go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"go-smilo/src/blockchain/smilobft/p2p"
-	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 func (c *core) Author(header *types.Header) (common.Address, error) {
@@ -89,13 +87,13 @@ func (c *core) Protocol() (protocolName string, extraMsgCodes uint64) {
 // Synchronize new connected peer with current height state
 func (c *core) SyncPeer(address common.Address) {
 	if c.IsMember(address) {
-		c.backend.SyncPeer(address, c.GetCurrentHeightMessages())
+		c.backend.SyncPeer(address)
 	}
 }
 
-func (c *core) ResetPeerCache(address common.Address) {
-	c.backend.ResetPeerCache(address)
-}
+//func (c *core) ResetPeerCache(address common.Address) {
+//	c.backend.ResetPeerCache(address)
+//}
 
 // Backend provides application specific functions for Istanbul core
 type Backend interface {
@@ -103,62 +101,56 @@ type Backend interface {
 	consensus.Handler
 	Start(ctx context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error
 
-	// Address returns the owner's address
 	Address() common.Address
 
-	// Validators returns the committee set
-	Committee(number uint64) (committee.Set, error)
+	AddSeal(block *types.Block) (*types.Block, error)
 
-	Subscribe(types ...interface{}) *cmn.TypeMuxSubscription
-
-	Post(ev interface{})
+	AskSync(header *types.Header)
 
 	// Broadcast sends a message to all validators (include self)
-	Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error
-
-	// Gossip sends a message to all validators (exclude self)
-	Gossip(ctx context.Context, valSet committee.Set, payload []byte)
+	Broadcast(ctx context.Context, committee types.Committee, payload []byte) error
 
 	// Commit delivers an approved proposal to backend.
 	// The delivered proposal will be put into blockchain.
 	Commit(proposalBlock *types.Block, round int64, seals [][]byte) error
 
-	// VerifyProposal verifies the proposal. If a consensus.ErrFutureBlock error is returned,
-	// the time difference of the proposal and current time is also returned.
-	VerifyProposal(types.Block) (time.Duration, error)
+	GetContractABI() string
 
-	// Sign signs input data with the backend's private key
-	Sign([]byte) ([]byte, error)
+	// Gossip sends a message to all validators (exclude self)
+	Gossip(ctx context.Context, committee types.Committee, payload []byte)
 
-	// CheckSignature verifies the signature by checking if it's signed by
-	// the given validator
-	CheckSignature(data []byte, addr common.Address, sig []byte) error
+	HandleUnhandledMsgs(ctx context.Context)
 
 	// LastCommittedProposal retrieves latest committed proposal and the address of proposer
 	LastCommittedProposal() (*types.Block, common.Address)
 
-	// GetProposer returns the proposer of the given block height
-	GetProposer(number uint64) common.Address
-
-	// HasBadBlock returns whether the block with the hash is a bad block
-	HasBadProposal(hash common.Hash) bool
+	Post(ev interface{})
 
 	// Setter for proposed block hash
 	SetProposedBlockHash(hash common.Hash)
 
-	AddSeal(block *types.Block) (*types.Block, error)
+	// Sign signs input data with the backend's private key
+	Sign([]byte) ([]byte, error)
 
-	SyncPeer(address common.Address, messages []*Message)
+	Subscribe(types ...interface{}) *cmn.TypeMuxSubscription
 
-	ResetPeerCache(address common.Address)
+	SyncPeer(address common.Address)
 
-	AskSync(set committee.Set)
+	// VerifyProposal verifies the proposal. If a consensus.ErrFutureBlock error is returned,
+	// the time difference of the proposal and current time is also returned.
+	VerifyProposal(types.Block) (time.Duration, error)
 
-	HandleUnhandledMsgs(ctx context.Context)
-
-	GetContractAddress() common.Address
-
-	GetContractABI() string
+	//GetContractAddress() common.Address
 
 	WhiteList() []string
+
+	BlockChain() *ethcore.BlockChain
+
+	//Used to set the blockchain on this
+	SetBlockchain(bc *ethcore.BlockChain)
+
+	// RemoveMessageFromLocalCache removes a local message from the known messages cache.
+	// It is called by core when some unprocessed messages are removed from the untrusted backlog buffer.
+	RemoveMessageFromLocalCache(payload []byte)
+	GetCurrentHeightMessages() []*Message
 }

@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"reflect"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -92,6 +93,11 @@ type Header struct {
 		for computing the sigHash.
 	*/
 	Committee          Committee `json:"committee"           gencodec:"required"`
+	// used for committee member lookup, lazily initialised.
+	committeeMap map[common.Address]*CommitteeMember
+	// Used to ensure the committeeMap is created only once.
+	once sync.Once
+
 	ProposerSeal       []byte    `json:"proposerSeal"        gencodec:"required"`
 	Round              uint64    `json:"round"               gencodec:"required"`
 	CommittedSeals     [][]byte  `json:"committedSeals"      gencodec:"required"`

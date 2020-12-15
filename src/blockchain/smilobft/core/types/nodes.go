@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -60,10 +61,13 @@ func NewNodes(strList []string, EnableNodePermissionFlag bool) *Nodes {
 	}
 
 	if len(errs) != 0 {
-		if EnableNodePermissionFlag {
-			panic(errs)
+		var msg string
+		for _, err := range errs {
+			if err != nil {
+				msg += fmt.Sprintf("%v\n", err)
+			}
 		}
-		log.Error("enodes parse errors", "errs", errs)
+		log.Error("enodes parse errors", "errs", msg)
 	}
 
 	return filterNodes(n, EnableNodePermissionFlag)

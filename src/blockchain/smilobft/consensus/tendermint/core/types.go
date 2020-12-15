@@ -18,15 +18,15 @@ package core
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type Engine interface {
 	Start(context.Context, consensus.ChainReader, func() *types.Block, func(hash common.Hash) bool) error
 	Stop() error
+	GetCurrentHeightMessages() []*Message
 }
 
 func (p *Proposal) Hash() common.Hash {

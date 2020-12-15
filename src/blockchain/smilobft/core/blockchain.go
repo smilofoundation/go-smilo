@@ -266,9 +266,26 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		})
 		bc.processor.SetAutonityContract(bc.autonityContract)
 	} else if chainConfig.Tendermint != nil && chainConfig.AutonityContractConfig != nil {
-		bc.autonityContractTendermint = autonity_tendermint.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity_tendermint.ChainContext) func(n uint64) common.Hash {
-			return GetHashFn(ref, chain)
-		})
+
+		acConfig := bc.Config().AutonityContractConfig
+		var JSONString = acConfig.ABI
+		bytes, err := bc.GetKeyValue([]byte(autonity_tendermint.ABISPEC))
+		if err == nil || bytes != nil {
+			JSONString = string(bytes)
+		}
+
+		contract, err := autonity_tendermint.NewAutonityContract(
+			bc,
+			acConfig.Operator,
+			acConfig.MinGasPrice,
+			JSONString,
+			&defaultEVMProvider{bc},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		bc.autonityContractTendermint = contract
 		bc.processor.SetAutonityContractTendermint(bc.autonityContractTendermint)
 	} else {
 		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "

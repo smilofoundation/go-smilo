@@ -436,7 +436,7 @@ func (g *Genesis) SetBFT() error {
 		for _, v := range g.Config.AutonityContractConfig.Users {
 			if v.Type == params.UserValidator {
 				member := types.CommitteeMember{
-					Address:     v.Address,
+					Address:     *v.Address,
 					VotingPower: new(big.Int).SetUint64(v.Stake),
 				}
 				committee = append(committee, member)

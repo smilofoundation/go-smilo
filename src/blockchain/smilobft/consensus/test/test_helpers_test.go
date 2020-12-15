@@ -123,9 +123,9 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 		if skip {
 			continue
 		}
-
+		addr := crypto.PubkeyToAddress(validator.privateKey.PublicKey)
 		users = append(users, params.User{
-			Address: crypto.PubkeyToAddress(validator.privateKey.PublicKey),
+			Address: &addr,
 			Enode:   validator.url,
 			Type:    nodeType,
 			Stake:   stake,
@@ -137,13 +137,14 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 	if err != nil {
 		log.Error("Make genesis error", "err", err)
 	}
+	addr := crypto.PubkeyToAddress(shKey.PublicKey)
 	users = append(users, params.User{
-		Address: crypto.PubkeyToAddress(shKey.PublicKey),
+		Address: &addr,
 		Type:    params.UserStakeHolder,
 		Stake:   200,
 	})
 	genesis.Config.AutonityContractConfig.Users = users
-	err = genesis.Config.AutonityContractConfig.AddDefault("0.4.0").Validate()
+	err = genesis.Config.AutonityContractConfig.Prepare("0.6.0")
 	if err != nil {
 		panic(err)
 	}
