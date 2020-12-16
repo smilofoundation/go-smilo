@@ -469,7 +469,10 @@ func TestHandleCommit(t *testing.T) {
 
 	firstKey := keys[testCommittee[0].Address]
 
-	h := &types.Header{Number: big.NewInt(3)}
+	h := &types.Header{
+		Number: big.NewInt(3),
+		MixDigest: types.TendermintDigest, // required for Tendermint consensus
+	}
 
 	// Sign the header so that types.Ecrecover works
 	seal, err := crypto.Sign(crypto.Keccak256(types.SigHash(h).Bytes()), firstKey)

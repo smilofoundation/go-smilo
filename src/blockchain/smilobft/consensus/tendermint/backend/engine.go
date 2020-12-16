@@ -528,6 +528,7 @@ func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, current
 	sb.currentBlock = currentBlock
 	sb.hasBadBlock = hasBadBlock
 
+	//TODO: is this required or not ?
 	//if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
 	//	return err
 	//}

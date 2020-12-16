@@ -262,24 +262,24 @@ func (c *core) measureHeightRoundMetrics(round int64) {
 
 // startRound starts a new round. if round equals to 0, it means to starts a new height
 func (c *core) startRound(ctx context.Context, round int64) {
-	height := new(big.Int)
+
 	c.measureHeightRoundMetrics(round)
-	lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
-	if lastCommittedProposalBlock != nil {
-		height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
-	} else {
-		log.Warn("startRound block 0", "round", round)
-	}
+	//lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
+	//if lastCommittedProposalBlock != nil {
+	//	height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
+	//} else {
+	//	log.Warn("startRound block 0", "round", round)
+	//}
 	// Set initial FSM state
 	c.setInitialState(round)
 	// c.setStep(propose) will process the pending unmined blocks sent by the backed.Seal() and set c.lastestPendingRequest
 	c.setStep(propose)
-	c.logger.Debug("Starting new Round", "Height", height, "Round", round)
+	c.logger.Debug("Starting new Round", "Round", round)
 
 	// If the node is the proposer for this round then it would propose validValue or a new block, otherwise,
 	// proposeTimeout is started, where the node waits for a proposal from the proposer of the current round.
 	if c.isProposer() {
-		log.Debug("I AM THE PROPOSER!!!!!!!!!!!!!!!! ", "Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+		log.Debug("I AM THE PROPOSER!!!!!!!!!!!!!!!! ",  "Round", round)
 
 		// validValue and validRound represent a block they received a quorum of prevote and the round quorum was
 		// received, respectively. If the block is not committed in that round then the round is changed.
@@ -291,23 +291,23 @@ func (c *core) startRound(ctx context.Context, round int64) {
 		} else {
 			p = c.getUnminedBlock()
 			log.Debug("I AM THE PROPOSER AND getUnminedBlock!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-				"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+				"Round", round)
 
 			if p == nil {
 				select {
 				case <-ctx.Done():
 					log.Warn("I AM THE PROPOSER AND TIMEOUT!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+						"Round", round)
 					return
 				case p = <-c.pendingUnminedBlockCh:
 					log.Warn("I AM THE PROPOSER GOT A BLOCK from pendingUnminedBlockCh!!!!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+						"Round", round)
 				}
 			}
 		}
 
 		log.Debug("I AM THE PROPOSER AND sendProposal!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-			"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+			 "Round", round)
 		c.sendProposal(ctx, p)
 	} else {
 		timeoutDuration := c.timeoutPropose(round)
