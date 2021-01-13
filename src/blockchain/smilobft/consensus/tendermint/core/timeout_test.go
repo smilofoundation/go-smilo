@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
+	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
 	"sync"
 	"testing"
@@ -78,7 +78,7 @@ func TestHandleTimeoutPrevote(t *testing.T) {
 			messages:         messages,
 			round:            1,
 			height:           big.NewInt(2),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			step:             prevote,
 			proposeTimeout:   newTimeout(propose, logger),
 			prevoteTimeout:   newTimeout(prevote, logger),
@@ -92,7 +92,7 @@ func TestHandleTimeoutPrevote(t *testing.T) {
 		// should send precommit nil
 		mockBackend.EXPECT().Sign(gomock.Any()).Times(2)
 		mockBackend.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Do(
-			func(ctx context.Context, valSet committee.Set, payload []byte) {
+			func(ctx context.Context, c types.Committee, payload []byte) {
 				message := new(Message)
 				if err := rlp.DecodeBytes(payload, message); err != nil {
 					t.Fatalf("could not decode payload")
@@ -130,7 +130,6 @@ func TestHandleTimeoutPrecommit(t *testing.T) {
 		messages := newMessagesMap()
 		curRoundMessages := messages.getOrCreate(1)
 		mockBackend := NewMockBackend(ctrl)
-		mockBackend.EXPECT().LastCommittedProposal().Times(1)
 		mockBackend.EXPECT().Post(gomock.Any()).AnyTimes()
 		engine := core{
 			logger:           logger,
@@ -141,7 +140,7 @@ func TestHandleTimeoutPrecommit(t *testing.T) {
 			step:             prevote,
 			round:            1,
 			height:           big.NewInt(2),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			proposeTimeout:   newTimeout(propose, logger),
 			prevoteTimeout:   newTimeout(prevote, logger),
 			precommitTimeout: newTimeout(precommit, logger),

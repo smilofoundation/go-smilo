@@ -759,39 +759,39 @@ func testExternalUI(api *core.SignerAPI) {
 		time.Sleep(delay)
 		expectResponse("showerror", "Did you see the message? [yes/no]", "yes")
 	}
-	{ // Sign data test - clique header
-		api.UI.ShowInfo("Please approve the next request for signing a clique header")
-		time.Sleep(delay)
-		cliqueHeader := types.Header{
-			common.HexToHash("0000H45H"),
-			common.HexToHash("0000H45H"),
-			common.HexToAddress("0000H45H"),
-			common.HexToHash("0000H00H"),
-			common.HexToHash("0000H45H"),
-			common.HexToHash("0000H45H"),
-			types.Bloom{},
-			big.NewInt(1337),
-			big.NewInt(1337),
-			1338,
-			1338,
-			1338,
-			[]byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
-			common.HexToHash("0x0000H45H"),
-			types.BlockNonce{},
-			nil,
-			nil,
-			0,
-			nil,
-			nil,
-		}
-		cliqueRlp, err := rlp.EncodeToBytes(cliqueHeader)
-		if err != nil {
-			utils.Fatalf("Should not error: %v", err)
-		}
-		addr, _ := common.NewMixedcaseAddressFromString("0x0011223344556677889900112233445566778899")
-		_, err = api.SignData(ctx, accounts.MimetypeClique, *addr, hexutil.Encode(cliqueRlp))
-		expectApprove("signdata - clique header", err)
-	}
+	//{ // Sign data test - clique header
+	//	api.UI.ShowInfo("Please approve the next request for signing a clique header")
+	//	time.Sleep(delay)
+	//	cliqueHeader := types.Header{
+	//		common.HexToHash("0000H45H"),
+	//		common.HexToHash("0000H45H"),
+	//		common.HexToAddress("0000H45H"),
+	//		common.HexToHash("0000H00H"),
+	//		common.HexToHash("0000H45H"),
+	//		common.HexToHash("0000H45H"),
+	//		types.Bloom{},
+	//		big.NewInt(1337),
+	//		big.NewInt(1337),
+	//		1338,
+	//		1338,
+	//		1338,
+	//		[]byte("Extra data Extra data Extra data  Extra data  Extra data  Extra data  Extra data Extra data"),
+	//		common.HexToHash("0x0000H45H"),
+	//		types.BlockNonce{},
+	//		nil,
+	//		nil,
+	//		0,
+	//		nil,
+	//		nil,
+	//	}
+	//	cliqueRlp, err := rlp.EncodeToBytes(cliqueHeader)
+	//	if err != nil {
+	//		utils.Fatalf("Should not error: %v", err)
+	//	}
+	//	addr, _ := common.NewMixedcaseAddressFromString("0x0011223344556677889900112233445566778899")
+	//	_, err = api.SignData(ctx, accounts.MimetypeClique, *addr, hexutil.Encode(cliqueRlp))
+	//	expectApprove("signdata - clique header", err)
+	//}
 	{ // Sign data test - typed data
 		api.UI.ShowInfo("Please approve the next request for signing EIP-712 typed data")
 		time.Sleep(delay)

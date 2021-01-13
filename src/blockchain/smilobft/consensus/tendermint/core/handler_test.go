@@ -2,18 +2,20 @@ package core
 
 import (
 	"context"
-	"go-smilo/src/blockchain/smilobft/core/types"
+	"github.com/influxdata/influxdb/pkg/deep"
+	"github.com/stretchr/testify/require"
+	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"math/big"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 func TestHandleCheckedMessage(t *testing.T) {
@@ -69,6 +71,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 		step    Step
 		message *Message
 		outcome error
+		panic   bool
 	}{
 		{
 			1,
@@ -76,6 +79,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			propose,
 			createPrevote(1, 2),
 			errFutureStepMessage,
+			false,
 		},
 		{
 			1,
@@ -83,6 +87,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			propose,
 			createPrevote(2, 2),
 			errFutureRoundMessage,
+			false,
 		},
 		{
 			0,
@@ -90,6 +95,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			propose,
 			createPrevote(0, 3),
 			errFutureHeightMessage,
+			true,
 		},
 		{
 			0,
@@ -97,6 +103,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			prevote,
 			createPrevote(0, 2),
 			nil,
+			false,
 		},
 		{
 			0,
@@ -104,6 +111,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			precommit,
 			createPrecommit(0, 2),
 			nil,
+			false,
 		},
 		{
 			0,
@@ -111,6 +119,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			precommit,
 			createPrecommit(0, 10),
 			errFutureHeightMessage,
+			true,
 		},
 		{
 			5,
@@ -118,6 +127,7 @@ func TestHandleCheckedMessage(t *testing.T) {
 			precommit,
 			createPrecommit(20, 2),
 			errFutureRoundMessage,
+			false,
 		},
 	}
 
@@ -127,34 +137,115 @@ func TestHandleCheckedMessage(t *testing.T) {
 		engine := core{
 			logger:            logger,
 			address:           currentValidator.Address,
-			backlogs:          make(map[types.CommitteeMember]*prque.Prque),
+			backlogs:          make(map[common.Address][]*Message),
 			round:             testCase.round,
 			height:            testCase.height,
 			step:              testCase.step,
 			futureRoundChange: make(map[int64]map[common.Address]uint64),
 			messages:          message,
 			curRoundMessages:  message.getOrCreate(0),
-			committeeSet:      committeeSet,
+			committee:         committeeSet,
 			proposeTimeout:    newTimeout(propose, logger),
 			prevoteTimeout:    newTimeout(prevote, logger),
 			precommitTimeout:  newTimeout(precommit, logger),
 		}
 
-		err := engine.handleCheckedMsg(context.Background(), testCase.message, sender)
+		func() {
+			defer func() {
+				r := recover()
+				if r == nil && testCase.panic {
+					t.Errorf("The code did not panic")
+				}
+				if r != nil && !testCase.panic {
+					t.Errorf("Unexpected panic")
+				}
+			}()
 
-		if err != testCase.outcome {
-			t.Fatal("unexpected handlecheckedmsg returning ",
-				"err=", err, ", expecting=", testCase.outcome, " with msgCode=", testCase.message.Code)
-		}
+			err := engine.handleCheckedMsg(context.Background(), testCase.message)
 
-		if err != nil {
-			backlogValue, _ := engine.backlogs[sender].Pop()
-			msg := backlogValue.(*Message)
-			if msg != testCase.message {
-				t.Fatal("unexpected backlog message")
+			if err != testCase.outcome {
+				t.Fatal("unexpected handlecheckedmsg returning ",
+					"err=", err, ", expecting=", testCase.outcome, " with msgCode=", testCase.message.Code)
 			}
-		}
+
+			if err != nil {
+				backlogValue := engine.backlogs[sender.Address][0]
+				if backlogValue != testCase.message {
+					t.Fatal("unexpected backlog message")
+				}
+			}
+		}()
 	}
+}
+
+func TestHandleMsg(t *testing.T) {
+	t.Run("old height message return error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		backendMock := NewMockBackend(ctrl)
+		c := &core{
+			logger:   log.New("backend", "test", "id", 0),
+			backend:  backendMock,
+			address:  common.HexToAddress("0x1234567890"),
+			backlogs: make(map[common.Address][]*Message),
+			step:     propose,
+			round:    1,
+			height:   big.NewInt(2),
+		}
+		vote := &Vote{
+			Round:             2,
+			Height:            big.NewInt(1),
+			ProposedBlockHash: common.BytesToHash([]byte{0x1}),
+		}
+		payload, err := rlp.EncodeToBytes(vote)
+		require.NoError(t, err)
+		msg := &Message{
+			Code:       msgPrevote,
+			Msg:        payload,
+			decodedMsg: vote,
+			Address:    common.Address{},
+		}
+
+		if err := c.handleMsg(context.Background(), msg); err != errOldHeightMessage {
+			t.Fatal("errOldHeightMessage not returned")
+		}
+	})
+
+	t.Run("future height message return error but are saved", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		backendMock := NewMockBackend(ctrl)
+		c := &core{
+			logger:           log.New("backend", "test", "id", 0),
+			backend:          backendMock,
+			address:          common.HexToAddress("0x1234567890"),
+			backlogs:         make(map[common.Address][]*Message),
+			backlogUnchecked: map[uint64][]*Message{},
+			step:             propose,
+			round:            1,
+			height:           big.NewInt(2),
+		}
+		vote := &Vote{
+			Round:             2,
+			Height:            big.NewInt(3),
+			ProposedBlockHash: common.BytesToHash([]byte{0x1}),
+		}
+		payload, err := rlp.EncodeToBytes(vote)
+		require.NoError(t, err)
+		msg := &Message{
+			Code:       msgPrevote,
+			Msg:        payload,
+			decodedMsg: vote,
+			Address:    common.Address{},
+		}
+
+		if err := c.handleMsg(context.Background(), msg); err != errFutureHeightMessage {
+			t.Fatal("errFutureHeightMessage not returned")
+		}
+		if backlog, ok := c.backlogUnchecked[3]; !(ok && len(backlog) > 0 && deep.Equal(backlog[0], msg)) {
+			t.Fatal("future message not saved in the untrusted buffer")
+		}
+	})
 }
 
 func TestCoreStopDoesntPanic(t *testing.T) {
@@ -165,46 +256,18 @@ func TestCoreStopDoesntPanic(t *testing.T) {
 	backendMock := NewMockBackend(ctrl)
 	backendMock.EXPECT().Address().AnyTimes().Return(addr)
 
-	c := New(backendMock, nil)
-	if err := c.Stop(); err != nil {
-		t.Fatal(err)
-	}
-}
+	logger := log.New("testAddress", "0x0000")
+	eMux := cmn.NewTypeMuxSilent(logger)
+	sub := eMux.Subscribe(events.MessageEvent{})
 
-func TestCoreMultipleStopsDontPanic(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	addr := common.HexToAddress("0x0123456789")
+	backendMock.EXPECT().Subscribe(gomock.Any()).Return(sub).MaxTimes(5)
 
-	backendMock := NewMockBackend(ctrl)
-	backendMock.EXPECT().Address().AnyTimes().Return(addr)
+	c := New(backendMock, config.DefaultConfig())
+	_, c.cancel = context.WithCancel(context.Background())
+	c.subscribeEvents()
+	c.stopped <- struct{}{}
+	c.stopped <- struct{}{}
+	c.stopped <- struct{}{}
 
-	c := New(backendMock, nil)
-	if err := c.Stop(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := c.Stop(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestCoreMultipleConcurrentStopsDontPanic(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	addr := common.HexToAddress("0x0123456789")
-
-	backendMock := NewMockBackend(ctrl)
-	backendMock.EXPECT().Address().AnyTimes().Return(addr)
-
-	c := New(backendMock, nil)
-
-	wg := errgroup.Group{}
-	for i := 0; i < 10; i++ {
-		wg.Go(c.Stop)
-	}
-
-	if err := wg.Wait(); err != nil {
-		t.Fatal(err)
-	}
+	c.Stop()
 }

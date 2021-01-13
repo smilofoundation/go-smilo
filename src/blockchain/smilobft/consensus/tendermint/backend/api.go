@@ -17,28 +17,33 @@
 package backend
 
 import (
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
 // API is a user facing RPC API to dump BFT state
 type API struct {
-	chain      consensus.ChainReader
-	tendermint core.Backend
+	chain        consensus.ChainReader
+	tendermint   *Backend
+	getCommittee func(header *types.Header, chain consensus.ChainReader) (types.Committee, error)
 }
 
 // GetCommittee retrieves the list of authorized committee at the specified block.
 func (api *API) GetCommittee(number *rpc.BlockNumber) (types.Committee, error) {
-	committeeSet, err := api.tendermint.Committee(uint64(*number))
+	header := api.chain.GetHeaderByNumber(uint64(*number))
+	if header == nil {
+		return nil, errUnknownBlock
+	}
+	committee, err := api.getCommittee(header, api.chain)
 	if err != nil {
 		return nil, err
 	}
-	return committeeSet.Committee(), nil
+	return committee, nil
 }
 
 // GetCommitteeAtHash retrieves the state snapshot at a given block.
@@ -47,16 +52,16 @@ func (api *API) GetCommitteeAtHash(hash common.Hash) (types.Committee, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
-	committeeSet, err := api.tendermint.Committee(header.Number.Uint64())
+	committee, err := api.getCommittee(header, api.chain)
 	if err != nil {
 		return nil, err
 	}
-	return committeeSet.Committee(), nil
+	return committee, nil
 }
 
 // Get Autonity contract address
 func (api *API) GetContractAddress() common.Address {
-	return api.tendermint.GetContractAddress()
+	return autonity_tendermint_060.ContractAddress
 }
 
 // Get Autonity contract ABI

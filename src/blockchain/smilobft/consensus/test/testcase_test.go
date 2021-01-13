@@ -1,6 +1,7 @@
 package test
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"net"
@@ -20,7 +21,7 @@ import (
 	"go-smilo/src/blockchain/smilobft/cmn/graph"
 	"go-smilo/src/blockchain/smilobft/cmn/keygenerator"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
+	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
@@ -46,8 +47,8 @@ type testCase struct {
 	maliciousPeers          map[string]injectors
 	removedPeers            map[common.Address]uint64
 	addedValidatorsBlocks   map[common.Hash]uint64
-	removedValidatorsBlocks map[common.Hash]uint64 //nolint: unused, structcheck
-	changedValidators       tendermintCore.Changes //nolint: unused,structcheck
+	removedValidatorsBlocks map[common.Hash]uint64    //nolint: unused, structcheck
+	changedValidators       tendermintBackend.Changes //nolint: unused,structcheck
 
 	networkRates         map[string]networkRate //map[validatorIndex]networkRate
 	beforeHooks          map[string]hook        //map[validatorIndex]beforeHook
@@ -64,8 +65,7 @@ type testCase struct {
 }
 
 type injectors struct {
-	cons  func(basic consensus.Engine) consensus.Engine
-	backs func(basic tendermintCore.Backend) tendermintCore.Backend
+	cons func(basic consensus.Engine) consensus.Engine
 }
 
 func (test *testCase) getBeforeHook(index string) hook {
@@ -147,6 +147,7 @@ func runTest(t *testing.T, test *testCase) {
 
 	// default topology if not set anything
 	nodeNames := getNodeNames()[:test.numValidators]
+	stakeholderName := nodeNames[len(nodeNames)-1]
 
 	if test.topology != nil {
 		err := test.topology.Validate()
@@ -157,6 +158,10 @@ func runTest(t *testing.T, test *testCase) {
 		test.numValidators = len(nodeNames)
 
 		stakeholderNames := getNodeNamesByPrefix(test.topology.graph.GetNames(), StakeholderPrefix)
+		if len(stakeholderNames) > 0 {
+			stakeholderName = stakeholderNames[0]
+		}
+
 		participantNames := getNodeNamesByPrefix(test.topology.graph.GetNames(), ParticipantPrefix)
 		externalNames := getNodeNamesByPrefix(test.topology.graph.GetNames(), ExternalPrefix)
 
@@ -184,7 +189,7 @@ func runTest(t *testing.T, test *testCase) {
 	generateNodesPrivateKey(t, nodes, nodeNames, nodesNum)
 	setNodesPortAndEnode(t, nodes)
 
-	genesis := makeGenesis(nodes)
+	genesis := makeGenesis(nodes, stakeholderName)
 
 	if test.genesisHook != nil {
 		genesis = test.genesisHook(genesis)
@@ -192,17 +197,15 @@ func runTest(t *testing.T, test *testCase) {
 
 	for i, peer := range nodes {
 		var engineConstructor func(basic consensus.Engine) consensus.Engine
-		var backendConstructor func(basic tendermintCore.Backend) tendermintCore.Backend
 		if test.maliciousPeers != nil {
 			engineConstructor = test.maliciousPeers[i].cons
-			backendConstructor = test.maliciousPeers[i].backs
 		}
 
 		peer.listener[0].Close()
 		peer.listener[1].Close()
 
 		rates := test.networkRates[i]
-		peer.node, err = makePeer(genesis, peer.privateKey, fmt.Sprintf("127.0.0.1:%d", peer.port), peer.rpcPort, rates.in, rates.out, engineConstructor, backendConstructor)
+		peer.node, err = makePeer(genesis, peer.privateKey, fmt.Sprintf("127.0.0.1:%d", peer.port), peer.rpcPort, rates.in, rates.out, engineConstructor)
 		if err != nil {
 			t.Fatal("cant make a node", i, err)
 		}
@@ -304,11 +307,14 @@ func runTest(t *testing.T, test *testCase) {
 }
 
 func TestResolve(t *testing.T) {
-	enode.SetResolveFunc(func(host string) (ips []net.IP, e error) {
-		return []net.IP{
-			net.ParseIP("127.0.0.1"),
-		}, nil
-	})
+	//customResolve := func(host string) (ips []net.IP, e error) {
+	//	return []net.IP{
+	//		net.ParseIP("127.0.0.1"),
+	//	}, nil
+	//}
+	//
+	//// Set the resolver function for the enode package
+	//enode.V4ResolveFunc = customResolve
 
 	en := "enode://57fa76dc95ef02461ce1a38d70181c27384f628a23a98fa801933ac2a45709b847d4ab42ed0fe0ebd03df5d464c064585a85a154e4443fb9143bfb6c369d5544@VD:45736"
 	_, err := enode.ParseV4WithResolve(en)
@@ -576,47 +582,58 @@ func generateNodesPrivateKey(t *testing.T, nodes map[string]*testNode, nodeNames
 }
 
 func setNodesPortAndEnode(t *testing.T, nodes map[string]*testNode) {
-	for i := range nodes {
-		//port
-		listener, innerErr := net.Listen("tcp", "127.0.0.1:0")
-		if innerErr != nil {
-			panic(innerErr)
+	for addr, node := range nodes {
+		if n, err := newNode(node.privateKey, addr); err != nil {
+			t.Fatal(err)
+		} else {
+			node.netNode = n
 		}
-		nodes[i].listener = append(nodes[i].listener, listener)
+	}
+}
 
-		//rpc port
-		listener, innerErr = net.Listen("tcp", "127.0.0.1:0")
-		if innerErr != nil {
-			panic(innerErr)
-		}
-		nodes[i].listener = append(nodes[i].listener, listener)
+func newNode(privateKey *ecdsa.PrivateKey, addr string) (netNode, error) {
+	n := netNode{
+		privateKey: privateKey,
 	}
 
-	for i, node := range nodes {
-		listener := node.listener[0]
-		port := strings.Split(listener.Addr().String(), ":")[1]
-		node.address = fmt.Sprintf("%s:%s", i, port)
-		node.port, _ = strconv.Atoi(port)
-
-		rpcListener := node.listener[1]
-		rpcPort, innerErr := strconv.Atoi(strings.Split(rpcListener.Addr().String(), ":")[1])
-		if innerErr != nil {
-			t.Fatal("incorrect rpc port ", innerErr)
-		}
-
-		node.rpcPort = rpcPort
-
-		if node.port == 0 || node.rpcPort == 0 {
-			t.Fatal("On node", i, "port equals 0")
-		}
-
-		node.url = enode.V4DNSUrl(
-			node.privateKey.PublicKey,
-			node.address,
-			node.port,
-			node.port,
-		)
+	//port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return netNode{}, err
 	}
+	n.listener = append(n.listener, listener)
+
+	//rpc port
+	listener, err = net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return netNode{}, err
+	}
+	n.listener = append(n.listener, listener)
+
+	port := strings.Split(n.listener[0].Addr().String(), ":")[1]
+	n.address = fmt.Sprintf("%s:%s", addr, port)
+	n.port, _ = strconv.Atoi(port)
+
+	rpcListener := n.listener[1]
+	rpcPort, innerErr := strconv.Atoi(strings.Split(rpcListener.Addr().String(), ":")[1])
+	if innerErr != nil {
+		return netNode{}, fmt.Errorf("incorrect rpc port %w", innerErr)
+	}
+
+	n.rpcPort = rpcPort
+
+	if n.port == 0 || n.rpcPort == 0 {
+		return netNode{}, fmt.Errorf("on node %s port equals 0", addr)
+	}
+
+	n.url = enode.V4DNSUrl(
+		n.privateKey.PublicKey,
+		n.address,
+		n.port,
+		n.port,
+	)
+
+	return n, nil
 }
 
 func getNodeNamesByPrefix(names []string, typ string) []string {

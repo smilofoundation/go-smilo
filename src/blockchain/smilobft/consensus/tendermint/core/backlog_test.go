@@ -1,13 +1,15 @@
 package core
 
 import (
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/influxdata/influxdb/pkg/deep"
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -156,9 +158,9 @@ func TestStoreBacklog(t *testing.T) {
 			VotingPower: big.NewInt(1),
 		}
 
-		c.storeBacklog(nil, val)
+		c.storeBacklog(nil, val.Address)
 
-		if c.backlogs[val] != nil {
+		if c.backlogs[val.Address] != nil {
 			t.Fatal("Backlog must be empty!")
 		}
 	})
@@ -167,7 +169,7 @@ func TestStoreBacklog(t *testing.T) {
 		c := &core{
 			logger:   log.New("backend", "test", "id", 0),
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 		}
 
 		vote := &Vote{
@@ -190,11 +192,11 @@ func TestStoreBacklog(t *testing.T) {
 			Address:     common.HexToAddress("0x0987654321"),
 			VotingPower: big.NewInt(1),
 		}
-		c.storeBacklog(msg, val)
+		c.storeBacklog(msg, val.Address)
 
-		pque := c.backlogs[val]
+		pque := c.backlogs[val.Address]
 
-		savedMsg, _ := pque.Pop()
+		savedMsg := pque[0]
 		if !reflect.DeepEqual(msg, savedMsg) {
 			t.Fatalf("Expected message %+v, but got %+v", msg, savedMsg)
 		}
@@ -204,7 +206,7 @@ func TestStoreBacklog(t *testing.T) {
 		c := &core{
 			logger:   log.New("backend", "test", "id", 0),
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 		}
 
 		proposal := &Proposal{
@@ -230,10 +232,10 @@ func TestStoreBacklog(t *testing.T) {
 			VotingPower: big.NewInt(1),
 		}
 
-		c.storeBacklog(msg, val)
-		pque := c.backlogs[val]
+		c.storeBacklog(msg, val.Address)
+		pque := c.backlogs[val.Address]
 
-		savedMsg, _ := pque.Pop()
+		savedMsg := pque[0]
 		if !reflect.DeepEqual(msg, savedMsg) {
 			t.Fatalf("Expected message %+v, but got %+v", msg, savedMsg)
 		}
@@ -267,7 +269,6 @@ func TestProcessBacklog(t *testing.T) {
 		val, _ := committeeSet.GetByIndex(0)
 
 		expected := backlogEvent{
-			src: val,
 			msg: msg,
 		}
 
@@ -282,13 +283,15 @@ func TestProcessBacklog(t *testing.T) {
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			step:     propose,
 			round:    1,
 			height:   big.NewInt(2),
 		}
 
-		c.storeBacklog(msg, val)
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
 		c.processBacklog()
 
 		timeout := time.NewTimer(2 * time.Second)
@@ -330,7 +333,6 @@ func TestProcessBacklog(t *testing.T) {
 		val, _ := committeeSet.GetByIndex(0)
 
 		expected := backlogEvent{
-			src: val,
 			msg: msg,
 		}
 
@@ -345,12 +347,15 @@ func TestProcessBacklog(t *testing.T) {
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			step:     propose,
 			round:    1,
 			height:   big.NewInt(2),
 		}
-		c.storeBacklog(msg, val)
+
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
 		c.processBacklog()
 
 		timeout := time.NewTimer(2 * time.Second)
@@ -398,23 +403,48 @@ func TestProcessBacklog(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		backendMock := NewMockBackend(ctrl)
-		backendMock.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
 		committeeSet := newTestCommitteeSet(1)
 		val, _ := committeeSet.GetByIndex(0)
+
+		expected := backlogEvent{
+			msg: msg,
+		}
+
+		evChan := make(chan interface{}, 1)
+
+		backendMock := NewMockBackend(ctrl)
+		backendMock.EXPECT().Post(expected).Do(func(ev interface{}) {
+			evChan <- ev
+		})
 
 		c := &core{
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			round:    1,
+			step:     prevote,
 			height:   big.NewInt(1),
 		}
 
-		c.storeBacklog(msg, val)
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
 		c.processBacklog()
+
+		timeout := time.NewTimer(2 * time.Second)
+		select {
+		case ev := <-evChan:
+			e, ok := ev.(backlogEvent)
+			if !ok {
+				t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev))
+			}
+			if e.msg.Code != msg.Code {
+				t.Errorf("message code mismatch: have %v, want %v", e.msg.Code, msg.Code)
+			}
+		case <-timeout.C:
+			t.Error("unexpected timeout occurs")
+		}
 	})
 
 	t.Run("future height message are not processed", func(t *testing.T) {
@@ -447,12 +477,14 @@ func TestProcessBacklog(t *testing.T) {
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			round:    2,
 			height:   big.NewInt(3),
 		}
 
-		c.storeBacklog(msg, val)
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
 		c.processBacklog()
 	})
 
@@ -490,12 +522,15 @@ func TestProcessBacklog(t *testing.T) {
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			round:    2,
 			height:   big.NewInt(3),
 		}
-		c.storeBacklog(msg, val)
-		c.storeBacklog(msg2, val)
+
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
+		c.storeBacklog(msg2, val.Address)
 		c.setStep(prevote)
 		c.processBacklog()
 		c.setHeight(big.NewInt(4))
@@ -505,6 +540,61 @@ func TestProcessBacklog(t *testing.T) {
 		c.processBacklog()
 		timeout := time.NewTimer(2 * time.Second)
 		<-timeout.C
+	})
+
+	t.Run("untrusted messages are processed when height change", func(t *testing.T) {
+		nilRoundVote := &Vote{
+			Round:  2,
+			Height: big.NewInt(4),
+		}
+
+		nilRoundVotePayload, err := Encode(nilRoundVote)
+		if err != nil {
+			t.Fatalf("have %v, want nil", err)
+		}
+
+		msg := &Message{
+			Code:       msgPrevote,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
+		}
+		msg2 := &Message{
+			Code:       msgPrecommit,
+			Msg:        nilRoundVotePayload,
+			decodedMsg: nilRoundVote,
+		}
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		backendMock := NewMockBackend(ctrl)
+
+		committeeSet := newTestCommitteeSet(2)
+
+		c := &core{
+			logger:           log.New("backend", "test", "id", 0),
+			backend:          backendMock,
+			address:          common.HexToAddress("0x1234567890"),
+			backlogs:         make(map[common.Address][]*Message),
+			backlogUnchecked: map[uint64][]*Message{},
+			round:            2,
+			height:           big.NewInt(3),
+		}
+
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		backendMock.EXPECT().Post(gomock.Any()).Times(0)
+		c.storeUncheckedBacklog(msg)
+		c.storeUncheckedBacklog(msg2)
+		c.setStep(prevote)
+		c.processBacklog()
+		c.setHeight(big.NewInt(4))
+
+		backendMock.EXPECT().Post(gomock.Any()).Times(2)
+		c.setStep(prevote)
+
+		backendMock.EXPECT().Post(gomock.Any()).Times(0)
+		c.processBacklog()
+		<-time.NewTimer(2 * time.Second).C
 	})
 
 	t.Run("future round message are processed when round change", func(t *testing.T) {
@@ -540,17 +630,145 @@ func TestProcessBacklog(t *testing.T) {
 			logger:   log.New("backend", "test", "id", 0),
 			backend:  backendMock,
 			address:  common.HexToAddress("0x1234567890"),
-			backlogs: make(map[types.CommitteeMember]*prque.Prque),
+			backlogs: make(map[common.Address][]*Message),
 			step:     prevote,
 			round:    1,
 			height:   big.NewInt(4),
 		}
-		c.storeBacklog(msg, val)
+
+		c.lastHeader = &types.Header{Committee: committeeSet.Committee()}
+
+		c.storeBacklog(msg, val.Address)
 		c.processBacklog()
 		backendMock.EXPECT().Post(gomock.Any()).Times(1)
 		c.setRound(2)
 		c.processBacklog()
 		timeout := time.NewTimer(2 * time.Second)
 		<-timeout.C
+	})
+}
+
+func TestStoreUncheckedBacklog(t *testing.T) {
+	t.Run("save messages in the untrusted backlog", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		backendMock := NewMockBackend(ctrl)
+
+		c := &core{
+			logger:           log.New("backend", "test", "id", 0),
+			backend:          backendMock,
+			address:          common.HexToAddress("0x1234567890"),
+			backlogs:         make(map[common.Address][]*Message),
+			backlogUnchecked: make(map[uint64][]*Message),
+			step:             prevote,
+			round:            1,
+			height:           big.NewInt(4),
+		}
+		var messages []*Message
+
+		for i := int64(0); i < MaxSizeBacklogUnchecked; i++ {
+			nilRoundVote := &Vote{
+				Round:  i % 10,
+				Height: big.NewInt(i / (1 + i%10)),
+			}
+			payload, err := rlp.EncodeToBytes(nilRoundVote)
+			require.NoError(t, err)
+			msg := &Message{
+				Code:       msgPrevote,
+				Msg:        payload,
+				decodedMsg: nilRoundVote,
+			}
+			c.storeUncheckedBacklog(msg)
+			messages = append(messages, msg)
+		}
+		found := 0
+		for _, msg := range messages {
+			height, err := msg.Height()
+			if err != nil {
+				t.Fatal("can't retrieve message height")
+			}
+			for _, umsg := range c.backlogUnchecked[height.Uint64()] {
+				if deep.Equal(msg, umsg) {
+					found++
+				}
+			}
+		}
+		if found != MaxSizeBacklogUnchecked {
+			t.Fatal("unchecked messages lost")
+		}
+	})
+
+	t.Run("excess messages are removed from the untrusted backlog", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		backendMock := NewMockBackend(ctrl)
+
+		c := &core{
+			logger:           log.New("backend", "test", "id", 0),
+			backend:          backendMock,
+			address:          common.HexToAddress("0x1234567890"),
+			backlogs:         make(map[common.Address][]*Message),
+			backlogUnchecked: make(map[uint64][]*Message),
+			step:             prevote,
+			round:            1,
+			height:           big.NewInt(4),
+		}
+
+		var messages []*Message
+		uncheckedFounds := make(map[uint64]struct{})
+		backendMock.EXPECT().RemoveMessageFromLocalCache(gomock.Any()).Times(MaxSizeBacklogUnchecked).Do(func(payload []byte) {
+			var msg Message
+			err := msg.FromPayload(payload)
+			if err != nil {
+				t.Fatal("could not decode message payload")
+			}
+			height, err := msg.Height()
+			if err != nil {
+				t.Fatal("could not decode message height")
+			}
+			if _, ok := uncheckedFounds[height.Uint64()]; ok {
+				t.Fatal("duplicate message received")
+			}
+			uncheckedFounds[height.Uint64()] = struct{}{}
+		})
+
+		for i := int64(2 * MaxSizeBacklogUnchecked); i > 0; i-- {
+			nilRoundVote := &Vote{
+				Round:  i % 10,
+				Height: big.NewInt(i),
+			}
+			payload, err := rlp.EncodeToBytes(nilRoundVote)
+			require.NoError(t, err)
+			msg := &Message{
+				Code:       msgPrevote,
+				Msg:        payload,
+				decodedMsg: nilRoundVote,
+			}
+			c.storeUncheckedBacklog(msg)
+			if i < MaxSizeBacklogUnchecked {
+				messages = append(messages, msg)
+			}
+		}
+
+		found := 0
+		for _, msg := range messages {
+			height, err := msg.Height()
+			if err != nil {
+				t.Error("can't retrieve message height")
+			}
+			for _, umsg := range c.backlogUnchecked[height.Uint64()] {
+				if deep.Equal(msg, umsg) {
+					found++
+				}
+			}
+		}
+		if found != MaxSizeBacklogUnchecked-1 {
+			t.Fatal("unchecked messages lost")
+		}
+		if len(uncheckedFounds) != MaxSizeBacklogUnchecked {
+			t.Fatal("unchecked messages lost")
+		}
 	})
 }

@@ -15,7 +15,6 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/cmn"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/p2p"
@@ -329,20 +328,6 @@ func (mr *MockBackendMockRecorder) Address() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Address", reflect.TypeOf((*MockBackend)(nil).Address))
 }
 
-// Committee mocks base method
-func (m *MockBackend) Committee(number uint64) (committee.Set, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Committee", number)
-	ret0, _ := ret[0].(committee.Set)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Committee indicates an expected call of Committee
-func (mr *MockBackendMockRecorder) Committee(number interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Committee", reflect.TypeOf((*MockBackend)(nil).Committee), number)
-}
 
 // Subscribe mocks base method
 func (m *MockBackend) Subscribe(types ...interface{}) *cmn.TypeMuxSubscription {
@@ -374,31 +359,6 @@ func (mr *MockBackendMockRecorder) Post(ev interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockBackend)(nil).Post), ev)
 }
 
-// Broadcast mocks base method
-func (m *MockBackend) Broadcast(ctx context.Context, valSet committee.Set, payload []byte) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Broadcast", ctx, valSet, payload)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Broadcast indicates an expected call of Broadcast
-func (mr *MockBackendMockRecorder) Broadcast(ctx, valSet, payload interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Broadcast", reflect.TypeOf((*MockBackend)(nil).Broadcast), ctx, valSet, payload)
-}
-
-// Gossip mocks base method
-func (m *MockBackend) Gossip(ctx context.Context, valSet committee.Set, payload []byte) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Gossip", ctx, valSet, payload)
-}
-
-// Gossip indicates an expected call of Gossip
-func (mr *MockBackendMockRecorder) Gossip(ctx, valSet, payload interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Gossip", reflect.TypeOf((*MockBackend)(nil).Gossip), ctx, valSet, payload)
-}
 
 // Commit mocks base method
 func (m *MockBackend) Commit(proposalBlock *types.Block, round int64, seals [][]byte) error {
@@ -529,15 +489,15 @@ func (mr *MockBackendMockRecorder) AddSeal(block interface{}) *gomock.Call {
 }
 
 // SyncPeer mocks base method
-func (m *MockBackend) SyncPeer(address common.Address, messages []*Message) {
+func (m *MockBackend) SyncPeer(address common.Address) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SyncPeer", address, messages)
+	m.ctrl.Call(m, "SyncPeer", address)
 }
 
 // SyncPeer indicates an expected call of SyncPeer
-func (mr *MockBackendMockRecorder) SyncPeer(address, messages interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) SyncPeer(address interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncPeer", reflect.TypeOf((*MockBackend)(nil).SyncPeer), address, messages)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncPeer", reflect.TypeOf((*MockBackend)(nil).SyncPeer), address)
 }
 
 // ResetPeerCache mocks base method
@@ -550,18 +510,6 @@ func (m *MockBackend) ResetPeerCache(address common.Address) {
 func (mr *MockBackendMockRecorder) ResetPeerCache(address interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetPeerCache", reflect.TypeOf((*MockBackend)(nil).ResetPeerCache), address)
-}
-
-// AskSync mocks base method
-func (m *MockBackend) AskSync(set committee.Set) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AskSync", set)
-}
-
-// AskSync indicates an expected call of AskSync
-func (mr *MockBackendMockRecorder) AskSync(set interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AskSync", reflect.TypeOf((*MockBackend)(nil).AskSync), set)
 }
 
 // HandleUnhandledMsgs mocks base method

@@ -21,7 +21,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"go-smilo/src/blockchain/smilobft/cmn"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"math/big"
 	"sync"
 	"time"
@@ -29,11 +31,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/core/types"
-
-	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
 var (
@@ -63,6 +62,8 @@ var (
 	errFailedDecodePrevote = errors.New("failed to decode PREVOTE")
 	// errFailedDecodePrecommit is returned when the PRECOMMIT message is malformed.
 	errFailedDecodePrecommit = errors.New("failed to decode PRECOMMIT")
+	// errFailedDecodeVote is returned for when PREVOTE or PRECOMMIT is malformed.
+	errFailedDecodeVote = errors.New("failed to decode vote")
 	// errNilPrevoteSent is returned when timer could be stopped in time
 	errNilPrevoteSent = errors.New("timer expired and nil prevote sent")
 	// errNilPrecommitSent is returned when timer could be stopped in time
@@ -77,23 +78,22 @@ const (
 
 // New creates an Tendermint consensus core
 func New(backend Backend, config *config.Config) *core {
-	logger := log.New("addr", backend.Address().String())
+	addr := backend.Address()
+	logger := log.New("addr", addr.String())
 	messagesMap := newMessagesMap()
 	roundMessage := messagesMap.getOrCreate(0)
 	return &core{
-		config:                config,
-		address:               backend.Address(),
+		proposerPolicy:        config.ProposerPolicy,
+		blockPeriod:           config.BlockPeriod,
+		address:               addr,
 		logger:                logger,
 		backend:               backend,
-		backlogs:              make(map[types.CommitteeMember]*prque.Prque),
+		backlogs:              make(map[common.Address][]*Message),
+		backlogUnchecked:      make(map[uint64][]*Message),
 		pendingUnminedBlocks:  make(map[uint64]*types.Block),
 		pendingUnminedBlockCh: make(chan *types.Block),
-		stopped:               make(chan struct{}, 3),
-		isStarting:            new(uint32),
-		isStarted:             new(uint32),
-		isStopping:            new(uint32),
-		isStopped:             new(uint32),
-		committeeSet:          nil,
+		stopped:               make(chan struct{}, 4),
+		committee:             nil,
 		futureRoundChange:     make(map[int64]map[common.Address]uint64),
 		messages:              messagesMap,
 		lockedRound:           -1,
@@ -106,9 +106,10 @@ func New(backend Backend, config *config.Config) *core {
 }
 
 type core struct {
-	config  *config.Config
-	address common.Address
-	logger  log.Logger
+	proposerPolicy config.ProposerPolicy
+	blockPeriod    uint64
+	address        common.Address
+	logger         log.Logger
 
 	backend Backend
 	cancel  context.CancelFunc
@@ -120,13 +121,10 @@ type core struct {
 	syncEventSub            *cmn.TypeMuxSubscription
 	futureProposalTimer     *time.Timer
 	stopped                 chan struct{}
-	isStarted               *uint32
-	isStarting              *uint32
-	isStopping              *uint32
-	isStopped               *uint32
 
-	backlogs   map[types.CommitteeMember]*prque.Prque
-	backlogsMu sync.Mutex
+	backlogs            map[common.Address][]*Message
+	backlogUnchecked    map[uint64][]*Message
+	backlogUncheckedLen int
 	// map[Height]UnminedBlock
 	pendingUnminedBlocks     map[uint64]*types.Block
 	pendingUnminedBlocksMu   sync.Mutex
@@ -137,9 +135,10 @@ type core struct {
 	// Tendermint FSM state fields
 	//
 
-	height       *big.Int
-	round        int64
-	committeeSet committee.Set
+	height     *big.Int
+	round      int64
+	committee  committee
+	lastHeader *types.Header
 	// height, round and committeeSet are the ONLY guarded fields.
 	// everything else MUST be accessed only by the main thread.
 	stateMu               sync.RWMutex
@@ -161,6 +160,8 @@ type core struct {
 	precommitTimeout *timeout
 
 	futureRoundChange map[int64]map[common.Address]uint64
+
+	autonityContract *autonity_tendermint_060.Contract
 }
 
 func (c *core) GetCurrentHeightMessages() []*Message {
@@ -168,7 +169,7 @@ func (c *core) GetCurrentHeightMessages() []*Message {
 }
 
 func (c *core) IsMember(address common.Address) bool {
-	_, _, err := c.CommitteeSet().GetByAddress(address)
+	_, _, err := c.committeeSet().GetByAddress(address)
 	return err == nil
 }
 
@@ -185,13 +186,7 @@ func (c *core) finalizeMessage(msg *Message) ([]byte, error) {
 		return nil, err
 	}
 
-	// Convert to payload
-	payload, err := msg.Payload()
-	if err != nil {
-		return nil, err
-	}
-
-	return payload, nil
+	return msg.Payload(), nil
 }
 
 func (c *core) broadcast(ctx context.Context, msg *Message) {
@@ -205,14 +200,18 @@ func (c *core) broadcast(ctx context.Context, msg *Message) {
 
 	// Broadcast payload
 	logger.Debug("broadcasting", "msg", msg.String())
-	if err = c.backend.Broadcast(ctx, c.CommitteeSet(), payload); err != nil {
+	if err = c.backend.Broadcast(ctx, c.committeeSet().Committee(), payload); err != nil {
 		logger.Error("Failed to broadcast message", "msg", msg, "err", err)
 		return
 	}
 }
 
+// check if msg sender is proposer for proposal handling.
+func (c *core) isProposerMsg(round int64, msgAddress common.Address) bool {
+	return c.committeeSet().GetProposer(round).Address == msgAddress
+}
 func (c *core) isProposer() bool {
-	return c.CommitteeSet().IsProposer(c.Round(), c.address)
+	return c.committeeSet().GetProposer(c.Round()).Address == c.address
 }
 
 func (c *core) commit(round int64, messages *roundMessages) {
@@ -249,7 +248,7 @@ func (c *core) commit(round int64, messages *roundMessages) {
 	}
 }
 
-// Metric collection of round change and height change.
+// Metric collecton of round change and height change.
 func (c *core) measureHeightRoundMetrics(round int64) {
 	if round == 0 {
 		// in case of height change, round changed too, so count it also.
@@ -262,24 +261,24 @@ func (c *core) measureHeightRoundMetrics(round int64) {
 
 // startRound starts a new round. if round equals to 0, it means to starts a new height
 func (c *core) startRound(ctx context.Context, round int64) {
-	height := new(big.Int)
+
 	c.measureHeightRoundMetrics(round)
-	lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
-	if lastCommittedProposalBlock != nil {
-		height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
-	} else {
-		log.Warn("startRound block 0", "round", round)
-	}
+	//lastCommittedProposalBlock, _ := c.backend.LastCommittedProposal()
+	//if lastCommittedProposalBlock != nil {
+	//	height = new(big.Int).Add(lastCommittedProposalBlock.Number(), common.Big1)
+	//} else {
+	//	log.Warn("startRound block 0", "round", round)
+	//}
 	// Set initial FSM state
 	c.setInitialState(round)
 	// c.setStep(propose) will process the pending unmined blocks sent by the backed.Seal() and set c.lastestPendingRequest
 	c.setStep(propose)
-	c.logger.Debug("Starting new Round", "Height", height, "Round", round)
+	c.logger.Debug("Starting new Round", "Round", round)
 
 	// If the node is the proposer for this round then it would propose validValue or a new block, otherwise,
 	// proposeTimeout is started, where the node waits for a proposal from the proposer of the current round.
 	if c.isProposer() {
-		log.Debug("I AM THE PROPOSER!!!!!!!!!!!!!!!! ", "Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+		log.Debug("I AM THE PROPOSER!!!!!!!!!!!!!!!! ",  "Round", round)
 
 		// validValue and validRound represent a block they received a quorum of prevote and the round quorum was
 		// received, respectively. If the block is not committed in that round then the round is changed.
@@ -291,26 +290,26 @@ func (c *core) startRound(ctx context.Context, round int64) {
 		} else {
 			p = c.getUnminedBlock()
 			log.Debug("I AM THE PROPOSER AND getUnminedBlock!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-				"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+				"Round", round)
 
 			if p == nil {
 				select {
 				case <-ctx.Done():
 					log.Warn("I AM THE PROPOSER AND TIMEOUT!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+						"Round", round)
 					return
 				case p = <-c.pendingUnminedBlockCh:
 					log.Warn("I AM THE PROPOSER GOT A BLOCK from pendingUnminedBlockCh!!!!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-						"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+						"Round", round)
 				}
 			}
 		}
 
 		log.Debug("I AM THE PROPOSER AND sendProposal!!!!!!!!!!!!!!!! ", "getUnminedBlock", p,
-			"Height", height, "Round", round, "lastCommittedProposalBlock", lastCommittedProposalBlock.Hash())
+			 "Round", round)
 		c.sendProposal(ctx, p)
 	} else {
-		timeoutDuration := timeoutPropose(round)
+		timeoutDuration := c.timeoutPropose(round)
 		c.proposeTimeout.scheduleTimeout(timeoutDuration, round, c.Height(), c.onTimeoutPropose)
 		c.logger.Debug("Scheduled Propose Timeout", "Timeout Duration", timeoutDuration)
 	}
@@ -321,11 +320,31 @@ func (c *core) setInitialState(r int64) {
 	if r == 0 {
 		lastBlockMined, _ := c.backend.LastCommittedProposal()
 		c.setHeight(new(big.Int).Add(lastBlockMined.Number(), common.Big1))
-		committeeSet, err := c.backend.Committee(c.Height().Uint64())
-		if err != nil {
-			c.logger.Error("fatal error: could not retrieve saved committee")
-			panic(err)
+
+		lastHeader := lastBlockMined.Header()
+		var committeeSet committee
+		var err error
+		var lastProposer common.Address
+		switch c.proposerPolicy {
+		case config.RoundRobin:
+			if !lastHeader.IsGenesis() {
+				var err error
+				lastProposer, err = types.Ecrecover(lastHeader)
+				if err != nil {
+					panic(fmt.Sprintf("unable to recover proposer address from header %q: %v", lastHeader, err))
+				}
+			}
+			committeeSet, err = newRoundRobinSet(lastHeader.Committee, lastProposer)
+			if err != nil {
+				panic(fmt.Sprintf("failed to construct committee %v", err))
+			}
+		case config.WeightedRandomSampling:
+			committeeSet = newWeightedRandomSamplingCommittee(lastBlockMined, c.autonityContract, c.backend.BlockChain())
+		default:
+			panic(fmt.Sprintf("unrecognised proposer policy %q", c.proposerPolicy))
 		}
+
+		c.lastHeader = lastHeader
 		c.setCommitteeSet(committeeSet)
 		c.lockedRound = -1
 		c.lockedValue = nil
@@ -386,10 +405,10 @@ func (c *core) setHeight(height *big.Int) {
 	defer c.stateMu.Unlock()
 	c.height = height
 }
-func (c *core) setCommitteeSet(set committee.Set) {
+func (c *core) setCommitteeSet(set committee) {
 	c.stateMu.Lock()
 	defer c.stateMu.Unlock()
-	c.committeeSet = set
+	c.committee = set
 }
 
 func (c *core) Round() int64 {
@@ -403,8 +422,8 @@ func (c *core) Height() *big.Int {
 	defer c.stateMu.RUnlock()
 	return c.height
 }
-func (c *core) CommitteeSet() committee.Set {
+func (c *core) committeeSet() committee {
 	c.stateMu.RLock()
 	defer c.stateMu.RUnlock()
-	return c.committeeSet
+	return c.committee
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
+	tendermintBackend "go-smilo/src/blockchain/smilobft/consensus/tendermint/backend"
 )
 
 func TestTendermintOneMalicious(t *testing.T) {
@@ -15,7 +15,7 @@ func TestTendermintOneMalicious(t *testing.T) {
 	}
 	addedValidatorsBlocks := make(map[common.Hash]uint64)
 	removedValidatorsBlocks := make(map[common.Hash]uint64)
-	changedValidators := tendermintCore.NewChanges()
+	changedValidators := tendermintBackend.NewChanges()
 
 	cases := []*testCase{
 		{
@@ -26,10 +26,7 @@ func TestTendermintOneMalicious(t *testing.T) {
 			maliciousPeers: map[string]injectors{
 				"VE": {
 					cons: func(basic consensus.Engine) consensus.Engine {
-						return tendermintCore.NewReplaceValidatorCore(basic, changedValidators)
-					},
-					backs: func(basic tendermintCore.Backend) tendermintCore.Backend {
-						return tendermintCore.NewChangeValidatorBackend(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
+						return tendermintBackend.NewReplaceValidator(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
 					},
 				},
 			},
@@ -45,10 +42,7 @@ func TestTendermintOneMalicious(t *testing.T) {
 			maliciousPeers: map[string]injectors{
 				"VE": {
 					cons: func(basic consensus.Engine) consensus.Engine {
-						return tendermintCore.NewAddValidatorCore(basic, changedValidators)
-					},
-					backs: func(basic tendermintCore.Backend) tendermintCore.Backend {
-						return tendermintCore.NewChangeValidatorBackend(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
+						return tendermintBackend.NewAddValidator(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
 					},
 				},
 			},
@@ -64,10 +58,7 @@ func TestTendermintOneMalicious(t *testing.T) {
 			maliciousPeers: map[string]injectors{
 				"VE": {
 					cons: func(basic consensus.Engine) consensus.Engine {
-						return tendermintCore.NewRemoveValidatorCore(basic, changedValidators)
-					},
-					backs: func(basic tendermintCore.Backend) tendermintCore.Backend {
-						return tendermintCore.NewChangeValidatorBackend(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
+						return tendermintBackend.NewRemoveValidator(t, basic, changedValidators, removedValidatorsBlocks, addedValidatorsBlocks)
 					},
 				},
 			},

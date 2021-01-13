@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-readonly KEEPALIVE_INTERVAL=300 # seconds => 5m
+readonly KEEPALIVE_INTERVAL=120 # seconds => 2m
 
 main() {
   keepalive

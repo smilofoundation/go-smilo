@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/cmn/acdefault"
 	"go-smilo/src/blockchain/smilobft/cmn/graph"
 	"go-smilo/src/blockchain/smilobft/cmn/keygenerator"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/log"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"go-smilo/src/blockchain/smilobft/p2p/enode"
 	"math/big"
 	"net"
@@ -23,9 +24,9 @@ import (
 	"go-smilo/src/blockchain/smilobft/ethclient"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const DefaultTestGasPrice = 100000000000
@@ -36,9 +37,9 @@ var (
 
 
 func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
-	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
-		t.Skip("skipping test in short mode")
-	}
+	//if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
+	//	t.Skip("skipping test in short mode")
+	//}
 
 	hookGenerator := func() (hook, hook) {
 		prevBlockBalance := uint64(0)
@@ -75,7 +76,7 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 
 			if block.NumberU64() > 1 && len(block.Transactions()) > 0 && block.NumberU64() <= uint64(tCase.numBlocks) {
 				sh := validator.service.BlockChain().Config().AutonityContractConfig.GetStakeHolderUsers()[0]
-				stakeHolderBalance := st.GetBalance(sh.Address)
+				stakeHolderBalance := st.GetBalance(*sh.Address)
 				if stakeHolderBalance.Cmp(prevSTBalance) != 1 {
 					return fmt.Errorf("balance must be increased")
 				}
@@ -88,8 +89,8 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 	}
 
 	case1Before, case1After := hookGenerator()
-	case2Before, case2After := hookGenerator()
-	case3Before, case3After := hookGenerator()
+	//case2Before, case2After := hookGenerator()
+	//case3Before, case3After := hookGenerator()
 	cases := []*testCase{
 		{
 			name:          "no malicious - 1 tx per second",
@@ -103,30 +104,30 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 				"VD": case1After,
 			},
 		},
-		{
-			name:          "no malicious - 10 tx per second",
-			numValidators: 6,
-			numBlocks:     10,
-			txPerPeer:     10,
-			beforeHooks: map[string]hook{
-				"VF": case2Before,
-			},
-			afterHooks: map[string]hook{
-				"VF": case2After,
-			},
-		},
-		{
-			name:          "no malicious - 5 tx per second 4 peers",
-			numValidators: 4,
-			numBlocks:     5,
-			txPerPeer:     5,
-			beforeHooks: map[string]hook{
-				"VB": case3Before,
-			},
-			afterHooks: map[string]hook{
-				"VB": case3After,
-			},
-		},
+		//{
+		//	name:          "no malicious - 10 tx per second",
+		//	numValidators: 6,
+		//	numBlocks:     10,
+		//	txPerPeer:     10,
+		//	beforeHooks: map[string]hook{
+		//		"VF": case2Before,
+		//	},
+		//	afterHooks: map[string]hook{
+		//		"VF": case2After,
+		//	},
+		//},
+		//{
+		//	name:          "no malicious - 5 tx per second 4 peers",
+		//	numValidators: 4,
+		//	numBlocks:     5,
+		//	txPerPeer:     5,
+		//	beforeHooks: map[string]hook{
+		//		"VB": case3Before,
+		//	},
+		//	afterHooks: map[string]hook{
+		//		"VB": case3After,
+		//	},
+		//},
 	}
 
 	for _, testCase := range cases {
@@ -146,27 +147,19 @@ func TestCheckBlockWithSmallFee(t *testing.T) {
 	hookGenerator := func() (hook, hook) {
 		prevBlockBalance := uint64(0)
 		fBefore := func(block *types.Block, validator *testNode, tCase *testCase, currentTime time.Time) error {
-			addr, err := validator.service.BlockChain().Config().AutonityContractConfig.GetContractAddress()
-			if err != nil {
-				t.Fatal(err)
-			}
 			st, _,_ := validator.service.BlockChain().State()
-			if block.NumberU64() == 1 && st.GetBalance(addr).Uint64() != 0 {
+			if block.NumberU64() == 1 && st.GetBalance(autonity_tendermint_060.ContractAddress).Uint64() != 0 {
 				t.Fatal("incorrect balance on the first block")
 			}
 			return nil
 		}
 		fAfter := func(block *types.Block, validator *testNode, tCase *testCase, currentTime time.Time) error {
-			autonityContractAddress, err := validator.service.BlockChain().Config().AutonityContractConfig.GetContractAddress()
-			if err != nil {
-				t.Fatal(err)
-			}
-			st, _,_ := validator.service.BlockChain().State()
+			st,_, _ := validator.service.BlockChain().State()
 
 			if block.NumberU64() == 1 && prevBlockBalance != 0 {
 				t.Fatal("incorrect balance on the first block")
 			}
-			contractBalance := st.GetBalance(autonityContractAddress)
+			contractBalance := st.GetBalance(autonity_tendermint_060.ContractAddress)
 
 			prevBlockBalance = contractBalance.Uint64()
 			return nil
@@ -283,8 +276,7 @@ func TestRemoveFromValidatorsList(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			validatorList, err := validators["VE"].service.BlockChain().GetAutonityContractTendermint().GetCommittee(
-				validators["VE"].service.BlockChain(),
+			validatorList, err := validators["VE"].service.BlockChain().GetAutonityContractTendermint060().GetCommittee(
 				validators["VE"].service.BlockChain().CurrentHeader(),
 				stateDB,
 			)
@@ -296,9 +288,8 @@ func TestRemoveFromValidatorsList(t *testing.T) {
 				validatorListStr = append(validatorListStr, v.Address.String())
 			}
 
-			// TODO: is this check correct ?
-			if len(validatorsListGenesis) != len(validatorListStr) {
-				t.Fatal("Incorrect validator list", "len(validatorsListGenesis)", len(validatorsListGenesis), "len(validatorListStr)", len(validatorListStr))
+			if len(validatorsListGenesis) <= len(validatorListStr) {
+				t.Fatal("Incorrect validator list")
 			}
 		},
 	}
@@ -330,18 +321,17 @@ func TestRemoveFromValidatorsList(t *testing.T) {
 			auth.GasLimit = uint64(300000) // in units
 			auth.GasPrice = gasPrice
 
-			contractAddress := validator.service.BlockChain().GetAutonityContractTendermint().Address()
-			instance, err := NewAutonity(contractAddress, conn)
+			instance, err := NewAutonity(autonity_tendermint_060.ContractAddress, conn)
 			if err != nil {
 				t.Fatal(err)
 			}
 			validatorsList := validator.service.BlockChain().Config().AutonityContractConfig.GetValidatorUsers()
-			_, err = instance.RemoveUser(auth, validatorsList[0].Address)
+			_, err = instance.RemoveUser(auth, *validatorsList[0].Address)
 			if err != nil {
 				t.Fatal(err)
 			}
 			skip = false
-			testCase.removedPeers[validatorsList[0].Address] = validator.lastBlock
+			testCase.removedPeers[*validatorsList[0].Address] = validator.lastBlock
 		})
 
 		return skip, nil, nil
@@ -408,8 +398,7 @@ func TestAddIncorrectStakeholdersToList(t *testing.T) {
 			auth.GasLimit = uint64(300000) // in units
 			auth.GasPrice = gasPrice
 
-			contractAddress := validator.service.BlockChain().GetAutonityContractTendermint().Address()
-			instance, err := NewAutonity(contractAddress, conn)
+			instance, err := NewAutonity(autonity_tendermint_060.ContractAddress, conn)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -485,8 +474,7 @@ func TestAddStakeholderWithCorruptedEnodeToList(t *testing.T) {
 			auth.GasLimit = uint64(300000) // in units
 			auth.GasPrice = gasPrice
 
-			contractAddress := validator.service.BlockChain().GetAutonityContractTendermint().Address()
-			instance, err := NewAutonity(contractAddress, conn)
+			instance, err := NewAutonity(autonity_tendermint_060.ContractAddress, conn)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -718,8 +706,7 @@ func upgradeHook(t *testing.T, upgradeBlocks map[uint64]struct{}, operatorAddres
 		auth.GasLimit = uint64(30000000) // in units
 		auth.GasPrice = gasPrice
 
-		contractAddress := validator.service.BlockChain().GetAutonityContractTendermint().Address()
-		instance, err := NewAutonity(contractAddress, conn)
+		instance, err := NewAutonity(autonity_tendermint_060.ContractAddress, conn)
 		if err != nil {
 			t.Fatal(err)
 		}
