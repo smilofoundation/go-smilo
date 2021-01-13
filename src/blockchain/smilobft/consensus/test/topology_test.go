@@ -43,6 +43,7 @@ func TestTendermintStarSuccess(t *testing.T) {
 }
 
 func TestTendermintStarOverParticipantSuccess(t *testing.T) {
+	t.Skip("test is flaky - https://github.com/clearmatics/autonity/issues/496")
 	if testing.Short()  || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
 	}
@@ -307,7 +308,7 @@ func TestTendermintAddValidatorsToTopologySuccess(t *testing.T) {
 }
 
 func TestTendermintAddParticipantsToTopologySuccess(t *testing.T) {
-	t.Skip("should be fixed by https://go-smilo/src/blockchain/smilobft/issues/431")
+	t.Skip("should be fixed by https://github.com/clearmatics/autonity/issues/431")
 
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
@@ -357,7 +358,7 @@ func TestTendermintAddParticipantsToTopologySuccess(t *testing.T) {
 }
 
 func TestTendermintAddStakeholdersToTopologySuccess(t *testing.T) {
-	t.Skip("should be fixed by https://go-smilo/src/blockchain/smilobft/issues/431")
+	t.Skip("should be fixed by https://github.com/clearmatics/autonity/issues/431")
 
 	if testing.Short() {
 		t.Skip("skipping test in short mode")

@@ -4,7 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go-smilo/src/blockchain/smilobft/cmn/acdefault"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"math/big"
 	"testing"
 
@@ -112,7 +112,7 @@ func TestAPIGetContractAddress(t *testing.T) {
 	_, err = chain.InsertChain(types.Blocks{block})
 	assert.Nil(t, err)
 
-	want := autonity_tendermint.ContractAddress
+	want := autonity_tendermint_060.ContractAddress
 
 	API := &API{
 		tendermint: engine,

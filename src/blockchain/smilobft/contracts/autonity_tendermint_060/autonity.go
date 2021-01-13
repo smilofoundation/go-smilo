@@ -1,9 +1,10 @@
-package autonity_tendermint
+package autonity_tendermint_060
 
 import (
 	"errors"
+	"github.com/ethereum/go-ethereum/crypto"
+	"go-smilo/src/blockchain/smilobft/params"
 	"math/big"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -13,62 +14,60 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/core/vm"
-	"go-smilo/src/blockchain/smilobft/params"
 )
 
 var ErrAutonityContract = errors.New("could not call Autonity contract")
 var ErrWrongParameter = errors.New("wrong parameter")
+var Deployer = common.Address{}
+var ContractAddress = crypto.CreateAddress(Deployer, 0)
 
 const ABISPEC = "ABISPEC"
 
-func NewAutonityContract(
-	bc Blockchainer,
-	canTransfer func(db vm.StateDB, addr common.Address, amount *big.Int) bool,
-	transfer func(db vm.StateDB, sender, recipient common.Address, amount, blockNumber *big.Int),
-	GetHashFn func(ref *types.Header, chain ChainContext) func(n uint64) common.Hash,
-) *Contract {
-	return &Contract{
-		bc:          bc,
-		canTransfer: canTransfer,
-		transfer:    transfer,
-		GetHashFn:   GetHashFn,
-	}
-}
-
-type ChainContext interface {
-	// Engine retrieves the chain's consensus engine.
-	Engine() consensus.Engine
-
-	// GetHeader returns the hash corresponding to their hash.
-	GetHeader(common.Hash, uint64) *types.Header
+// EVMProvider provides a new evm. This allows us to decouple the contract from *params.ChainConfig which is required to build a new evm.
+type EVMProvider interface {
+	EVM(header *types.Header, origin common.Address, statedb *state.StateDB) *vm.EVM
 }
 
 type Blockchainer interface {
-	ChainContext
-	GetVMConfig() *vm.Config
 	Config() *params.ChainConfig
-
 	UpdateEnodeWhitelist(newWhitelist *types.Nodes)
 	ReadEnodeWhitelist(EnableNodePermissionFlag bool) *types.Nodes
 
 	PutKeyValue(key []byte, value []byte) error
-	GetKeyValue(key []byte) ([]byte, error)
 }
 
 type Contract struct {
-	address     common.Address
-	contractABI *abi.ABI
-	bc          Blockchainer
-	metrics     EconomicMetrics
+	//address     common.Address
+	evmProvider        EVMProvider
+	operator           common.Address
+	initialMinGasPrice uint64
+	contractABI        *abi.ABI
+	stringContractABI  string
+	bc                 Blockchainer
+	metrics            EconomicMetrics
 
-	canTransfer func(db vm.StateDB, addr common.Address, amount *big.Int) bool
-	transfer    func(db vm.StateDB, sender, recipient common.Address, amount, blockNumber *big.Int)
-	GetHashFn   func(ref *types.Header, chain ChainContext) func(n uint64) common.Hash
 	sync.RWMutex
+}
+
+func NewAutonityContract(
+	bc Blockchainer,
+	operator common.Address,
+	minGasPrice uint64,
+	ABI string,
+	evmProvider EVMProvider,
+) (*Contract, error) {
+	contract := Contract{
+		stringContractABI:  ABI,
+		operator:           operator,
+		initialMinGasPrice: minGasPrice,
+		bc:                 bc,
+		evmProvider:        evmProvider,
+	}
+	err := contract.upgradeAbiCache(ABI)
+	return &contract, err
 }
 
 // measure metrics of user's meta data by regarding of network economic.
@@ -78,15 +77,9 @@ func (ac *Contract) MeasureMetricsOfNetworkEconomic(header *types.Header, stateD
 	}
 
 	// prepare abi and evm context
-	deployer := ac.bc.Config().AutonityContractConfig.Deployer
-	sender := vm.AccountRef(deployer)
 	gas := uint64(0xFFFFFFFF)
-	evm := ac.getEVM(header, deployer, stateDB)
-
-	ABI, err := ac.abi()
-	if err != nil {
-		return
-	}
+	evm := ac.evmProvider.EVM(header, Deployer, stateDB)
+	ABI := ac.contractABI
 
 	// pack the function which dump the data from contract.
 	input, err := ABI.Pack("dumpEconomicsMetricData")
@@ -97,8 +90,7 @@ func (ac *Contract) MeasureMetricsOfNetworkEconomic(header *types.Header, stateD
 
 	// call evm.
 	value := new(big.Int).SetUint64(0x00)
-	ret, _, vmerr := evm.Call(sender, ac.Address(), input, gas, value, false)
-	log.Debug("bytes return from contract: ", ret)
+	ret, _, vmerr := evm.Call(vm.AccountRef(Deployer), ContractAddress, input, gas, value, false)
 	if vmerr != nil {
 		log.Warn("Error Autonity Contract dumpNetworkEconomics", err, vmerr)
 		return
@@ -116,13 +108,15 @@ func (ac *Contract) MeasureMetricsOfNetworkEconomic(header *types.Header, stateD
 		return
 	}
 
-	ac.metrics.SubmitEconomicMetrics(&v, stateDB, header.Number.Uint64(), ac.bc.Config().AutonityContractConfig.Operator)
+	ac.metrics.SubmitEconomicMetrics(&v, stateDB, header.Number.Uint64(), ac.operator)
 }
 
-func (ac *Contract) GetCommittee(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (types.Committee, error) {
-	// The Autonity Contract is not deployed yet at block #1, the committee is supposed to remains the same as genesis.
-	if header.Number.Cmp(big.NewInt(1)) == 0 {
-		return chain.GetHeaderByNumber(0).Committee, nil
+func (ac *Contract) GetCommittee(header *types.Header, statedb *state.StateDB) (types.Committee, error) {
+	// The Autonity Contract is not deployed yet at block #1, we return an error if this
+	// function is called at this height. In a past version we were returning the genesis committee field
+	// but this was at the cost of having a parameter causing circular imports.
+	if header.Number.Uint64() <= 1 {
+		return nil, errors.New("calling GetCommittee for block #1 or #0")
 	}
 
 	var committeeSet types.Committee
@@ -164,10 +158,14 @@ func (ac *Contract) GetWhitelist(block *types.Block, db *state.StateDB) (*types.
 
 func (ac *Contract) GetMinimumGasPrice(block *types.Block, db *state.StateDB) (uint64, error) {
 	if block.Number().Uint64() <= 1 {
-		return ac.bc.Config().AutonityContractConfig.MinGasPrice, nil
+		return ac.initialMinGasPrice, nil
 	}
 
 	return ac.callGetMinimumGasPrice(db, block.Header())
+}
+
+func (ac *Contract) GetProposerFromAC(header *types.Header, db *state.StateDB, height uint64, round int64) common.Address {
+	return ac.callGetProposer(db, header, height, round)
 }
 
 func (ac *Contract) SetMinimumGasPrice(block *types.Block, db *state.StateDB, price *big.Int) error {
@@ -188,7 +186,7 @@ func (ac *Contract) FinalizeAndGetCommittee(transactions types.Transactions, rec
 	}
 
 	log.Info("ApplyFinalize",
-		"balance", statedb.GetBalance(ac.Address()),
+		"balance", statedb.GetBalance(ContractAddress),
 		"block", header.Number.Uint64(),
 		"gas", blockGas.Uint64())
 
@@ -239,9 +237,9 @@ func (ac *Contract) performContractUpgrade(statedb *state.StateDB, header *types
 	snapshot := statedb.Snapshot()
 
 	// Create account will delete previous the AC stateobject and carry over the balance
-	statedb.CreateAccount(ac.Address())
+	statedb.CreateAccount(ContractAddress)
 
-	if err := ac.UpdateAutonityContract(header, statedb, bytecode, newAbi, stateBefore); err != nil {
+	if err := ac.updateAutonityContract(header, statedb, bytecode, stateBefore); err != nil {
 		statedb.RevertToSnapshot(snapshot)
 		return err
 	}
@@ -261,37 +259,16 @@ func (ac *Contract) performContractUpgrade(statedb *state.StateDB, header *types
 	return nil
 }
 
-func (ac *Contract) Address() common.Address {
-	if reflect.DeepEqual(ac.address, common.Address{}) {
-		addr, err := ac.bc.Config().AutonityContractConfig.GetContractAddress()
-		if err != nil {
-			log.Error("Cant get contract address", "err", err)
-		}
-		return addr
-	}
-	return ac.address
-}
-
-func (ac *Contract) abi() (*abi.ABI, error) {
-	ac.Lock()
-	defer ac.Unlock()
-	if ac.contractABI != nil {
-		return ac.contractABI, nil
-	}
-	var JSONString = ac.bc.Config().AutonityContractConfig.ABI
-
-	bytes, err := ac.bc.GetKeyValue([]byte(ABISPEC))
-	if err == nil || bytes != nil {
-		JSONString = string(bytes)
-	}
-
-	ABI, err := abi.JSON(strings.NewReader(JSONString))
-	if err != nil {
-		return nil, err
-	}
-	ac.contractABI = &ABI
-	return ac.contractABI, nil
-}
+//func (ac *Contract) Address() common.Address {
+//	if reflect.DeepEqual(ac.address, common.Address{}) {
+//		addr, err := ac.bc.Config().AutonityContractConfig.GetContractAddress()
+//		if err != nil {
+//			log.Error("Cant get contract address", "err", err)
+//		}
+//		return addr
+//	}
+//	return ac.address
+//}
 
 func (ac *Contract) upgradeAbiCache(newAbi string) error {
 	ac.Lock()
@@ -306,18 +283,5 @@ func (ac *Contract) upgradeAbiCache(newAbi string) error {
 }
 
 func (ac *Contract) GetContractABI() string {
-	ac.Lock()
-	defer ac.Unlock()
-
-	var JSONString = ac.bc.Config().AutonityContractConfig.ABI
-	bytes, err := ac.bc.GetKeyValue([]byte(ABISPEC))
-	if err == nil || bytes != nil {
-		JSONString = string(bytes)
-	}
-
-	if err != nil {
-		log.Warn("can't get the contract ABI", "err", err)
-	}
-
-	return JSONString
+	return ac.stringContractABI
 }

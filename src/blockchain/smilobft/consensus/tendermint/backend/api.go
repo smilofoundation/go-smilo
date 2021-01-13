@@ -17,7 +17,7 @@
 package backend
 
 import (
-	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"go-smilo/src/blockchain/smilobft/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -61,7 +61,7 @@ func (api *API) GetCommitteeAtHash(hash common.Hash) (types.Committee, error) {
 
 // Get Autonity contract address
 func (api *API) GetContractAddress() common.Address {
-	return autonity_tendermint.ContractAddress
+	return autonity_tendermint_060.ContractAddress
 }
 
 // Get Autonity contract ABI

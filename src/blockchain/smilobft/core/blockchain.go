@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"io"
 	"math/big"
 	mrand "math/rand"
@@ -192,6 +193,7 @@ type BlockChain struct {
 	privateStateCache          state.Database // Private state database to reuse between imports (contains state cache)
 	autonityContract           *autonity.Contract
 	autonityContractTendermint *autonity_tendermint.Contract
+	autonityContractTendermint060 *autonity_tendermint_060.Contract
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -267,25 +269,30 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		bc.processor.SetAutonityContract(bc.autonityContract)
 	} else if chainConfig.Tendermint != nil && chainConfig.AutonityContractConfig != nil {
 
-		acConfig := bc.Config().AutonityContractConfig
-		var JSONString = acConfig.ABI
-		bytes, err := bc.GetKeyValue([]byte(autonity_tendermint.ABISPEC))
-		if err == nil || bytes != nil {
-			JSONString = string(bytes)
-		}
-
-		contract, err := autonity_tendermint.NewAutonityContract(
-			bc,
-			acConfig.Operator,
-			acConfig.MinGasPrice,
-			JSONString,
-			&defaultEVMProvider{bc},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		bc.autonityContractTendermint = contract
+		//acConfig := bc.Config().AutonityContractConfig
+		//var JSONString = acConfig.ABI
+		//bytes, err := bc.GetKeyValue([]byte(autonity_tendermint.ABISPEC))
+		//if err == nil || bytes != nil {
+		//	JSONString = string(bytes)
+		//} else {
+		//	panic("could not get autonity_tendermint ABI")
+		//}
+		//
+		//contract, err := autonity_tendermint.NewAutonityContract(
+		//	bc,
+		//	acConfig.Operator,
+		//	acConfig.MinGasPrice,
+		//	JSONString,
+		//	&defaultEVMProvider{bc},
+		//)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//
+		//bc.autonityContractTendermint = contract
+		bc.autonityContractTendermint = autonity_tendermint.NewAutonityContract(bc, CanTransfer, Transfer, func(ref *types.Header, chain autonity_tendermint.ChainContext) func(n uint64) common.Hash {
+			return GetHashFn(ref, chain)
+		})
 		bc.processor.SetAutonityContractTendermint(bc.autonityContractTendermint)
 	} else {
 		logmsg := "Wont set Istanbul Tendermint SportDAO autonityContract, is this correct ? "
@@ -2424,6 +2431,9 @@ func (bc *BlockChain) Config() *params.ChainConfig             { return bc.chain
 func (bc *BlockChain) GetAutonityContract() *autonity.Contract { return bc.autonityContract }
 func (bc *BlockChain) GetAutonityContractTendermint() *autonity_tendermint.Contract {
 	return bc.autonityContractTendermint
+}
+func (bc *BlockChain) GetAutonityContractTendermint060() *autonity_tendermint_060.Contract {
+	return bc.autonityContractTendermint060
 }
 
 // Engine retrieves the blockchain's consensus engine.

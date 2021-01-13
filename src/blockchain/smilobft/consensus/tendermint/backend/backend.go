@@ -303,10 +303,10 @@ func (sb *Backend) VerifyProposal(proposal types.Block) (time.Duration, error) {
 	// TODO: fix always false statement and check for non nil
 	// TODO: use interface instead of type
 	block := &proposal
-	//if block == nil {
-	//	sb.logger.Error("Invalid proposal, %v", proposal)
-	//	return 0, errInvalidProposal
-	//}
+	if block == nil {
+		sb.logger.Error("Invalid proposal, %v", proposal)
+		return 0, errInvalidProposal
+	}
 
 	// check bad block
 	if sb.HasBadProposal(block.Hash()) {

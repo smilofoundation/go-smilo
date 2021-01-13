@@ -264,6 +264,8 @@ func initGenesis(ctx *cli.Context) error {
 			spew.Dump(genesis.Config.AutonityContractConfig)
 			return fmt.Errorf("autonity contract section is invalid. error:%v", err.Error())
 		}
+		log.Info("$$$$$$$$$$ Init, AFTER AutonityContractConfig Prepare", "genesis.Config.AutonityContractConfig", genesis.Config.AutonityContractConfig)
+
 	} else {
 		log.Warn("$$$$$$$$$$ Init, Smart contract governance not defined !")
 		//panic("$$$$$$$$$$ Init, Smart contract governance not defined !")

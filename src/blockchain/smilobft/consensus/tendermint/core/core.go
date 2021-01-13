@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/cmn"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"math/big"
 	"sync"
 	"time"
@@ -33,7 +33,6 @@ import (
 
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"go-smilo/src/blockchain/smilobft/core/types"
-
 )
 
 var (
@@ -162,7 +161,7 @@ type core struct {
 
 	futureRoundChange map[int64]map[common.Address]uint64
 
-	autonityContract *autonity_tendermint.Contract
+	autonityContract *autonity_tendermint_060.Contract
 }
 
 func (c *core) GetCurrentHeightMessages() []*Message {

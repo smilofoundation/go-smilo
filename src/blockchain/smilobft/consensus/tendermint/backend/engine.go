@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/bft"
 	"math/big"
 	"time"
@@ -348,7 +349,23 @@ func (sb *Backend) AutonityContractFinalize(header *types.Header, chain consensu
 	sb.contractsMu.Lock()
 	defer sb.contractsMu.Unlock()
 
+	if header.Number.Int64() == 1 {
+		log.Info("Autonity Contract Deployer", "Address", chain.Config().AutonityContractConfig.Deployer)
+
+		contractAddress, err := sb.blockchain.GetAutonityContractTendermint().DeployAutonityContract(chain, header, state)
+		if err != nil {
+			sb.logger.Error("Deploy autonity contract error", "error", err)
+			return nil, nil, err
+		}
+		sb.autonityContractAddress = contractAddress
+	}
+
+	if sb.autonityContractAddress == (common.Address{}) {
+		sb.autonityContractAddress = crypto.CreateAddress(sb.blockchain.Config().AutonityContractConfig.Deployer, 0)
+	}
+
 	committeeSet, receipt, err := sb.blockchain.GetAutonityContractTendermint().FinalizeAndGetCommittee(txs, receipts, header, state)
+
 	if err != nil {
 		sb.logger.Error("Autonity Contract finalize returns err", "err", err)
 		return nil, nil, err
@@ -529,9 +546,9 @@ func (sb *Backend) Start(_ context.Context, chain consensus.ChainReader, current
 	sb.hasBadBlock = hasBadBlock
 
 	//TODO: is this required or not ?
-	//if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
-	//	return err
-	//}
+	if err := sb.core.Start(context.Background(), chain, currentBlock, hasBadBlock); err != nil {
+		return err
+	}
 
 	sb.coreStarted = true
 

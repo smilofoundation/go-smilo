@@ -2,17 +2,17 @@ package core
 
 import (
 	"errors"
-	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"sort"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/bft"
 	ethcore "go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/state"
 	"go-smilo/src/blockchain/smilobft/core/types"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 type committee interface {
@@ -139,11 +139,11 @@ func getMemberIndex(members types.Committee, memberAddr common.Address) int64 {
 type weightedRandomSamplingCommittee struct {
 	previousHeader         *types.Header
 	bc                     *ethcore.BlockChain
-	autonityContract       *autonity_tendermint.Contract
+	autonityContract       *autonity_tendermint_060.Contract
 	previousBlockStateRoot common.Hash
 }
 
-func newWeightedRandomSamplingCommittee(previousBlock *types.Block, autonityContract *autonity_tendermint.Contract, bc *ethcore.BlockChain) *weightedRandomSamplingCommittee {
+func newWeightedRandomSamplingCommittee(previousBlock *types.Block, autonityContract *autonity_tendermint_060.Contract, bc *ethcore.BlockChain) *weightedRandomSamplingCommittee {
 	return &weightedRandomSamplingCommittee{
 		previousHeader:         previousBlock.Header(),
 		bc:                     bc,

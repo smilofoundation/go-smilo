@@ -32,8 +32,13 @@ import (
 // Start implements core.Tendermint.Start
 func (c *core) Start(ctx context.Context, chain consensus.ChainReader, currentBlock func() *types.Block, hasBadBlock func(hash common.Hash) bool) error {
 	// Set the autonity contract
-	c.autonityContract = c.backend.BlockChain().GetAutonityContractTendermint()
+	c.autonityContract = c.backend.BlockChain().GetAutonityContractTendermint060()
 	ctx, c.cancel = context.WithCancel(ctx)
+
+	err := c.backend.Start(ctx, chain, currentBlock, hasBadBlock)
+	if err != nil {
+		return err
+	}
 
 	c.subscribeEvents()
 
