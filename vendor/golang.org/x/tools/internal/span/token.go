@@ -99,14 +99,6 @@ func (s Span) Range(converter *TokenConverter) (Range, error) {
 	if err != nil {
 		return Range{}, err
 	}
-	// go/token will panic if the offset is larger than the file's size,
-	// so check here to avoid panicking.
-	if s.Start().Offset() > converter.file.Size() {
-		return Range{}, fmt.Errorf("start offset %v is past the end of the file %v", s.Start(), converter.file.Size())
-	}
-	if s.End().Offset() > converter.file.Size() {
-		return Range{}, fmt.Errorf("end offset %v is past the end of the file %v", s.End(), converter.file.Size())
-	}
 	return Range{
 		FileSet: converter.fset,
 		Start:   converter.file.Pos(s.Start().Offset()),
@@ -115,14 +107,9 @@ func (s Span) Range(converter *TokenConverter) (Range, error) {
 }
 
 func (l *TokenConverter) ToPosition(offset int) (int, int, error) {
-	if offset > l.file.Size() {
-		return 0, 0, fmt.Errorf("offset %v is past the end of the file %v", offset, l.file.Size())
-	}
+	//TODO: check offset fits in file
 	pos := l.file.Pos(offset)
 	p := l.fset.Position(pos)
-	if offset == l.file.Size() {
-		return p.Line + 1, 1, nil
-	}
 	return p.Line, p.Column, nil
 }
 
@@ -132,7 +119,7 @@ func (l *TokenConverter) ToOffset(line, col int) (int, error) {
 	}
 	lineMax := l.file.LineCount() + 1
 	if line > lineMax {
-		return -1, fmt.Errorf("line is beyond end of file %v", lineMax)
+		return -1, fmt.Errorf("line is beyond end of file")
 	} else if line == lineMax {
 		if col > 1 {
 			return -1, fmt.Errorf("column is beyond end of file")

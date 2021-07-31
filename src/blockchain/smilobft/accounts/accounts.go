@@ -131,6 +131,8 @@ type Wallet interface {
 	// about which fields or actions are needed. The user may retry by providing
 	// the needed details via SignHashWithPassphrase, or by other means (e.g. unlock
 	// the account in a keystore).
+	//
+	// This method should return the signature in 'canonical' format, with v 0 or 1
 	SignText(account Account, text []byte) ([]byte, error)
 
 	// SignTextWithPassphrase is identical to Signtext, but also takes a password
@@ -171,6 +173,8 @@ type Backend interface {
 	// Subscribe creates an async subscription to receive notifications when the
 	// backend detects the arrival or departure of a wallet.
 	Subscribe(sink chan<- WalletEvent) event.Subscription
+
+	Close()
 }
 
 // TextHash is a helper function that calculates a hash for the given message that can be

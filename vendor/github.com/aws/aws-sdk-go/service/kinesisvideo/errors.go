@@ -4,6 +4,19 @@ package kinesisvideo
 
 const (
 
+	// ErrCodeAccessDeniedException for service response error code
+	// "AccessDeniedException".
+	//
+	// You do not have required permissions to perform this operation.
+	ErrCodeAccessDeniedException = "AccessDeniedException"
+
+	// ErrCodeAccountChannelLimitExceededException for service response error code
+	// "AccountChannelLimitExceededException".
+	//
+	// You have reached the maximum limit of active signaling channels for this
+	// AWS account in this region.
+	ErrCodeAccountChannelLimitExceededException = "AccountChannelLimitExceededException"
+
 	// ErrCodeAccountStreamLimitExceededException for service response error code
 	// "AccountStreamLimitExceededException".
 	//
@@ -70,7 +83,7 @@ const (
 	// "VersionMismatchException".
 	//
 	// The stream version that you specified is not the latest version. To get the
-	// latest version, use the DescribeStream (http://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_DescribeStream.html)
+	// latest version, use the DescribeStream (https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/API_DescribeStream.html)
 	// API.
 	ErrCodeVersionMismatchException = "VersionMismatchException"
 )

@@ -10,7 +10,6 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/analysis/passes/findcall"
-	"golang.org/x/tools/internal/testenv"
 )
 
 func init() {
@@ -27,13 +26,11 @@ func init() {
 
 // TestTheTest tests the analysistest testing infrastructure.
 func TestTheTest(t *testing.T) {
-	testenv.NeedsTool(t, "go")
-
 	// We'll simulate a partly failing test of the findcall analysis,
 	// which (by default) reports calls to functions named 'println'.
 	findcall.Analyzer.Flags.Set("name", "println")
 
-	filemap := map[string]string{"a/b.go": `package main // want package:"found"
+	filemap := map[string]string{"a/b.go": `package main
 
 func main() {
 	// The expectation is ill-formed:
@@ -42,7 +39,7 @@ func main() {
 	print() // want foo:
 	print() // want "\xZZ scan error"
 
-	// A diagnostic is reported at this line, but the expectation doesn't match:
+	// A dignostic is reported at this line, but the expectation doesn't match:
 	println("hello, world") // want "wrong expectation text"
 
 	// An unexpected diagnostic is reported at this line:

@@ -8,112 +8,87 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
 	"golang.org/x/tools/internal/span"
-	"golang.org/x/tools/internal/telemetry/log"
-	"golang.org/x/tools/internal/telemetry/tag"
 )
 
 func (s *Server) completion(ctx context.Context, params *protocol.CompletionParams) (*protocol.CompletionList, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
-	options := view.Options()
-	f, err := view.GetFile(ctx, uri)
+	f, m, err := getGoFile(ctx, view, uri)
 	if err != nil {
 		return nil, err
 	}
-	options.Completion.FullDocumentation = options.HoverKind == source.FullDocumentation
-	candidates, surrounding, err := source.Completion(ctx, view, f, params.Position, options.Completion)
+	spn, err := m.PointSpan(params.Position)
 	if err != nil {
-		log.Print(ctx, "no completions found", tag.Of("At", params.Position), tag.Of("Failure", err))
+		return nil, err
 	}
-	if candidates == nil {
-		return &protocol.CompletionList{
-			Items: []protocol.CompletionItem{},
-		}, nil
+	rng, err := spn.Range(m.Converter)
+	if err != nil {
+		return nil, err
+	}
+	items, surrounding, err := source.Completion(ctx, f, rng.Start)
+	if err != nil {
+		s.session.Logger().Infof(ctx, "no completions found for %s:%v:%v: %v", uri, int(params.Position.Line), int(params.Position.Character), err)
 	}
 	// We might need to adjust the position to account for the prefix.
-	rng, err := surrounding.Range()
-	if err != nil {
-		return nil, err
+	insertionRng := protocol.Range{
+		Start: params.Position,
+		End:   params.Position,
 	}
-	// Sort the candidates by score, since that is not supported by LSP yet.
-	sort.SliceStable(candidates, func(i, j int) bool {
-		return candidates[i].Score > candidates[j].Score
-	})
-
-	// When using deep completions/fuzzy matching, report results as incomplete so
-	// client fetches updated completions after every key stroke.
-	incompleteResults := options.Completion.Deep || options.Completion.FuzzyMatching
-
-	items := toProtocolCompletionItems(candidates, rng, options)
-
-	if incompleteResults {
-		prefix := surrounding.Prefix()
-		for i := range items {
-			// We send the prefix as the filterText to trick VSCode into not
-			// reordering our candidates. All the candidates will appear to
-			// be a perfect match, so VSCode's fuzzy matching/ranking just
-			// maintains the natural "sortText" ordering. We can only do
-			// this in tandem with "incompleteResults" since otherwise
-			// client side filtering is important.
-			items[i].FilterText = prefix
+	var prefix string
+	if surrounding != nil {
+		prefix = surrounding.Prefix()
+		spn, err := surrounding.Range.Span()
+		if err != nil {
+			s.session.Logger().Infof(ctx, "failed to get span for surrounding position: %s:%v:%v: %v", uri, int(params.Position.Line), int(params.Position.Character), err)
+		} else {
+			rng, err := m.Range(spn)
+			if err != nil {
+				s.session.Logger().Infof(ctx, "failed to convert surrounding position: %s:%v:%v: %v", uri, int(params.Position.Line), int(params.Position.Character), err)
+			} else {
+				insertionRng = rng
+			}
 		}
 	}
-
 	return &protocol.CompletionList{
-		IsIncomplete: incompleteResults,
-		Items:        items,
+		IsIncomplete: false,
+		Items:        toProtocolCompletionItems(items, prefix, insertionRng, s.insertTextFormat, s.usePlaceholders),
 	}, nil
 }
 
-func toProtocolCompletionItems(candidates []source.CompletionItem, rng protocol.Range, options source.Options) []protocol.CompletionItem {
-	var (
-		items                  = make([]protocol.CompletionItem, 0, len(candidates))
-		numDeepCompletionsSeen int
-	)
+func toProtocolCompletionItems(candidates []source.CompletionItem, prefix string, rng protocol.Range, insertTextFormat protocol.InsertTextFormat, usePlaceholders bool) []protocol.CompletionItem {
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return candidates[i].Score > candidates[j].Score
+	})
+	items := make([]protocol.CompletionItem, 0, len(candidates))
 	for i, candidate := range candidates {
-		// Limit the number of deep completions to not overwhelm the user in cases
-		// with dozens of deep completion matches.
-		if candidate.Depth > 0 {
-			if !options.Completion.Deep {
-				continue
-			}
-			if numDeepCompletionsSeen >= source.MaxDeepCompletions {
-				continue
-			}
-			numDeepCompletionsSeen++
-		}
-		insertText := candidate.InsertText
-		if options.InsertTextFormat == protocol.SnippetTextFormat {
-			insertText = candidate.Snippet()
-		}
-
-		// This can happen if the client has snippets disabled but the
-		// candidate only supports snippet insertion.
-		if insertText == "" {
+		// Match against the label.
+		if !strings.HasPrefix(candidate.Label, prefix) {
 			continue
 		}
-
+		insertText := candidate.InsertText
+		if insertTextFormat == protocol.SnippetTextFormat {
+			insertText = candidate.Snippet(usePlaceholders)
+		}
 		item := protocol.CompletionItem{
 			Label:  candidate.Label,
 			Detail: candidate.Detail,
-			Kind:   candidate.Kind,
+			Kind:   toProtocolCompletionItemKind(candidate.Kind),
 			TextEdit: &protocol.TextEdit{
 				NewText: insertText,
 				Range:   rng,
 			},
-			InsertTextFormat:    options.InsertTextFormat,
-			AdditionalTextEdits: candidate.AdditionalTextEdits,
+			InsertTextFormat: insertTextFormat,
 			// This is a hack so that the client sorts completion results in the order
 			// according to their score. This can be removed upon the resolution of
 			// https://github.com/Microsoft/language-server-protocol/issues/348.
-			SortText:      fmt.Sprintf("%05d", i),
-			FilterText:    candidate.InsertText,
-			Preselect:     i == 0,
-			Documentation: candidate.Documentation,
+			SortText:   fmt.Sprintf("%05d", i),
+			FilterText: candidate.InsertText,
+			Preselect:  i == 0,
 		}
 		// Trigger signature help for any function or method completion.
 		// This is helpful even if a function does not have parameters,
@@ -127,4 +102,29 @@ func toProtocolCompletionItems(candidates []source.CompletionItem, rng protocol.
 		items = append(items, item)
 	}
 	return items
+}
+
+func toProtocolCompletionItemKind(kind source.CompletionItemKind) protocol.CompletionItemKind {
+	switch kind {
+	case source.InterfaceCompletionItem:
+		return protocol.InterfaceCompletion
+	case source.StructCompletionItem:
+		return protocol.StructCompletion
+	case source.TypeCompletionItem:
+		return protocol.TypeParameterCompletion // ??
+	case source.ConstantCompletionItem:
+		return protocol.ConstantCompletion
+	case source.FieldCompletionItem:
+		return protocol.FieldCompletion
+	case source.ParameterCompletionItem, source.VariableCompletionItem:
+		return protocol.VariableCompletion
+	case source.FunctionCompletionItem:
+		return protocol.FunctionCompletion
+	case source.MethodCompletionItem:
+		return protocol.MethodCompletion
+	case source.PackageCompletionItem:
+		return protocol.ModuleCompletion // ??
+	default:
+		return protocol.TextCompletion
+	}
 }

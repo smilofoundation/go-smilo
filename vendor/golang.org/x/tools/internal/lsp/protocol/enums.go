@@ -13,7 +13,7 @@ var (
 	namesInitializeError        [int(UnknownProtocolVersion) + 1]string
 	namesMessageType            [int(Log) + 1]string
 	namesFileChangeType         [int(Deleted) + 1]string
-	namesWatchKind              [int(WatchDelete) + 1]string
+	namesWatchKind              [int(Change) + 1]string
 	namesCompletionTriggerKind  [int(TriggerForIncompleteCompletions) + 1]string
 	namesDiagnosticSeverity     [int(SeverityHint) + 1]string
 	namesDiagnosticTag          [int(Unnecessary) + 1]string
@@ -40,9 +40,7 @@ func init() {
 	namesFileChangeType[int(Changed)] = "Changed"
 	namesFileChangeType[int(Deleted)] = "Deleted"
 
-	namesWatchKind[int(WatchCreate)] = "WatchCreate"
-	namesWatchKind[int(WatchChange)] = "WatchChange"
-	namesWatchKind[int(WatchDelete)] = "WatchDelete"
+	namesWatchKind[int(Change)] = "Change"
 
 	namesCompletionTriggerKind[int(Invoked)] = "Invoked"
 	namesCompletionTriggerKind[int(TriggerCharacter)] = "TriggerCharacter"
@@ -61,7 +59,7 @@ func init() {
 	namesCompletionItemKind[int(ConstructorCompletion)] = "constructor"
 	namesCompletionItemKind[int(FieldCompletion)] = "field"
 	namesCompletionItemKind[int(VariableCompletion)] = "var"
-	namesCompletionItemKind[int(ClassCompletion)] = "type"
+	namesCompletionItemKind[int(ClassCompletion)] = "class"
 	namesCompletionItemKind[int(InterfaceCompletion)] = "interface"
 	namesCompletionItemKind[int(ModuleCompletion)] = "package"
 	namesCompletionItemKind[int(PropertyCompletion)] = "property"
@@ -79,7 +77,7 @@ func init() {
 	namesCompletionItemKind[int(StructCompletion)] = "struct"
 	namesCompletionItemKind[int(EventCompletion)] = "event"
 	namesCompletionItemKind[int(OperatorCompletion)] = "operator"
-	namesCompletionItemKind[int(TypeParameterCompletion)] = "typeParam"
+	namesCompletionItemKind[int(TypeParameterCompletion)] = "type"
 
 	namesInsertTextFormat[int(PlainTextTextFormat)] = "PlainText"
 	namesInsertTextFormat[int(SnippetTextFormat)] = "Snippet"

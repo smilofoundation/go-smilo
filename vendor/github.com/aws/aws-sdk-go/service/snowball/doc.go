@@ -10,7 +10,7 @@
 // Snowball Management Console, which enables you to create and manage jobs
 // for Snowball. To transfer data locally with a Snowball device, you'll need
 // to use the Snowball client or the Amazon S3 API adapter for Snowball. For
-// more information, see the User Guide (http://docs.aws.amazon.com/AWSImportExport/latest/ug/api-reference.html).
+// more information, see the User Guide (https://docs.aws.amazon.com/AWSImportExport/latest/ug/api-reference.html).
 //
 // See https://docs.aws.amazon.com/goto/WebAPI/snowball-2016-06-30 for more information on this service.
 //

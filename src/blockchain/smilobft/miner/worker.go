@@ -372,12 +372,18 @@ func (self *worker) wait() {
 			block := result.Block
 			work := result.Work
 
+			var (
+				events []interface{}
+				logs   = append(work.state.Logs(), work.privateState.Logs()...)
+			)
+
 			// Update the block hash in all logs since it is now available and not when the
 			// receipt/log of individual transactions were created.
 			for _, r := range append(work.receipts, work.vaultReceipts...) {
 				for _, l := range r.Logs {
 					l.BlockHash = block.Hash()
 				}
+				logs = append(logs, r.Logs...)
 			}
 			for _, log := range append(work.state.Logs(), work.privateState.Logs()...) {
 				log.BlockHash = block.Hash()
@@ -388,17 +394,14 @@ func (self *worker) wait() {
 			core.WritePrivateStateRoot(self.chainDb, block.Root(), privateStateRoot)
 			allReceipts := mergeReceipts(work.receipts, work.vaultReceipts)
 
-			stat, err := self.chain.WriteBlockWithState(block, allReceipts, work.state, nil)
+			stat, err := self.chain.WriteBlockWithState(block, allReceipts, logs, work.state, nil, true)
 			if err != nil {
 				log.Error("Failed writWriteBlockAndStating block to chain", "err", err)
 				continue
 			}
 			// Broadcast the block and announce chain insertion event
 			self.mux.Post(core.NewMinedBlockEvent{Block: block})
-			var (
-				events []interface{}
-				logs   = append(work.state.Logs(), work.privateState.Logs()...)
-			)
+
 			events = append(events, core.ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 			if stat == core.CanonStatTy {
 				events = append(events, core.ChainHeadEvent{Block: block})

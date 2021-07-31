@@ -39,6 +39,8 @@ const (
 // aws.Config parameter to add your extra config.
 //
 // Example:
+//     mySession := session.Must(session.NewSession())
+//
 //     // Create a Greengrass client from just a session.
 //     svc := greengrass.New(mySession)
 //
@@ -49,11 +51,11 @@ func New(p client.ConfigProvider, cfgs ...*aws.Config) *Greengrass {
 	if c.SigningNameDerived || len(c.SigningName) == 0 {
 		c.SigningName = "greengrass"
 	}
-	return newClient(*c.Config, c.Handlers, c.Endpoint, c.SigningRegion, c.SigningName)
+	return newClient(*c.Config, c.Handlers, c.PartitionID, c.Endpoint, c.SigningRegion, c.SigningName)
 }
 
 // newClient creates, initializes and returns a new service client instance.
-func newClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegion, signingName string) *Greengrass {
+func newClient(cfg aws.Config, handlers request.Handlers, partitionID, endpoint, signingRegion, signingName string) *Greengrass {
 	svc := &Greengrass{
 		Client: client.New(
 			cfg,
@@ -62,9 +64,9 @@ func newClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegio
 				ServiceID:     ServiceID,
 				SigningName:   signingName,
 				SigningRegion: signingRegion,
+				PartitionID:   partitionID,
 				Endpoint:      endpoint,
 				APIVersion:    "2017-06-07",
-				JSONVersion:   "1.1",
 			},
 			handlers,
 		),

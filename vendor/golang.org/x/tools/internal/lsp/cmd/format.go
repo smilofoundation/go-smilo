@@ -9,12 +9,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
+	"golang.org/x/tools/internal/lsp"
 	"golang.org/x/tools/internal/lsp/diff"
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
 	"golang.org/x/tools/internal/span"
-	errors "golang.org/x/xerrors"
 )
 
 // format implements the format verb for gopls.
@@ -44,13 +45,13 @@ Example: reformat this file:
 
 // Run performs the check on the files specified by args and prints the
 // results to stdout.
-func (c *format) Run(ctx context.Context, args ...string) error {
+func (f *format) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		// no files, so no results
 		return nil
 	}
 	// now we ready to kick things off
-	conn, err := c.app.connect(ctx)
+	conn, err := f.app.connect(ctx)
 	if err != nil {
 		return err
 	}
@@ -61,42 +62,44 @@ func (c *format) Run(ctx context.Context, args ...string) error {
 		if file.err != nil {
 			return file.err
 		}
-		filename := spn.URI().Filename()
+		filename, _ := spn.URI().Filename() // this cannot fail, already checked in AddFile above
 		loc, err := file.mapper.Location(spn)
 		if err != nil {
 			return err
 		}
 		if loc.Range.Start != loc.Range.End {
-			return errors.Errorf("only full file formatting supported")
+			return fmt.Errorf("only full file formatting supported")
 		}
 		p := protocol.DocumentFormattingParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: loc.URI},
 		}
 		edits, err := conn.Formatting(ctx, &p)
 		if err != nil {
-			return errors.Errorf("%v: %v", spn, err)
+			return fmt.Errorf("%v: %v", spn, err)
 		}
-		sedits, err := source.FromProtocolEdits(file.mapper, edits)
+		sedits, err := lsp.FromProtocolEdits(file.mapper, edits)
 		if err != nil {
-			return errors.Errorf("%v: %v", spn, err)
+			return fmt.Errorf("%v: %v", spn, err)
 		}
-		formatted := diff.ApplyEdits(string(file.mapper.Content), sedits)
+		ops := source.EditsToDiff(sedits)
+		lines := diff.SplitLines(string(file.mapper.Content))
+		formatted := strings.Join(diff.ApplyEdits(lines, ops), "")
 		printIt := true
-		if c.List {
+		if f.List {
 			printIt = false
 			if len(edits) > 0 {
 				fmt.Println(filename)
 			}
 		}
-		if c.Write {
+		if f.Write {
 			printIt = false
 			if len(edits) > 0 {
 				ioutil.WriteFile(filename, []byte(formatted), 0644)
 			}
 		}
-		if c.Diff {
+		if f.Diff {
 			printIt = false
-			u := diff.ToUnified(filename+".orig", filename, string(file.mapper.Content), sedits)
+			u := diff.ToUnified(filename+".orig", filename, lines, ops)
 			fmt.Print(u)
 		}
 		if printIt {

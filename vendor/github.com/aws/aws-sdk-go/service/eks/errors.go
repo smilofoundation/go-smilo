@@ -4,12 +4,19 @@ package eks
 
 const (
 
+	// ErrCodeBadRequestException for service response error code
+	// "BadRequestException".
+	//
+	// This exception is thrown if the request contains a semantic error. The precise
+	// meaning will depend on the API, and will be documented in the error message.
+	ErrCodeBadRequestException = "BadRequestException"
+
 	// ErrCodeClientException for service response error code
 	// "ClientException".
 	//
-	// These errors are usually caused by a client action, such as using an action
-	// or resource on behalf of a user that doesn't have permissions to use the
-	// action or resource, or specifying an identifier that is not valid.
+	// These errors are usually caused by a client action. Actions can include using
+	// an action or resource on behalf of a user that doesn't have permissions to
+	// use the action or resource or specifying an identifier that is not valid.
 	ErrCodeClientException = "ClientException"
 
 	// ErrCodeInvalidParameterException for service response error code
@@ -18,6 +25,20 @@ const (
 	// The specified parameter is invalid. Review the available parameters for the
 	// API request.
 	ErrCodeInvalidParameterException = "InvalidParameterException"
+
+	// ErrCodeInvalidRequestException for service response error code
+	// "InvalidRequestException".
+	//
+	// The request is invalid given the state of the cluster. Check the state of
+	// the cluster and the associated operations.
+	ErrCodeInvalidRequestException = "InvalidRequestException"
+
+	// ErrCodeNotFoundException for service response error code
+	// "NotFoundException".
+	//
+	// A service resource associated with the request could not be found. Clients
+	// should not retry such requests.
+	ErrCodeNotFoundException = "NotFoundException"
 
 	// ErrCodeResourceInUseException for service response error code
 	// "ResourceInUseException".
@@ -35,7 +56,8 @@ const (
 	// "ResourceNotFoundException".
 	//
 	// The specified resource could not be found. You can view your available clusters
-	// with ListClusters. Amazon EKS clusters are Region-specific.
+	// with ListClusters. You can view your available managed node groups with ListNodegroups.
+	// Amazon EKS clusters and node groups are Region-specific.
 	ErrCodeResourceNotFoundException = "ResourceNotFoundException"
 
 	// ErrCodeServerException for service response error code

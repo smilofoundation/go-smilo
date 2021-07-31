@@ -12,48 +12,70 @@ import (
 	"golang.org/x/tools/internal/span"
 )
 
-func (s *Server) definition(ctx context.Context, params *protocol.DefinitionParams) ([]protocol.Location, error) {
+func (s *Server) definition(ctx context.Context, params *protocol.TextDocumentPositionParams) ([]protocol.Location, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
-	f, err := view.GetFile(ctx, uri)
+	f, m, err := getGoFile(ctx, view, uri)
 	if err != nil {
 		return nil, err
 	}
-	ident, err := source.Identifier(ctx, view, f, params.Position)
+	spn, err := m.PointSpan(params.Position)
 	if err != nil {
 		return nil, err
 	}
-	decRange, err := ident.Declaration.Range()
+	rng, err := spn.Range(m.Converter)
 	if err != nil {
 		return nil, err
 	}
-	return []protocol.Location{
-		{
-			URI:   protocol.NewURI(ident.Declaration.URI()),
-			Range: decRange,
-		},
-	}, nil
+	ident, err := source.Identifier(ctx, view, f, rng.Start)
+	if err != nil {
+		return nil, err
+	}
+	decSpan, err := ident.Declaration.Range.Span()
+	if err != nil {
+		return nil, err
+	}
+	_, decM, err := getSourceFile(ctx, view, decSpan.URI())
+	if err != nil {
+		return nil, err
+	}
+	loc, err := decM.Location(decSpan)
+	if err != nil {
+		return nil, err
+	}
+	return []protocol.Location{loc}, nil
 }
 
-func (s *Server) typeDefinition(ctx context.Context, params *protocol.TypeDefinitionParams) ([]protocol.Location, error) {
+func (s *Server) typeDefinition(ctx context.Context, params *protocol.TextDocumentPositionParams) ([]protocol.Location, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
-	f, err := view.GetFile(ctx, uri)
+	f, m, err := getGoFile(ctx, view, uri)
 	if err != nil {
 		return nil, err
 	}
-	ident, err := source.Identifier(ctx, view, f, params.Position)
+	spn, err := m.PointSpan(params.Position)
 	if err != nil {
 		return nil, err
 	}
-	identRange, err := ident.Type.Range()
+	rng, err := spn.Range(m.Converter)
 	if err != nil {
 		return nil, err
 	}
-	return []protocol.Location{
-		{
-			URI:   protocol.NewURI(ident.Type.URI()),
-			Range: identRange,
-		},
-	}, nil
+	ident, err := source.Identifier(ctx, view, f, rng.Start)
+	if err != nil {
+		return nil, err
+	}
+	identSpan, err := ident.Type.Range.Span()
+	if err != nil {
+		return nil, err
+	}
+	_, identM, err := getSourceFile(ctx, view, identSpan.URI())
+	if err != nil {
+		return nil, err
+	}
+	loc, err := identM.Location(identSpan)
+	if err != nil {
+		return nil, err
+	}
+	return []protocol.Location{loc}, nil
 }

@@ -74,13 +74,6 @@ func (st *Stack) Back(n int) *big.Int {
 	return st.data[st.len()-n-1]
 }
 
-func (st *Stack) require(n int) error {
-	if st.len() < n {
-		return fmt.Errorf("stack underflow (%d <=> %d)", len(st.data), n)
-	}
-	return nil
-}
-
 // Print dumps the content of the stack
 func (st *Stack) Print() {
 	fmt.Println("### stack ###")
@@ -92,4 +85,23 @@ func (st *Stack) Print() {
 		fmt.Println("-- empty --")
 	}
 	fmt.Println("#############")
+}
+
+// ReturnStack is an object for basic return stack operations.
+type ReturnStack struct {
+	data []uint64
+}
+
+func newReturnStack() *ReturnStack {
+	return &ReturnStack{data: make([]uint64, 0, 1024)}
+}
+
+func (st *ReturnStack) push(d uint64) {
+	st.data = append(st.data, d)
+}
+
+func (st *ReturnStack) pop() (ret uint64) {
+	ret = st.data[len(st.data)-1]
+	st.data = st.data[:len(st.data)-1]
+	return
 }

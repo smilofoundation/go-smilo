@@ -10,109 +10,57 @@ import (
 	"go/ast"
 	"go/doc"
 	"go/format"
+	"go/token"
 	"go/types"
 	"strings"
-
-	"golang.org/x/tools/internal/telemetry/trace"
-	errors "golang.org/x/xerrors"
 )
 
-type HoverInformation struct {
-	// Signature is the symbol's signature.
-	Signature string `json:"signature"`
+// formatter returns the a hover value formatted with its documentation.
+type formatter func(interface{}, *ast.CommentGroup) (string, error)
 
-	// SingleLine is a single line describing the symbol.
-	// This is recommended only for use in clients that show a single line for hover.
-	SingleLine string `json:"singleLine"`
-
-	// Synopsis is a single sentence synopsis of the symbol's documentation.
-	Synopsis string `json:"synopsis"`
-
-	// FullDocumentation is the symbol's full documentation.
-	FullDocumentation string `json:"fullDocumentation"`
-
-	source  interface{}
-	comment *ast.CommentGroup
-}
-
-func (i *IdentifierInfo) Hover(ctx context.Context) (*HoverInformation, error) {
-	ctx, done := trace.StartSpan(ctx, "source.Hover")
-	defer done()
-
-	h, err := i.Declaration.hover(ctx)
-	if err != nil {
-		return nil, err
+func (i *IdentifierInfo) Hover(ctx context.Context, qf types.Qualifier, markdownSupported, wantComments bool) (string, error) {
+	file := i.File.GetAST(ctx)
+	if qf == nil {
+		pkg := i.File.GetPackage(ctx)
+		qf = qualifier(file, pkg.GetTypes(), pkg.GetTypesInfo())
 	}
-	// Determine the symbol's signature.
-	switch x := h.source.(type) {
-	case ast.Node:
-		var b strings.Builder
-		if err := format.Node(&b, i.Snapshot.View().Session().Cache().FileSet(), x); err != nil {
-			return nil, err
+	var b strings.Builder
+	f := func(x interface{}, c *ast.CommentGroup) (string, error) {
+		if !wantComments {
+			c = nil
 		}
-		h.Signature = b.String()
-	case types.Object:
-		h.Signature = objectString(x, i.qf)
+		return writeHover(x, i.File.FileSet(), &b, c, markdownSupported, qf)
 	}
-
-	// Set the documentation.
-	if i.Declaration.obj != nil {
-		h.SingleLine = objectString(i.Declaration.obj, i.qf)
-	}
-	if h.comment != nil {
-		h.FullDocumentation = h.comment.Text()
-		h.Synopsis = doc.Synopsis(h.FullDocumentation)
-	}
-	return h, nil
-}
-
-// objectString is a wrapper around the types.ObjectString function.
-// It handles adding more information to the object string.
-func objectString(obj types.Object, qf types.Qualifier) string {
-	str := types.ObjectString(obj, qf)
-	switch obj := obj.(type) {
-	case *types.Const:
-		str = fmt.Sprintf("%s = %s", str, obj.Val())
-	}
-	return str
-}
-
-func (d Declaration) hover(ctx context.Context) (*HoverInformation, error) {
-	_, done := trace.StartSpan(ctx, "source.hover")
-	defer done()
-
-	obj := d.obj
-	switch node := d.node.(type) {
-	case *ast.ImportSpec:
-		return &HoverInformation{source: node}, nil
+	obj := i.Declaration.Object
+	switch node := i.Declaration.Node.(type) {
 	case *ast.GenDecl:
 		switch obj := obj.(type) {
 		case *types.TypeName, *types.Var, *types.Const, *types.Func:
-			return formatGenDecl(node, obj, obj.Type())
+			return formatGenDecl(node, obj, obj.Type(), f)
 		}
 	case *ast.TypeSpec:
 		if obj.Parent() == types.Universe {
 			if obj.Name() == "error" {
-				return &HoverInformation{source: node}, nil
+				return f(node, nil)
 			}
-			return &HoverInformation{source: node.Name}, nil // comments not needed for builtins
+			return f(node.Name, nil) // comments not needed for builtins
 		}
 	case *ast.FuncDecl:
 		switch obj.(type) {
 		case *types.Func:
-			return &HoverInformation{source: obj, comment: node.Doc}, nil
+			return f(obj, node.Doc)
 		case *types.Builtin:
-			return &HoverInformation{source: node.Type, comment: node.Doc}, nil
+			return f(node.Type, node.Doc)
 		}
 	}
-	return &HoverInformation{source: obj}, nil
+	return f(obj, nil)
 }
 
-func formatGenDecl(node *ast.GenDecl, obj types.Object, typ types.Type) (*HoverInformation, error) {
+func formatGenDecl(node *ast.GenDecl, obj types.Object, typ types.Type, f formatter) (string, error) {
 	if _, ok := typ.(*types.Named); ok {
 		switch typ.Underlying().(type) {
 		case *types.Interface, *types.Struct:
-			return formatGenDecl(node, obj, typ.Underlying())
+			return formatGenDecl(node, obj, typ.Underlying(), f)
 		}
 	}
 	var spec ast.Spec
@@ -123,31 +71,31 @@ func formatGenDecl(node *ast.GenDecl, obj types.Object, typ types.Type) (*HoverI
 		}
 	}
 	if spec == nil {
-		return nil, errors.Errorf("no spec for node %v at position %v", node, obj.Pos())
+		return "", fmt.Errorf("no spec for node %v at position %v", node, obj.Pos())
 	}
 	// If we have a field or method.
 	switch obj.(type) {
 	case *types.Var, *types.Const, *types.Func:
-		return formatVar(spec, obj)
+		return formatVar(spec, obj, f)
 	}
 	// Handle types.
 	switch spec := spec.(type) {
 	case *ast.TypeSpec:
 		if len(node.Specs) > 1 {
 			// If multiple types are declared in the same block.
-			return &HoverInformation{source: spec.Type, comment: spec.Doc}, nil
+			return f(spec.Type, spec.Doc)
 		} else {
-			return &HoverInformation{source: spec, comment: node.Doc}, nil
+			return f(spec, node.Doc)
 		}
 	case *ast.ValueSpec:
-		return &HoverInformation{source: spec, comment: spec.Doc}, nil
+		return f(spec, spec.Doc)
 	case *ast.ImportSpec:
-		return &HoverInformation{source: spec, comment: spec.Doc}, nil
+		return f(spec, spec.Doc)
 	}
-	return nil, errors.Errorf("unable to format spec %v (%T)", spec, spec)
+	return "", fmt.Errorf("unable to format spec %v (%T)", spec, spec)
 }
 
-func formatVar(node ast.Spec, obj types.Object) (*HoverInformation, error) {
+func formatVar(node ast.Spec, obj types.Object, f formatter) (string, error) {
 	var fieldList *ast.FieldList
 	if spec, ok := node.(*ast.TypeSpec); ok {
 		switch t := spec.Type.(type) {
@@ -164,13 +112,37 @@ func formatVar(node ast.Spec, obj types.Object) (*HoverInformation, error) {
 			field := fieldList.List[i]
 			if field.Pos() <= obj.Pos() && obj.Pos() <= field.End() {
 				if field.Doc.Text() != "" {
-					return &HoverInformation{source: obj, comment: field.Doc}, nil
+					return f(obj, field.Doc)
 				} else if field.Comment.Text() != "" {
-					return &HoverInformation{source: obj, comment: field.Comment}, nil
+					return f(obj, field.Comment)
 				}
 			}
 		}
 	}
 	// If we weren't able to find documentation for the object.
-	return &HoverInformation{source: obj}, nil
+	return f(obj, nil)
+}
+
+// writeHover writes the hover for a given node and its documentation.
+func writeHover(x interface{}, fset *token.FileSet, b *strings.Builder, c *ast.CommentGroup, markdownSupported bool, qf types.Qualifier) (string, error) {
+	if c != nil {
+		// TODO(rstambler): Improve conversion from Go docs to markdown.
+		b.WriteString(doc.Synopsis(c.Text()))
+		b.WriteRune('\n')
+	}
+	if markdownSupported {
+		b.WriteString("```go\n")
+	}
+	switch x := x.(type) {
+	case ast.Node:
+		if err := format.Node(b, fset, x); err != nil {
+			return "", err
+		}
+	case types.Object:
+		b.WriteString(types.ObjectString(x, qf))
+	}
+	if markdownSupported {
+		b.WriteString("\n```")
+	}
+	return b.String(), nil
 }

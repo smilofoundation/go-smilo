@@ -9,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/private/protocol"
+	"github.com/aws/aws-sdk-go/private/protocol/jsonrpc"
 )
 
 const opCancelCluster = "CancelCluster"
@@ -50,6 +52,7 @@ func (c *Snowball) CancelClusterRequest(input *CancelClusterInput) (req *request
 
 	output = &CancelClusterOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -140,6 +143,7 @@ func (c *Snowball) CancelJobRequest(input *CancelJobInput) (req *request.Request
 
 	output = &CancelJobOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -661,7 +665,7 @@ func (c *Snowball) DescribeAddressesWithContext(ctx aws.Context, input *Describe
 //    // Example iterating over at most 3 pages of a DescribeAddresses operation.
 //    pageNum := 0
 //    err := client.DescribeAddressesPages(params,
-//        func(page *DescribeAddressesOutput, lastPage bool) bool {
+//        func(page *snowball.DescribeAddressesOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -693,10 +697,12 @@ func (c *Snowball) DescribeAddressesPagesWithContext(ctx aws.Context, input *Des
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*DescribeAddressesOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*DescribeAddressesOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1137,6 +1143,91 @@ func (c *Snowball) GetSnowballUsageWithContext(ctx aws.Context, input *GetSnowba
 	return out, req.Send()
 }
 
+const opGetSoftwareUpdates = "GetSoftwareUpdates"
+
+// GetSoftwareUpdatesRequest generates a "aws/request.Request" representing the
+// client's request for the GetSoftwareUpdates operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetSoftwareUpdates for more information on using the GetSoftwareUpdates
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetSoftwareUpdatesRequest method.
+//    req, resp := client.GetSoftwareUpdatesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/snowball-2016-06-30/GetSoftwareUpdates
+func (c *Snowball) GetSoftwareUpdatesRequest(input *GetSoftwareUpdatesInput) (req *request.Request, output *GetSoftwareUpdatesOutput) {
+	op := &request.Operation{
+		Name:       opGetSoftwareUpdates,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetSoftwareUpdatesInput{}
+	}
+
+	output = &GetSoftwareUpdatesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetSoftwareUpdates API operation for Amazon Import/Export Snowball.
+//
+// Returns an Amazon S3 presigned URL for an update file associated with a specified
+// JobId.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Import/Export Snowball's
+// API operation GetSoftwareUpdates for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidResourceException "InvalidResourceException"
+//   The specified resource can't be found. Check the information you provided
+//   in your last request, and try again.
+//
+//   * ErrCodeInvalidJobStateException "InvalidJobStateException"
+//   The action can't be performed because the job's current state doesn't allow
+//   that action to be performed.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/snowball-2016-06-30/GetSoftwareUpdates
+func (c *Snowball) GetSoftwareUpdates(input *GetSoftwareUpdatesInput) (*GetSoftwareUpdatesOutput, error) {
+	req, out := c.GetSoftwareUpdatesRequest(input)
+	return out, req.Send()
+}
+
+// GetSoftwareUpdatesWithContext is the same as GetSoftwareUpdates with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetSoftwareUpdates for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *Snowball) GetSoftwareUpdatesWithContext(ctx aws.Context, input *GetSoftwareUpdatesInput, opts ...request.Option) (*GetSoftwareUpdatesOutput, error) {
+	req, out := c.GetSoftwareUpdatesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opListClusterJobs = "ListClusterJobs"
 
 // ListClusterJobsRequest generates a "aws/request.Request" representing the
@@ -1494,7 +1585,7 @@ func (c *Snowball) ListJobsWithContext(ctx aws.Context, input *ListJobsInput, op
 //    // Example iterating over at most 3 pages of a ListJobs operation.
 //    pageNum := 0
 //    err := client.ListJobsPages(params,
-//        func(page *ListJobsOutput, lastPage bool) bool {
+//        func(page *snowball.ListJobsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -1526,10 +1617,12 @@ func (c *Snowball) ListJobsPagesWithContext(ctx aws.Context, input *ListJobsInpu
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListJobsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListJobsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -1572,6 +1665,7 @@ func (c *Snowball) UpdateClusterRequest(input *UpdateClusterInput) (req *request
 
 	output = &UpdateClusterOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1672,6 +1766,7 @@ func (c *Snowball) UpdateJobRequest(input *UpdateJobInput) (req *request.Request
 
 	output = &UpdateJobOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -2127,7 +2222,7 @@ type ClusterMetadata struct {
 	JobType *string `type:"string" enum:"JobType"`
 
 	// The KmsKeyARN Amazon Resource Name (ARN) associated with this cluster. This
-	// ARN was created using the CreateKey (http://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
+	// ARN was created using the CreateKey (https://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
 	// API action in AWS Key Management Service (AWS KMS).
 	KmsKeyARN *string `type:"string"`
 
@@ -2140,7 +2235,7 @@ type ClusterMetadata struct {
 	Resources *JobResource `type:"structure"`
 
 	// The role ARN associated with this cluster. This ARN was created using the
-	// CreateRole (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
+	// CreateRole (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
 	// API action in AWS Identity and Access Management (IAM).
 	RoleARN *string `type:"string"`
 
@@ -2382,7 +2477,7 @@ type CreateClusterInput struct {
 	JobType *string `type:"string" required:"true" enum:"JobType"`
 
 	// The KmsKeyARN value that you want to associate with this cluster. KmsKeyARN
-	// values are created by using the CreateKey (http://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
+	// values are created by using the CreateKey (https://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
 	// API action in AWS Key Management Service (AWS KMS).
 	KmsKeyARN *string `type:"string"`
 
@@ -2397,7 +2492,7 @@ type CreateClusterInput struct {
 	Resources *JobResource `type:"structure" required:"true"`
 
 	// The RoleARN that you want to associate with this cluster. RoleArn values
-	// are created by using the CreateRole (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
+	// are created by using the CreateRole (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
 	// API action in AWS Identity and Access Management (IAM).
 	//
 	// RoleARN is a required field
@@ -2583,7 +2678,7 @@ type CreateJobInput struct {
 	JobType *string `type:"string" enum:"JobType"`
 
 	// The KmsKeyARN that you want to associate with this job. KmsKeyARNs are created
-	// using the CreateKey (http://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
+	// using the CreateKey (https://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
 	// AWS Key Management Service (KMS) API action.
 	KmsKeyARN *string `type:"string"`
 
@@ -2604,7 +2699,7 @@ type CreateJobInput struct {
 	Resources *JobResource `type:"structure"`
 
 	// The RoleARN that you want to associate with this job. RoleArns are created
-	// using the CreateRole (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
+	// using the CreateRole (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
 	// AWS Identity and Access Management (IAM) API action.
 	RoleARN *string `type:"string"`
 
@@ -3371,6 +3466,74 @@ func (s *GetSnowballUsageOutput) SetSnowballsInUse(v int64) *GetSnowballUsageOut
 	return s
 }
 
+type GetSoftwareUpdatesInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID for a job that you want to get the software update file for, for example
+	// JID123e4567-e89b-12d3-a456-426655440000.
+	//
+	// JobId is a required field
+	JobId *string `min:"39" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s GetSoftwareUpdatesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetSoftwareUpdatesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetSoftwareUpdatesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetSoftwareUpdatesInput"}
+	if s.JobId == nil {
+		invalidParams.Add(request.NewErrParamRequired("JobId"))
+	}
+	if s.JobId != nil && len(*s.JobId) < 39 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 39))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetJobId sets the JobId field's value.
+func (s *GetSoftwareUpdatesInput) SetJobId(v string) *GetSoftwareUpdatesInput {
+	s.JobId = &v
+	return s
+}
+
+type GetSoftwareUpdatesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon S3 presigned URL for the update file associated with the specified
+	// JobId value. The software update will be available for 2 days after this
+	// request is made. To access an update after the 2 days have passed, you'll
+	// have to make another call to GetSoftwareUpdates.
+	UpdatesURI *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s GetSoftwareUpdatesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetSoftwareUpdatesOutput) GoString() string {
+	return s.String()
+}
+
+// SetUpdatesURI sets the UpdatesURI field's value.
+func (s *GetSoftwareUpdatesOutput) SetUpdatesURI(v string) *GetSoftwareUpdatesOutput {
+	s.UpdatesURI = &v
+	return s
+}
+
 // Each JobListEntry object contains a job's state, a job's ID, and a value
 // that indicates whether the job is a job part, in the case of an export job.
 type JobListEntry struct {
@@ -3560,7 +3723,7 @@ type JobMetadata struct {
 	JobType *string `type:"string" enum:"JobType"`
 
 	// The Amazon Resource Name (ARN) for the AWS Key Management Service (AWS KMS)
-	// key associated with this job. This ARN was created using the CreateKey (http://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
+	// key associated with this job. This ARN was created using the CreateKey (https://docs.aws.amazon.com/kms/latest/APIReference/API_CreateKey.html)
 	// API action in AWS KMS.
 	KmsKeyARN *string `type:"string"`
 
@@ -3575,7 +3738,7 @@ type JobMetadata struct {
 	Resources *JobResource `type:"structure"`
 
 	// The role ARN associated with this job. This ARN was created using the CreateRole
-	// (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
+	// (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
 	// API action in AWS Identity and Access Management (IAM).
 	RoleARN *string `type:"string"`
 
@@ -4231,11 +4394,11 @@ type Notification struct {
 	NotifyAll *bool `type:"boolean"`
 
 	// The new SNS TopicArn that you want to associate with this job. You can create
-	// Amazon Resource Names (ARNs) for topics by using the CreateTopic (http://docs.aws.amazon.com/sns/latest/api/API_CreateTopic.html)
+	// Amazon Resource Names (ARNs) for topics by using the CreateTopic (https://docs.aws.amazon.com/sns/latest/api/API_CreateTopic.html)
 	// Amazon SNS API action.
 	//
 	// You can subscribe email addresses to an Amazon SNS topic through the AWS
-	// Management Console, or by using the Subscribe (http://docs.aws.amazon.com/sns/latest/api/API_Subscribe.html)
+	// Management Console, or by using the Subscribe (https://docs.aws.amazon.com/sns/latest/api/API_Subscribe.html)
 	// AWS Simple Notification Service (SNS) API action.
 	SnsTopicARN *string `type:"string"`
 }
@@ -4447,7 +4610,7 @@ type UpdateClusterInput struct {
 	Resources *JobResource `type:"structure"`
 
 	// The new role Amazon Resource Name (ARN) that you want to associate with this
-	// cluster. To create a role ARN, use the CreateRole (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
+	// cluster. To create a role ARN, use the CreateRole (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)
 	// API action in AWS Identity and Access Management (IAM).
 	RoleARN *string `type:"string"`
 
@@ -4582,7 +4745,7 @@ type UpdateJobInput struct {
 	Resources *JobResource `type:"structure"`
 
 	// The new role Amazon Resource Name (ARN) that you want to associate with this
-	// job. To create a role ARN, use the CreateRole (http://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)AWS
+	// job. To create a role ARN, use the CreateRole (https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateRole.html)AWS
 	// Identity and Access Management (IAM) API action.
 	RoleARN *string `type:"string"`
 
@@ -4712,6 +4875,9 @@ const (
 	// CapacityT100 is a Capacity enum value
 	CapacityT100 = "T100"
 
+	// CapacityT42 is a Capacity enum value
+	CapacityT42 = "T42"
+
 	// CapacityNoPreference is a Capacity enum value
 	CapacityNoPreference = "NoPreference"
 )
@@ -4805,4 +4971,10 @@ const (
 
 	// TypeEdge is a Type enum value
 	TypeEdge = "EDGE"
+
+	// TypeEdgeC is a Type enum value
+	TypeEdgeC = "EDGE_C"
+
+	// TypeEdgeCg is a Type enum value
+	TypeEdgeCg = "EDGE_CG"
 )

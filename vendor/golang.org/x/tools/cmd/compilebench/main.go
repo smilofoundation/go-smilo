@@ -139,9 +139,7 @@ var tests = []test{
 	{"BenchmarkReflect", compile{"reflect"}},
 	{"BenchmarkTar", compile{"archive/tar"}},
 	{"BenchmarkXML", compile{"encoding/xml"}},
-	{"BenchmarkLinkCompiler", link{"cmd/compile", ""}},
-	{"BenchmarkExternalLinkCompiler", link{"cmd/compile", "-linkmode=external"}},
-	{"BenchmarkLinkWithoutDebugCompiler", link{"cmd/compile", "-w"}},
+	{"BenchmarkLinkCompiler", link{"cmd/compile"}},
 	{"BenchmarkStdCmd", goBuild{[]string{"std", "cmd"}}},
 	{"BenchmarkHelloSize", size{"$GOROOT/test/helloworld.go", false}},
 	{"BenchmarkCmdGoSize", size{"cmd/go", true}},
@@ -202,7 +200,7 @@ func main() {
 	if *flagPackage != "" {
 		tests = []test{
 			{"BenchmarkPkg", compile{*flagPackage}},
-			{"BenchmarkPkgLink", link{*flagPackage, ""}},
+			{"BenchmarkPkgLink", link{*flagPackage}},
 		}
 		runRE = nil
 	}
@@ -363,7 +361,7 @@ func (c compile) run(name string, count int) error {
 	return nil
 }
 
-type link struct{ dir, flags string }
+type link struct{ dir string }
 
 func (link) long() bool { return false }
 
@@ -399,7 +397,6 @@ func (r link) run(name string, count int) error {
 	// Link the main package.
 	args = []string{"-o", "_compilebench_.exe"}
 	args = append(args, strings.Fields(*flagLinkerFlags)...)
-	args = append(args, strings.Fields(r.flags)...)
 	args = append(args, "_compilebench_.o")
 	if err := runBuildCmd(name, count, pkg.Dir, linker, args); err != nil {
 		return err

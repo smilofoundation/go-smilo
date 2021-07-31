@@ -5,98 +5,94 @@
 package source
 
 import (
+	"fmt"
 	"go/ast"
 
 	"golang.org/x/tools/internal/lsp/snippet"
 )
 
-// structFieldSnippets calculates the snippet for struct literal field names.
-func (c *completer) structFieldSnippet(label, detail string) *snippet.Builder {
-	if !c.wantStructFieldCompletions() {
-		return nil
-	}
-
-	// If we are in a deep completion then we can't be completing a field
-	// name (e.g. "Foo{f<>}" completing to "Foo{f.Bar}" should not generate
-	// a snippet).
-	if c.inDeepCompletion() {
-		return nil
-	}
-
+// structFieldSnippets calculates the plain and placeholder snippets for struct literal field names.
+func (c *completer) structFieldSnippets(label, detail string) (*snippet.Builder, *snippet.Builder) {
 	clInfo := c.enclosingCompositeLiteral
+
+	if clInfo == nil || !clInfo.isStruct() {
+		return nil, nil
+	}
 
 	// If we are already in a key-value expression, we don't want a snippet.
 	if clInfo.kv != nil {
-		return nil
+		return nil, nil
 	}
 
-	snip := &snippet.Builder{}
+	// We don't want snippet unless we are completing a field name. maybeInFieldName
+	// means we _might_ not be a struct field name, but this method is only called for
+	// struct fields, so we can ignore that possibility.
+	if !clInfo.inKey && !clInfo.maybeInFieldName {
+		return nil, nil
+	}
+
+	plain, placeholder := &snippet.Builder{}, &snippet.Builder{}
+	label = fmt.Sprintf("%s: ", label)
 
 	// A plain snippet turns "Foo{Ba<>" into "Foo{Bar: <>".
-	snip.WriteText(label + ": ")
-	snip.WritePlaceholder(func(b *snippet.Builder) {
-		// A placeholder snippet turns "Foo{Ba<>" into "Foo{Bar: <*int*>".
-		if c.opts.Placeholders {
-			b.WriteText(detail)
-		}
-	})
+	plain.WriteText(label)
+	plain.WritePlaceholder(nil)
 
-	fset := c.view.Session().Cache().FileSet()
+	// A placeholder snippet turns "Foo{Ba<>" into "Foo{Bar: <*int*>".
+	placeholder.WriteText(label)
+	placeholder.WritePlaceholder(func(b *snippet.Builder) {
+		b.WriteText(detail)
+	})
 
 	// If the cursor position is on a different line from the literal's opening brace,
 	// we are in a multiline literal.
-	if fset.Position(c.pos).Line != fset.Position(clInfo.cl.Lbrace).Line {
-		snip.WriteText(",")
+	if c.view.Session().Cache().FileSet().Position(c.pos).Line != c.view.Session().Cache().FileSet().Position(clInfo.cl.Lbrace).Line {
+		plain.WriteText(",")
+		placeholder.WriteText(",")
 	}
 
-	return snip
+	return plain, placeholder
 }
 
-// functionCallSnippets calculates the snippet for function calls.
-func (c *completer) functionCallSnippet(name string, params []string) *snippet.Builder {
-	// If there is no suffix then we need to reuse existing call parens
-	// "()" if present. If there is an identifer suffix then we always
-	// need to include "()" since we don't overwrite the suffix.
-	if c.surrounding != nil && c.surrounding.Suffix() == "" && len(c.path) > 1 {
-		// If we are the left side (i.e. "Fun") part of a call expression,
-		// we don't want a snippet since there are already parens present.
+// functionCallSnippets calculates the plain and placeholder snippets for function calls.
+func (c *completer) functionCallSnippets(name string, params []string) (*snippet.Builder, *snippet.Builder) {
+	// If we are the left side (i.e. "Fun") part of a call expression,
+	// we don't want a snippet since there are already parens present.
+	if len(c.path) > 1 {
 		switch n := c.path[1].(type) {
 		case *ast.CallExpr:
-			// The Lparen != Rparen check detects fudged CallExprs we
-			// inserted when fixing the AST. In this case, we do still need
-			// to insert the calling "()" parens.
-			if n.Fun == c.path[0] && n.Lparen != n.Rparen {
-				return nil
+			if n.Fun == c.path[0] {
+				return nil, nil
 			}
 		case *ast.SelectorExpr:
 			if len(c.path) > 2 {
-				if call, ok := c.path[2].(*ast.CallExpr); ok && call.Fun == c.path[1] && call.Lparen != call.Rparen {
-					return nil
+				if call, ok := c.path[2].(*ast.CallExpr); ok && call.Fun == c.path[1] {
+					return nil, nil
 				}
 			}
 		}
 	}
-	snip := &snippet.Builder{}
-	snip.WriteText(name + "(")
+	plain, placeholder := &snippet.Builder{}, &snippet.Builder{}
+	label := fmt.Sprintf("%s(", name)
 
-	if c.opts.Placeholders {
-		// A placeholder snippet turns "someFun<>" into "someFunc(<*i int*>, *s string*)".
-		for i, p := range params {
-			if i > 0 {
-				snip.WriteText(", ")
-			}
-			snip.WritePlaceholder(func(b *snippet.Builder) {
-				b.WriteText(p)
-			})
-		}
-	} else {
-		// A plain snippet turns "someFun<>" into "someFunc(<>)".
-		if len(params) > 0 {
-			snip.WritePlaceholder(nil)
-		}
+	// A plain snippet turns "someFun<>" into "someFunc(<>)".
+	plain.WriteText(label)
+	if len(params) > 0 {
+		plain.WritePlaceholder(nil)
 	}
+	plain.WriteText(")")
 
-	snip.WriteText(")")
+	// A placeholder snippet turns "someFun<>" into "someFunc(<*i int*>, *s string*)".
+	placeholder.WriteText(label)
+	for i, p := range params {
+		if i > 0 {
+			placeholder.WriteText(", ")
+		}
+		placeholder.WritePlaceholder(func(b *snippet.Builder) {
+			b.WriteText(p)
+		})
+	}
+	placeholder.WriteText(")")
 
-	return snip
+	return plain, placeholder
 }

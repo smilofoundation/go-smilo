@@ -202,7 +202,7 @@ func TestVerifyProposal(t *testing.T) {
 		if stateErr != nil {
 			t.Fatalf("could not retrieve state %d, err=%s", i, stateErr)
 		}
-		if status, errW := blockchain.WriteBlockWithState(block, nil, state, privateState); status != core.CanonStatTy && errW != nil {
+		if status, errW := blockchain.WriteBlockWithState(block, nil, nil, state, privateState, false); status != core.CanonStatTy && errW != nil {
 			t.Fatalf("write block failure %d, err=%s", i, errW)
 		}
 		blocks[i] = block

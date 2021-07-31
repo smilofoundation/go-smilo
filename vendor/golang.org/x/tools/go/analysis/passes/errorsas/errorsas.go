@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// The errorsas package defines an Analyzer that checks that the second argument to
+// The errorsas package defines an Analyzer that checks that the second arugment to
 // errors.As is a pointer to a type implementing error.
 package errorsas
 
@@ -47,11 +47,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if fn == nil {
 			return // not a static call
 		}
-		if len(call.Args) < 2 {
-			return // not enough arguments, e.g. called with return values of another function
-		}
 		if fn.FullName() == "errors.As" && !pointerToInterfaceOrError(pass, call.Args[1]) {
-			pass.ReportRangef(call, "second argument to errors.As must be a pointer to an interface or a type implementing error")
+			pass.Reportf(call.Pos(), "second argument to errors.As must be a pointer to an interface or a type implementing error")
 		}
 	})
 	return nil, nil
@@ -59,13 +56,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 var errorType = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
 
-// pointerToInterfaceOrError reports whether the type of e is a pointer to an interface or a type implementing error,
-// or is the empty interface.
+// pointerToInterfaceOrError reports whether the type of e is a pointer to an interface or a type implementing error.
 func pointerToInterfaceOrError(pass *analysis.Pass, e ast.Expr) bool {
 	t := pass.TypesInfo.Types[e].Type
-	if it, ok := t.Underlying().(*types.Interface); ok && it.NumMethods() == 0 {
-		return true
-	}
 	pt, ok := t.Underlying().(*types.Pointer)
 	if !ok {
 		return false

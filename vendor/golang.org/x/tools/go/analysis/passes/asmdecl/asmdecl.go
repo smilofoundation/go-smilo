@@ -79,6 +79,7 @@ var (
 	asmArchArm      = asmArch{name: "arm", bigEndian: false, stack: "R13", lr: true}
 	asmArchArm64    = asmArch{name: "arm64", bigEndian: false, stack: "RSP", lr: true}
 	asmArchAmd64    = asmArch{name: "amd64", bigEndian: false, stack: "SP", lr: false}
+	asmArchAmd64p32 = asmArch{name: "amd64p32", bigEndian: false, stack: "SP", lr: false}
 	asmArchMips     = asmArch{name: "mips", bigEndian: true, stack: "R29", lr: true}
 	asmArchMipsLE   = asmArch{name: "mipsle", bigEndian: false, stack: "R29", lr: true}
 	asmArchMips64   = asmArch{name: "mips64", bigEndian: true, stack: "R29", lr: true}
@@ -93,6 +94,7 @@ var (
 		&asmArchArm,
 		&asmArchArm64,
 		&asmArchAmd64,
+		&asmArchAmd64p32,
 		&asmArchMips,
 		&asmArchMipsLE,
 		&asmArchMips64,
@@ -633,6 +635,9 @@ func asmCheckVar(badf func(string, ...interface{}), fn *asmFunc, line, expr stri
 	case "amd64.LEAQ":
 		dst = 8
 		addr = true
+	case "amd64p32.LEAL":
+		dst = 4
+		addr = true
 	default:
 		switch fn.arch.name {
 		case "386", "amd64":
@@ -659,10 +664,6 @@ func asmCheckVar(badf func(string, ...interface{}), fn *asmFunc, line, expr stri
 			if strings.HasSuffix(op, "SS") {
 				// MOVSS, SQRTSS, etc
 				src = 4
-				break
-			}
-			if op == "MOVO" || op == "MOVOU" {
-				src = 16
 				break
 			}
 			if strings.HasPrefix(op, "SET") {
@@ -740,11 +741,6 @@ func asmCheckVar(badf func(string, ...interface{}), fn *asmFunc, line, expr stri
 		vk = v.inner[0].kind
 		vs = v.inner[0].size
 		vt = v.inner[0].typ
-	case asmComplex:
-		// Allow a single instruction to load both parts of a complex.
-		if int(kind) == vs {
-			kind = asmComplex
-		}
 	}
 	if addr {
 		vk = asmKind(archDef.ptrSize)

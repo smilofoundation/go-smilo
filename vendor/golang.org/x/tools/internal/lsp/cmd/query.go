@@ -56,7 +56,8 @@ func (q *query) Run(ctx context.Context, args ...string) error {
 	mode, args := args[0], args[1:]
 	for _, m := range q.modes() {
 		if m.Name() == mode {
-			return tool.Run(ctx, m, args) // pass errors up the chain
+			tool.Main(ctx, m, args)
+			return nil
 		}
 	}
 	return tool.CommandLineErrorf("unknown command %v", mode)
