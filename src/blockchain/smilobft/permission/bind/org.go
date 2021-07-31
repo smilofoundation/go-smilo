@@ -4,6 +4,7 @@
 package permission
 
 import (
+	"github.com/ethereum/go-ethereum/common/math"
 	"math/big"
 	"strings"
 
@@ -21,7 +22,7 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
+	_ = math.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup

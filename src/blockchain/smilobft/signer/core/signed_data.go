@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"go-smilo/src/blockchain/smilobft/accounts"
-	"go-smilo/src/blockchain/smilobft/accounts/abi"
 	"go-smilo/src/blockchain/smilobft/consensus/clique"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"math/big"
@@ -587,7 +586,7 @@ func (typedData *TypedData) EncodePrimitiveValue(encType string, encValue interf
 		if err != nil {
 			return nil, err
 		}
-		return abi.U256(b), nil
+		return math.U256(b).Bytes(), nil
 	}
 	return nil, fmt.Errorf("unrecognized type '%s'", encType)
 

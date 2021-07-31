@@ -9,29 +9,38 @@ import (
 
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
-	"golang.org/x/tools/internal/lsp/telemetry"
 	"golang.org/x/tools/internal/span"
-	"golang.org/x/tools/internal/telemetry/log"
 )
 
-func (s *Server) documentHighlight(ctx context.Context, params *protocol.DocumentHighlightParams) ([]protocol.DocumentHighlight, error) {
+func (s *Server) documentHighlight(ctx context.Context, params *protocol.TextDocumentPositionParams) ([]protocol.DocumentHighlight, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
-	rngs, err := source.Highlight(ctx, view, uri, params.Position)
+	f, m, err := getGoFile(ctx, view, uri)
 	if err != nil {
-		log.Error(ctx, "no highlight", err, telemetry.URI.Of(uri))
+		return nil, err
 	}
-	return toProtocolHighlight(rngs), nil
+	spn, err := m.PointSpan(params.Position)
+	if err != nil {
+		return nil, err
+	}
+	rng, err := spn.Range(m.Converter)
+	if err != nil {
+		return nil, err
+	}
+	spans := source.Highlight(ctx, f, rng.Start)
+	return toProtocolHighlight(m, spans), nil
 }
 
-func toProtocolHighlight(rngs []protocol.Range) []protocol.DocumentHighlight {
-	result := make([]protocol.DocumentHighlight, 0, len(rngs))
+func toProtocolHighlight(m *protocol.ColumnMapper, spans []span.Span) []protocol.DocumentHighlight {
+	result := make([]protocol.DocumentHighlight, 0, len(spans))
 	kind := protocol.Text
-	for _, rng := range rngs {
-		result = append(result, protocol.DocumentHighlight{
-			Kind:  &kind,
-			Range: rng,
-		})
+	for _, span := range spans {
+		r, err := m.Range(span)
+		if err != nil {
+			continue
+		}
+		h := protocol.DocumentHighlight{Kind: &kind, Range: r}
+		result = append(result, h)
 	}
 	return result
 }

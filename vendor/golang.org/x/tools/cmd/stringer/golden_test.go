@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"golang.org/x/tools/internal/testenv"
 )
 
 // Golden represents a test case.
@@ -25,7 +23,7 @@ type Golden struct {
 	trimPrefix  string
 	lineComment bool
 	input       string // input; the package clause is provided when running the test.
-	output      string // expected output.
+	output      string // exected output.
 }
 
 var golden = []Golden{
@@ -400,8 +398,6 @@ func (i Token) String() string {
 `
 
 func TestGolden(t *testing.T) {
-	testenv.NeedsTool(t, "go")
-
 	dir, err := ioutil.TempDir("", "stringer")
 	if err != nil {
 		t.Error(err)

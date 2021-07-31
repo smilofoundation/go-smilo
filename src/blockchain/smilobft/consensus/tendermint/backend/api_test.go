@@ -1,50 +1,43 @@
 package backend
 
 import (
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go-smilo/src/blockchain/smilobft/cmn/acdefault"
+	"go-smilo/src/blockchain/smilobft/contracts/autonity_tendermint_060"
 	"math/big"
-	"reflect"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/mock/gomock"
 
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"go-smilo/src/blockchain/smilobft/rpc"
 )
 
-func TestGetValidators(t *testing.T) {
+func TestGetCommittee(t *testing.T) {
+	want := types.Committee{}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	val := types.CommitteeMember{
-		Address:     common.HexToAddress("0x0123456789"),
-		VotingPower: new(big.Int).SetInt64(132),
-	}
-
-	want := types.Committee{val}
-	committeeSet := committee.NewMockSet(ctrl)
-	committeeSet.EXPECT().Committee().Return(types.Committee{val})
-
-	backend := core.NewMockBackend(ctrl)
-	backend.EXPECT().Committee(uint64(1)).Return(committeeSet, nil)
-
+	c := consensus.NewMockChainReader(ctrl)
+	h := &types.Header{Number: big.NewInt(1)}
+	c.EXPECT().GetHeaderByNumber(uint64(1)).Return(h)
 	API := &API{
-		tendermint: backend,
+		chain: c,
+		getCommittee: func(header *types.Header, chain consensus.ChainReader) (types.Committee, error) {
+			if header == h && chain == c {
+				return want, nil
+			}
+			return nil, nil
+		},
 	}
 
 	bn := rpc.BlockNumber(1)
 
 	got, err := API.GetCommittee(&bn)
-	if err != nil {
-		t.Fatalf("expected <nil>, got %v", err)
-	}
-
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("want %v, got %v", want, got)
-	}
+	require.NoError(t, err)
+	require.Equal(t, want, got)
 }
 
 func TestGetCommitteeAtHash(t *testing.T) {
@@ -71,92 +64,78 @@ func TestGetCommitteeAtHash(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		val := types.CommitteeMember{
-			Address:     common.HexToAddress("0x0123456789"),
-			VotingPower: new(big.Int).SetInt64(132),
-		}
-		want := types.Committee{val}
-
 		hash := common.HexToHash("0x0123456789")
 
-		chain := consensus.NewMockChainReader(ctrl)
-		chain.EXPECT().GetHeaderByHash(hash).Return(&types.Header{Number: big.NewInt(1)})
+		c := consensus.NewMockChainReader(ctrl)
+		h := &types.Header{Number: big.NewInt(1)}
+		c.EXPECT().GetHeaderByHash(hash).Return(h)
 
-		committeeSet := committee.NewMockSet(ctrl)
-		committeeSet.EXPECT().Committee().Return(types.Committee{val})
-
-		backend := core.NewMockBackend(ctrl)
-		backend.EXPECT().Committee(uint64(1)).Return(committeeSet, nil)
+		want := types.Committee{}
 
 		API := &API{
-			chain:      chain,
-			tendermint: backend,
+			chain: c,
+			getCommittee: func(header *types.Header, chain consensus.ChainReader) (types.Committee, error) {
+				if header == h && chain == c {
+					return want, nil
+				}
+				return nil, nil
+			},
 		}
 
 		got, err := API.GetCommitteeAtHash(hash)
-		if err != nil {
-			t.Fatalf("expected <nil>, got %v", err)
-		}
-
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("want %v, got %v", want, got)
-		}
+		require.NoError(t, err)
+		require.Equal(t, want, got)
 	})
 }
 
 func TestAPIGetContractABI(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	chain, engine := newBlockChain(1)
+	block, err := makeBlock(chain, engine, chain.Genesis())
+	require.Nil(t, err)
+	_, err = chain.InsertChain(types.Blocks{block})
+	require.Nil(t, err)
 
-	want := "CONTRACT ABI DATA"
-
-	backend := core.NewMockBackend(ctrl)
-	backend.EXPECT().GetContractABI().Return(want)
+	want := acdefault.ABI()
 
 	API := &API{
-		tendermint: backend,
+		tendermint: engine,
 	}
 
 	got := API.GetContractABI()
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("want %v, got %v", want, got)
-	}
+	assert.Equal(t, want, got)
 }
 
 func TestAPIGetContractAddress(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	chain, engine := newBlockChain(1)
+	block, err := makeBlock(chain, engine, chain.Genesis())
+	assert.Nil(t, err)
+	_, err = chain.InsertChain(types.Blocks{block})
+	assert.Nil(t, err)
 
-	want := common.HexToAddress("0x0123456789")
-
-	backend := core.NewMockBackend(ctrl)
-	backend.EXPECT().GetContractAddress().Return(want)
+	want := autonity_tendermint_060.ContractAddress
 
 	API := &API{
-		tendermint: backend,
+		tendermint: engine,
 	}
 
 	got := API.GetContractAddress()
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("want %v, got %v", want, got)
-	}
+	assert.Equal(t, want, got)
 }
 
 func TestAPIGetWhitelist(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	chain, engine := newBlockChain(1)
+	block, err := makeBlock(chain, engine, chain.Genesis())
+	assert.Nil(t, err)
+	_, err = chain.InsertChain(types.Blocks{block})
+	assert.Nil(t, err)
 
-	want := []string{"d73b857969c86415c0c000371bcebd9ed3cca6c376032b3f65e58e9e2b79276fbc6f59eb1e22fcd6356ab95f42a666f70afd4985933bd8f3e05beb1a2bf8fdde@172.25.0.11:30303"}
-
-	backend := core.NewMockBackend(ctrl)
-	backend.EXPECT().WhiteList().Return(want)
+	want := []string{"enode://d73b857969c86415c0c000371bcebd9ed3cca6c376032b3f65e58e9e2b79276fbc6f59eb1e22fcd6356ab95f42a666f70afd4985933bd8f3e05beb1a2bf8fdde@172.25.0.11:30303"}
 
 	API := &API{
-		tendermint: backend,
+		tendermint: engine,
 	}
 
 	got := API.GetWhitelist()
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("want %v, got %v", want, got)
-	}
+
+	assert.Equal(t, want, got)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/golang/mock/gomock"
 	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"math/big"
 	"net"
@@ -65,7 +66,8 @@ func TestTendermintOneMalicious(t *testing.T) {
 	if testing.Short() || CONSENSUS_TEST_MODE != "tendermint" {
 		t.Skip("skipping test in short mode")
 	}
-
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 	cases := []*testCase{
 		{
 			name:      "one node - always accepts blocks",
@@ -74,7 +76,7 @@ func TestTendermintOneMalicious(t *testing.T) {
 			txPerPeer: 1,
 			maliciousPeers: map[int]func(basic consensus.Engine) consensus.Engine{
 				4: func(basic consensus.Engine) consensus.Engine {
-					return tendermintCore.NewVerifyHeaderAlwaysTrueEngine(basic)
+					return tendermintCore.NewMockBackend(ctrl)
 				},
 			},
 		},
@@ -281,7 +283,7 @@ func TestCheckFeeRedirectionAndRedistribution(t *testing.T) {
 
 			if block.NumberU64() > 1 && block.NumberU64() <= uint64(tCase.numBlocks) {
 				sh := validator.service.BlockChain().Config().AutonityContractConfig.GetStakeHolderUsers()[0]
-				stakeHolderBalance := st.GetBalance(sh.Address)
+				stakeHolderBalance := st.GetBalance(*sh.Address)
 				if stakeHolderBalance.Cmp(prevSTBalance) != 1 {
 					t.Fatal("Balance must be increased")
 				}

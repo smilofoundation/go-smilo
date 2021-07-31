@@ -47,77 +47,58 @@ type AutonityContractGenesis struct {
 	Deployer common.Address `json:"deployer" toml:",omitempty"`
 	// Bytecode of validators contract
 	// would like this type to be []byte but the unmarshalling is not working
-	Bytecode string `json:"bytecode" toml:",omitempty"`
+	Bytecode string `json:"bytecode,omitempty" toml:",omitempty"`
 	// Json ABI of the contract
-	ABI         string         `json:"abi" toml:",omitempty"`
+	ABI         string         `json:"abi,omitempty" toml:",omitempty"`
 	MinGasPrice uint64         `json:"minGasPrice" toml:",omitempty"`
 	Operator    common.Address `json:"operator" toml:",omitempty"`
 	Users       []User         `json:"users" toml:",omitempty"`
 }
 
-func (ac *AutonityContractGenesis) AddDefault(autonityVersion string) *AutonityContractGenesis {
+// Prepare prepares the AutonityContractGenesis by filling in missing fields.
+// It returns an error if the configuration is invalid.
+func (ac *AutonityContractGenesis) Prepare(autonityVersion string) error {
+	if len(ac.Bytecode) == 0 && len(ac.ABI) > 0 ||
+		len(ac.Bytecode) > 0 && len(ac.ABI) == 0 {
+		return errors.New("it is an error to set only of autonity contract abi or bytecode")
+	}
 	ABI := DefaultABI
 	Bytecode := DefaultBytecode
-	Deployer := DefaultDeployer
 	Operator := DefaultGovernance
-	if autonityVersion == "0.4.0" {
+	if autonityVersion == "0.6.0" {
 		ABI = acdefault.ABI()
 		Bytecode = acdefault.Bytecode()
-		Deployer = acdefault.Deployer()
 		Operator = acdefault.Governance()
 	}
 
-	if len(ac.Bytecode) == 0 || len(ac.ABI) == 0 {
+	if len(ac.Bytecode) == 0 && len(ac.ABI) == 0 {
 		log.Info("Default Validator smart contract set")
 		ac.ABI = ABI
 		ac.Bytecode = Bytecode
 	} else {
 		log.Info("User specified Validator smart contract set")
 	}
-	if reflect.DeepEqual(ac.Deployer, common.Address{}) {
-		ac.Deployer = Deployer
-	}
 	if reflect.DeepEqual(ac.Operator, common.Address{}) {
 		ac.Operator = Operator
 	}
 
 	for i := range ac.Users {
-		if reflect.DeepEqual(ac.Users[i].Address, common.Address{}) {
-			if n, err := enode.ParseV4WithResolve(ac.Users[i].Enode); n != nil {
-				ac.Users[i].Address = EnodeToAddress(n)
-			} else {
-				log.Error("Error parsing enode", "enode", ac.Users[i].Enode, "err", err)
+		if ac.Users[i].Address == nil {
+			addr, err := ac.Users[i].getAddressFromEnode()
+			if err != nil {
+				return fmt.Errorf("error parsing enode %q, err: %v", ac.Users[i].Enode, err)
 			}
-		}
-
-		//TODO: Do we need to check if enodeToAddress corresponds to the address provided (in case is not {})
-	}
-	return ac
-}
-
-func (ac *AutonityContractGenesis) Validate() error {
-	if len(ac.Bytecode) == 0 || len(ac.ABI) == 0 {
-		return errors.New("autonity contract is empty")
-	}
-
-	if reflect.DeepEqual(ac.Deployer, common.Address{}) {
-		return errors.New("deployer is empty")
-	}
-
-	if reflect.DeepEqual(ac.Operator, common.Address{}) {
-		return errors.New("governance operator is empty")
-	}
-
-	for i := range ac.Users {
-		if err := ac.Users[i].Validate(); err != nil {
-			return err
+			ac.Users[i].Address = &addr
+			err = ac.Users[i].Validate()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	if len(ac.GetValidatorUsers()) == 0 {
 		return errors.New("validators list is empty")
 	}
-
 	return nil
 }
 
@@ -130,40 +111,45 @@ func (ac *AutonityContractGenesis) GetContractAddress() (common.Address, error) 
 
 //User - is used to put predefined accounts to genesis
 type User struct {
-	Address common.Address `json:"address"`
-	Enode   string         `json:"enode"`
-	Type    UserType       `json:"type"`
-	Stake   uint64         `json:"stake"`
+	Address *common.Address `json:"address,omitempty"`
+	Enode   string          `json:"enode"`
+	Type    UserType        `json:"type"`
+	Stake   uint64          `json:"stake"`
+}
+
+// getAddressFromEnode gets the account address from the user enode.
+func (u *User) getAddressFromEnode() (common.Address, error) {
+	n, err := enode.ParseV4(u.Enode)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to parse enode %q, error:%v", u.Enode, err)
+	}
+	return crypto.PubkeyToAddress(*n.Pubkey()), nil
 }
 
 func (u *User) Validate() error {
-	if !u.Type.IsValid() {
+	switch {
+	case !u.Type.IsValid():
 		return errors.New("incorrect user type")
-	}
 
-	if reflect.DeepEqual(u.Address, common.Address{}) && len(u.Enode) == 0 { //TODO: Check if && is correct here
-		return errors.New("user.enode or user.address must be defined")
-	}
-
-	if u.Type == UserParticipant && u.Stake > 0 {
+	case u.Type == UserParticipant && u.Stake > 0:
 		return errors.New("user.stake must be nil or equal to 0 for users of type participant")
-	}
 
-	if u.Type == UserValidator && len(u.Enode) == 0 {
+	case u.Type == UserValidator && len(u.Enode) == 0:
 		return errors.New("if user.type is validator then user.enode must be defined")
-	}
-	if len(u.Enode) > 0 {
-		n, err := enode.ParseV4WithResolve(u.Enode)
-		if n == nil {
-			return fmt.Errorf("fail to parse enode for account %v, error:%v", u.Address, err)
+
+	case u.Address == nil && len(u.Enode) == 0:
+		return errors.New("user.enode or user.address must be defined")
+
+	case len(u.Enode) > 0:
+		a, err := u.getAddressFromEnode()
+		if err != nil {
+			return err
 		}
-
-		//todo do we need this check? --> I think we do!
-		//if reflect.DeepEqual(u.Address, common.Address{}) {
-		//	return errors.New("if both user.enode and user.address are defined, then the derived address from user.enode must be equal to user.address")
-		//}
+		// If address is set check it matches the address from the enode
+		if u.Address != nil && *u.Address != a {
+			return fmt.Errorf("mismatching address %q and address from enode %q", u.Address.String(), a.String())
+		}
 	}
-
 	return nil
 }
 
@@ -187,9 +173,4 @@ func (ac *AutonityContractGenesis) GetStakeHolderUsers() []User {
 		}
 	}
 	return users
-}
-
-func EnodeToAddress(n *enode.Node) common.Address {
-	addrByte := n.ID().Bytes()[12:]
-	return common.BytesToAddress(addrByte)
 }

@@ -70,6 +70,22 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 			// We only process old rounds while future rounds messages are pushed on to the backlog
 			oldRoundMessages := c.messages.getOrCreate(preVote.Round)
 			c.acceptVote(oldRoundMessages, prevote, preVote.ProposedBlockHash, *msg)
+
+			// Line 28 in Algorithm 1 of The latest gossip on BFT consensus.
+			if c.step == propose {
+				// ProposalBlock would be nil if node haven't receive proposal yet.
+				if c.curRoundMessages.proposal.ProposalBlock != nil {
+					vr := c.curRoundMessages.proposal.ValidRound
+					h := c.curRoundMessages.proposal.ProposalBlock.Hash()
+					rs := c.messages.getOrCreate(vr)
+
+					if vr >= 0 && vr < c.Round() && rs.PrevotesPower(h) >= c.committeeSet().Quorum() {
+						c.sendPrevote(ctx, !(c.lockedRound <= vr || h == c.lockedValue.Hash()))
+						c.setStep(prevote)
+						return nil
+					}
+				}
+			}
 		}
 		return err
 	}
@@ -88,7 +104,7 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 		curProposalHash := c.curRoundMessages.GetProposalHash()
 
 		// Line 36 in Algorithm 1 of The latest gossip on BFT consensus
-		if curProposalHash != (common.Hash{}) && c.curRoundMessages.PrevotesPower(curProposalHash) >= c.CommitteeSet().Quorum() && !c.setValidRoundAndValue {
+		if curProposalHash != (common.Hash{}) && c.curRoundMessages.PrevotesPower(curProposalHash) >= c.committeeSet().Quorum() && !c.setValidRoundAndValue {
 			// this piece of code should only run once
 			if err := c.prevoteTimeout.stopTimer(); err != nil {
 				return err
@@ -105,7 +121,7 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 			c.validRound = c.Round()
 			c.setValidRoundAndValue = true
 			// Line 44 in Algorithm 1 of The latest gossip on BFT consensus
-		} else if c.step == prevote && c.curRoundMessages.PrevotesPower(common.Hash{}) >= c.CommitteeSet().Quorum() {
+		} else if c.step == prevote && c.curRoundMessages.PrevotesPower(common.Hash{}) >= c.committeeSet().Quorum() {
 			if err := c.prevoteTimeout.stopTimer(); err != nil {
 				return err
 			}
@@ -115,8 +131,8 @@ func (c *core) handlePrevote(ctx context.Context, msg *Message) error {
 			c.setStep(precommit)
 
 			// Line 34 in Algorithm 1 of The latest gossip on BFT consensus
-		} else if c.step == prevote && !c.prevoteTimeout.timerStarted() && !c.sentPrecommit && c.curRoundMessages.PrevotesTotalPower() >= c.CommitteeSet().Quorum() {
-			timeoutDuration := timeoutPrevote(c.Round())
+		} else if c.step == prevote && !c.prevoteTimeout.timerStarted() && !c.sentPrecommit && c.curRoundMessages.PrevotesTotalPower() >= c.committeeSet().Quorum() {
+			timeoutDuration := c.timeoutPrevote(c.Round())
 			c.prevoteTimeout.scheduleTimeout(timeoutDuration, c.Round(), c.Height(), c.onTimeoutPrevote)
 			c.logger.Debug("Scheduled Prevote Timeout", "Timeout Duration", timeoutDuration)
 		}
@@ -136,7 +152,7 @@ func (c *core) logPrevoteMessageEvent(message string, prevote Vote, from, to str
 		"msgRound", prevote.Round,
 		"currentStep", c.step,
 		"isProposer", c.isProposer(),
-		"currentProposer", c.CommitteeSet().GetProposer(c.Round()),
+		"currentProposer", c.committeeSet().GetProposer(c.Round()),
 		"isNilMsg", prevote.ProposedBlockHash == common.Hash{},
 		"hash", prevote.ProposedBlockHash,
 		"type", "Prevote",

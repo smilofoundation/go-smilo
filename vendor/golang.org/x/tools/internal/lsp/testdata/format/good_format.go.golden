@@ -9,3 +9,5 @@ func goodbye() {
 	log.Printf("byeeeee")
 }
 
+-- gofmt-d --
+

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"go-smilo/src/blockchain/smilobft/eth"
 	"math/big"
 	"sync"
@@ -69,7 +70,7 @@ type SimulatedBackend struct {
 
 	mu           sync.Mutex
 	pendingBlock *types.Block   // Currently pending block that will be imported on request
-	pendingState *state.StateDB // Currently pending state that will be the active on on request
+	pendingState *state.StateDB // Currently pending state that will be the active on request
 
 	events *filters.EventSystem // Event system for filtering log events live
 
@@ -147,15 +148,28 @@ func (b *SimulatedBackend) rollback() {
 	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
 }
 
+// stateByBlockNumber retrieves a state by a given blocknumber.
+func (b *SimulatedBackend) stateByBlockNumber(ctx context.Context, blockNumber *big.Int) (*state.StateDB,*state.StateDB, error) {
+	if blockNumber == nil || blockNumber.Cmp(b.blockchain.CurrentBlock().Number()) == 0 {
+		return b.blockchain.State()
+	}
+	block, err := b.blockByNumberNoLock(ctx, blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+	return b.blockchain.StateAt(block.Root())
+}
+
 // CodeAt returns the code associated with a certain account in the blockchain.
 func (b *SimulatedBackend) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if blockNumber != nil && blockNumber.Cmp(b.blockchain.CurrentBlock().Number()) != 0 {
-		return nil, errBlockNumberUnsupported
+	statedb, _, err := b.stateByBlockNumber(ctx, blockNumber)
+	if err != nil {
+		return nil, err
 	}
-	statedb, _, _ := b.blockchain.State()
+
 	return statedb.GetCode(contract), nil
 }
 
@@ -164,10 +178,11 @@ func (b *SimulatedBackend) BalanceAt(ctx context.Context, contract common.Addres
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if blockNumber != nil && blockNumber.Cmp(b.blockchain.CurrentBlock().Number()) != 0 {
-		return nil, errBlockNumberUnsupported
+	statedb, _, err := b.stateByBlockNumber(ctx, blockNumber)
+	if err != nil {
+		return nil, err
 	}
-	statedb, _, _ := b.blockchain.State()
+
 	return statedb.GetBalance(contract), nil
 }
 
@@ -176,10 +191,11 @@ func (b *SimulatedBackend) NonceAt(ctx context.Context, contract common.Address,
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if blockNumber != nil && blockNumber.Cmp(b.blockchain.CurrentBlock().Number()) != 0 {
-		return 0, errBlockNumberUnsupported
+	statedb, _, err := b.stateByBlockNumber(ctx, blockNumber)
+	if err != nil {
+		return 0, err
 	}
-	statedb, _, _ := b.blockchain.State()
+
 	return statedb.GetNonce(contract), nil
 }
 
@@ -188,10 +204,11 @@ func (b *SimulatedBackend) StorageAt(ctx context.Context, contract common.Addres
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if blockNumber != nil && blockNumber.Cmp(b.blockchain.CurrentBlock().Number()) != 0 {
-		return nil, errBlockNumberUnsupported
+	statedb, _, err := b.stateByBlockNumber(ctx, blockNumber)
+	if err != nil {
+		return nil, err
 	}
-	statedb, _, _ := b.blockchain.State()
+
 	val := statedb.GetState(contract, key)
 	return val[:], nil
 }
@@ -247,6 +264,12 @@ func (b *SimulatedBackend) BlockByNumber(ctx context.Context, number *big.Int) (
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	return b.blockByNumberNoLock(ctx, number)
+}
+
+// blockByNumberNoLock retrieves a block from the database by number, caching it
+// (associated with its hash) if found without Lock.
+func (b *SimulatedBackend) blockByNumberNoLock(ctx context.Context, number *big.Int) (*types.Block, error) {
 	if number == nil || number.Cmp(b.pendingBlock.Number()) == 0 {
 		return b.blockchain.CurrentBlock(), nil
 	}
@@ -398,6 +421,27 @@ func (b *SimulatedBackend) EstimateGas(ctx context.Context, call smilobft.CallMs
 		hi = call.Gas
 	} else {
 		hi = b.pendingBlock.GasLimit()
+	}
+	// Recap the highest gas allowance with account's balance.
+	if call.GasPrice != nil && call.GasPrice.Uint64() != 0 {
+		balance := b.pendingState.GetBalance(call.From) // from can't be nil
+		available := new(big.Int).Set(balance)
+		if call.Value != nil {
+			if call.Value.Cmp(available) >= 0 {
+				return 0, errors.New("insufficient funds for transfer")
+			}
+			available.Sub(available, call.Value)
+		}
+		allowance := new(big.Int).Div(available, call.GasPrice)
+		if hi > allowance.Uint64() {
+			transfer := call.Value
+			if transfer == nil {
+				transfer = new(big.Int)
+			}
+			log.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer, "gasprice", call.GasPrice, "fundable", allowance)
+			hi = allowance.Uint64()
+		}
 	}
 	cap = hi
 

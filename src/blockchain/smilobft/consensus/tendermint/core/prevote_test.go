@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"math/big"
 	"reflect"
 	"testing"
@@ -30,7 +31,7 @@ func TestSendPrevote(t *testing.T) {
 			messages:         messages,
 			curRoundMessages: curRoundMessages,
 			round:            2,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			height:           big.NewInt(3),
 		}
 
@@ -59,10 +60,7 @@ func TestSendPrevote(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Sign(gomock.Any()).Return([]byte{0x1}, nil)
 
-		payload, err := expectedMsg.Payload()
-		if err != nil {
-			t.Fatalf("Expected nil, got %v", err)
-		}
+		payload := expectedMsg.Payload()
 
 		backendMock.EXPECT().Broadcast(gomock.Any(), gomock.Any(), payload)
 
@@ -71,7 +69,7 @@ func TestSendPrevote(t *testing.T) {
 			address:          member.Address,
 			logger:           logger,
 			height:           big.NewInt(2),
-			committeeSet:     committeSet,
+			committee:        committeSet,
 			messages:         messages,
 			round:            1,
 			step:             prevote,
@@ -96,7 +94,7 @@ func TestHandlePrevote(t *testing.T) {
 			height:           big.NewInt(3),
 			curRoundMessages: curRoundMessages,
 			messages:         messages,
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			logger:           log.New("backend", "test", "id", 0),
 		}
 
@@ -119,7 +117,7 @@ func TestHandlePrevote(t *testing.T) {
 			curRoundMessages: curRoundMessages,
 			messages:         messages,
 			logger:           log.New("backend", "test", "id", 0),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			round:            1,
 			height:           big.NewInt(3),
 		}
@@ -160,7 +158,7 @@ func TestHandlePrevote(t *testing.T) {
 			logger:           logger,
 			round:            1,
 			height:           big.NewInt(2),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			prevoteTimeout:   newTimeout(prevote, logger),
 			backend:          backendMock,
 			step:             prevote,
@@ -215,10 +213,7 @@ func TestHandlePrevote(t *testing.T) {
 			Signature:     []byte{0x1},
 			power:         1,
 		}
-		payload, err := msg.Payload()
-		if err != nil {
-			t.Fatalf("Expected nil, got %v", err)
-		}
+		payload := msg.Payload()
 
 		backendMock.EXPECT().Broadcast(context.Background(), gomock.Any(), payload)
 
@@ -228,7 +223,7 @@ func TestHandlePrevote(t *testing.T) {
 			curRoundMessages: curRoundMessage,
 			logger:           logger,
 			prevoteTimeout:   newTimeout(prevote, logger),
-			committeeSet:     committeeSet,
+			committee:        committeeSet,
 			round:            2,
 			height:           big.NewInt(3),
 			step:             prevote,
@@ -282,10 +277,7 @@ func TestHandlePrevote(t *testing.T) {
 			power:         1,
 		}
 
-		payload, err := msg.Payload()
-		if err != nil {
-			t.Fatalf("Expected nil, got %v", err)
-		}
+		payload := msg.Payload()
 
 		backendMock.EXPECT().Broadcast(context.Background(), gomock.Any(), payload)
 
@@ -301,7 +293,7 @@ func TestHandlePrevote(t *testing.T) {
 			height:           big.NewInt(3),
 			step:             prevote,
 			prevoteTimeout:   newTimeout(prevote, logger),
-			committeeSet:     committeSet,
+			committee:        committeSet,
 		}
 
 		err = c.handlePrevote(context.Background(), expectedMsg)
@@ -352,13 +344,13 @@ func TestHandlePrevote(t *testing.T) {
 		backendMock := NewMockBackend(ctrl)
 		backendMock.EXPECT().Address().AnyTimes().Return(addr)
 
-		c := New(backendMock, nil)
+		c := New(backendMock, config.DefaultConfig())
 		c.curRoundMessages = curRoundMessages
 		c.height = big.NewInt(2)
 		c.round = 1
 		c.step = prevote
 		c.prevoteTimeout = newTimeout(prevote, logger)
-		c.committeeSet = committeeSet
+		c.committee = committeeSet
 
 		err = c.handlePrevote(context.Background(), expectedMsg)
 		if err != nil {

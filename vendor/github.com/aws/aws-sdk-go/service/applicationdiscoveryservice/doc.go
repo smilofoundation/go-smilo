@@ -49,10 +49,6 @@
 // You can operate Application Discovery Service offline to inspect collected
 // data before it is shared with the service.
 //
-// Your AWS account must be granted access to Application Discovery Service,
-// a process called whitelisting. This is true for AWS partners and customers
-// alike. To request access, sign up for Application Discovery Service (http://aws.amazon.com/application-discovery/).
-//
 // This API reference provides descriptions, syntax, and usage examples for
 // each of the actions and data types for Application Discovery Service. The
 // topic for each action shows the API request parameters and the response.
@@ -62,6 +58,10 @@
 //
 // This guide is intended for use with the AWS Application Discovery Service
 // User Guide (http://docs.aws.amazon.com/application-discovery/latest/userguide/).
+//
+// Remember that you must set your AWS Migration Hub home region before you
+// call any of these APIs, or a HomeRegionNotSetException error will be returned.
+// Also, you must make the API calls while in your home region.
 //
 // See https://docs.aws.amazon.com/goto/WebAPI/discovery-2015-11-01 for more information on this service.
 //

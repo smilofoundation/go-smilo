@@ -16,46 +16,37 @@
 
 package config
 
-import (
-	"math/big"
-	"sync"
-)
+import "math/big"
 
 type ProposerPolicy uint64
 
 const (
 	RoundRobin ProposerPolicy = iota
-	Sticky
+	WeightedRandomSampling
 )
 
 type Config struct {
-	RequestTimeout       uint64         `toml:",omitempty"` // The timeout for each Istanbul round in milliseconds.
-	BlockPeriod          uint64         `toml:",omitempty"` // Default minimum difference between two consecutive block's timestamps in second
-	ProposerPolicy       ProposerPolicy `toml:",omitempty"` // The policy for proposer selection
-	Epoch                uint64         `toml:",omitempty"` // The number of blocks after which to checkpoint and reset the pending votes
-	MinBlocksEmptyMining *big.Int       `toml:",omitempty"` // Min Blocks to mine before Stop Mining Empty Blocks
+	BlockPeriod          uint64         `toml:",omitempty" json:"block-period"` // Default minimum difference between two consecutive block's timestamps in second
+	ProposerPolicy       ProposerPolicy `toml:",omitempty" json:"policy"`       // The policy for proposer selection
+	MinBlocksEmptyMining *big.Int       `toml:",omitempty"`                     // Min Blocks to mine before Stop Mining Empty Blocks
+}
 
-	sync.RWMutex
+func (c *Config) String() string {
+	return "tendermint"
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		RequestTimeout:       10000,
 		BlockPeriod:          1,
-		ProposerPolicy:       RoundRobin,
-		Epoch:                30000,
+		ProposerPolicy:       WeightedRandomSampling,
 		MinBlocksEmptyMining: big.NewInt(20000000),
 	}
 }
 
-func (cfg *Config) SetProposerPolicy(p ProposerPolicy) {
-	cfg.Lock()
-	cfg.ProposerPolicy = p
-	cfg.Unlock()
-}
-
-func (cfg *Config) GetProposerPolicy() ProposerPolicy {
-	cfg.RLock()
-	defer cfg.RUnlock()
-	return cfg.ProposerPolicy
+func RoundRobinConfig() *Config {
+	return &Config{
+		BlockPeriod:          1,
+		ProposerPolicy:       RoundRobin,
+		MinBlocksEmptyMining: big.NewInt(20000000),
+	}
 }

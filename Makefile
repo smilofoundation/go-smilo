@@ -18,7 +18,7 @@ SRC_DIR = "src/blockchain/smilobft"
 
 
 GOBIN = $(shell pwd)/build/bin
-GO ?= 1.12
+GO ?= latest
 
 build: clean
 	go build -o go-smilo main.go

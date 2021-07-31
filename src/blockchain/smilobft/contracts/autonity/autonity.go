@@ -151,7 +151,7 @@ func (ac *Contract) DeployAutonityContract(chain consensus.ChainReader, header *
 	accTypes := make([]*big.Int, 0, ln)
 	participantStake := make([]*big.Int, 0, ln)
 	for _, v := range chain.Config().AutonityContractConfig.Users {
-		users = append(users, v.Address)
+		users = append(users, *v.Address)
 		enodes = append(enodes, v.Enode)
 		accTypes = append(accTypes, big.NewInt(int64(v.Type.GetID())))
 		participantStake = append(participantStake, big.NewInt(int64(v.Stake)))

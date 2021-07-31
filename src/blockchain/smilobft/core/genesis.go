@@ -308,6 +308,22 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 // ToBlock creates the genesis block and writes state of a genesis specification
 // to the given database (or discards it if nil).
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
+
+	committee := g.Committee
+	//if g.Config.AutonityContractConfig != nil && g.Config.Tendermint != nil {
+	//	if g.Difficulty.Cmp(big.NewInt(1)) != 0 {
+	//		panic(fmt.Sprintf("autonity requires genesis to have a difficulty of 1, instead got %v", g.Difficulty))
+	//	}
+	//	err := g.Config.AutonityContractConfig.Prepare("0.6.0")
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	committee, err = extractCommittee(g.Config.AutonityContractConfig.Users)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//}
+
 	if db == nil {
 		db = rawdb.NewMemoryDatabase()
 	}
@@ -320,6 +336,26 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			statedb.SetState(addr, key, value)
 		}
 	}
+
+	//if g.Config.AutonityContractConfig != nil && g.Config.Tendermint != nil {
+	//	evm := genesisEVM(g, statedb)
+	//
+	//	abiSTR := g.Config.AutonityContractConfig.ABI
+	//	if abiSTR == "" {
+	//		panic("abi could not be loaded properly from the g.Config.AutonityContractConfig.ABI")
+	//	}
+	//
+	//	abiStruct, err := abi.JSON(strings.NewReader(abiSTR))
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	err = autonity_tendermint.DeployContract(&abiStruct, g.Config.AutonityContractConfig, evm)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//}
+
 	root := statedb.IntermediateRoot(false)
 
 	g.mu.RLock()
@@ -343,8 +379,8 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		MixDigest:  g.Mixhash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
-		Committee:  g.Committee,
 		Round:      0,
+		Committee:  committee,
 	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
@@ -354,6 +390,24 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 	return types.NewBlock(head, nil, nil, nil)
 }
+//
+//func genesisEVM(genesis *Genesis, statedb *state.StateDB) *vm.EVM {
+//
+//	evmContext := vm.Context{
+//		CanTransfer: CanTransfer,
+//		Transfer:    Transfer,
+//		GetHash:     func(n uint64) common.Hash { return common.Hash{} },
+//		Origin:      autonity_tendermint.Deployer,
+//		Coinbase:    genesis.Coinbase,
+//		BlockNumber: big.NewInt(0),
+//		Time:        new(big.Int).SetUint64(genesis.Timestamp),
+//		GasLimit:    genesis.GasLimit,
+//		Difficulty:  genesis.Difficulty,
+//		GasPrice:    new(big.Int).SetUint64(0x0),
+//	}
+//
+//	return vm.NewEVM(evmContext, statedb, statedb, genesis.Config, vm.Config{})
+//}
 
 // Commit writes the block and state of a genesis specification to the database.
 // The block is committed as the canonical head block.
@@ -409,6 +463,29 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	return block, nil
 }
+// extractCommittee takes a slice of autonity users and extracts the validators
+// into a new type 'types.Committee' which is returned. It returns an error if
+// the provided users contained no validators.
+func extractCommittee(users []params.User) (types.Committee, error) {
+	var committee types.Committee
+	for _, v := range users {
+		if v.Type == params.UserValidator {
+			member := types.CommitteeMember{
+				Address:     *v.Address,
+				VotingPower: new(big.Int).SetUint64(v.Stake),
+			}
+			committee = append(committee, member)
+		}
+	}
+
+	if len(committee) == 0 {
+		return nil, fmt.Errorf("no validators specified in the initial autonity users")
+	}
+
+	sort.Sort(committee)
+	log.Info("starting BFT consensus", "validators", committee)
+	return committee, nil
+}
 
 // SetBFT sets default BFT(IBFT or Tendermint or SportDAO) config values
 func (g *Genesis) SetBFT() error {
@@ -436,7 +513,7 @@ func (g *Genesis) SetBFT() error {
 		for _, v := range g.Config.AutonityContractConfig.Users {
 			if v.Type == params.UserValidator {
 				member := types.CommitteeMember{
-					Address:     v.Address,
+					Address:     *v.Address,
 					VotingPower: new(big.Int).SetUint64(v.Stake),
 				}
 				committee = append(committee, member)

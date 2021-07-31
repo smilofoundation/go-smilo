@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"fmt"
+	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -20,8 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"go-smilo/src/blockchain/smilobft/cmn/keygenerator"
 	"go-smilo/src/blockchain/smilobft/consensus"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
-	tendermintCore "go-smilo/src/blockchain/smilobft/consensus/tendermint/core"
 	"go-smilo/src/blockchain/smilobft/core"
 	"go-smilo/src/blockchain/smilobft/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -76,7 +75,7 @@ func generateRandomTx(nonce uint64, toAddr common.Address, key *ecdsa.PrivateKey
 		types.HomesteadSigner{}, key)
 }
 
-func makeGenesis(nodes map[string]*testNode) *core.Genesis {
+func makeGenesis(nodes map[string]*testNode, stakeholderName string) *core.Genesis {
 	// generate genesis block
 	genesis := core.DefaultGenesisBlock()
 	genesis.ExtraData = nil
@@ -100,7 +99,7 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 	}
 
 	users := make([]params.User, 0, len(nodes))
-	for n, validator := range nodes {
+	for n, node := range nodes {
 		var nodeType params.UserType
 		stake := uint64(100)
 
@@ -123,10 +122,10 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 		if skip {
 			continue
 		}
-
+		address := crypto.PubkeyToAddress(node.privateKey.PublicKey)
 		users = append(users, params.User{
-			Address: crypto.PubkeyToAddress(validator.privateKey.PublicKey),
-			Enode:   validator.url,
+			Address: &address,
+			Enode:   node.url,
 			Type:    nodeType,
 			Stake:   stake,
 		})
@@ -137,18 +136,24 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 	if err != nil {
 		log.Error("Make genesis error", "err", err)
 	}
-	users = append(users, params.User{
-		Address: crypto.PubkeyToAddress(shKey.PublicKey),
-		Type:    params.UserStakeHolder,
-		Stake:   200,
-	})
-	genesis.Config.AutonityContractConfig.Users = users
-	err = genesis.Config.AutonityContractConfig.AddDefault("0.4.0").Validate()
+
+	stakeNode, err := newNode(shKey, stakeholderName)
 	if err != nil {
-		panic(err)
+		log.Error("Make genesis error while adding a stakeholder", "err", err)
 	}
 
-	err = genesis.SetBFT()
+	address := crypto.PubkeyToAddress(shKey.PublicKey)
+	stakeHolder := params.User{
+		Address: &address,
+		Type:    params.UserStakeHolder,
+		Stake:   200,
+	}
+
+	stakeHolder.Enode = stakeNode.url
+
+	users = append(users, stakeHolder)
+	genesis.Config.AutonityContractConfig.Users = users
+	err = genesis.Config.AutonityContractConfig.Prepare("0.6.0")
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +161,7 @@ func makeGenesis(nodes map[string]*testNode) *core.Genesis {
 	return genesis
 }
 
-func makePeer(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr string, rpcPort int, inRate, outRate int64, cons func(basic consensus.Engine) consensus.Engine, backs func(basic tendermintCore.Backend) tendermintCore.Backend) (*node.Node, error) { //здесь эта переменная-функция называется cons
+func makePeer(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr string, rpcPort int, inRate, outRate int64, cons func(basic consensus.Engine) consensus.Engine) (*node.Node, error) { //здесь эта переменная-функция называется cons
 	// Define the basic configurations for the Ethereum node
 	datadir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -172,10 +177,11 @@ func makePeer(genesis *core.Genesis, nodekey *ecdsa.PrivateKey, listenAddr strin
 		Version: params.Version,
 		DataDir: datadir,
 		P2P: p2p.Config{
-			ListenAddr:  listenAddr,
-			NoDiscovery: true,
-			MaxPeers:    25,
-			PrivateKey:  nodekey,
+			ListenAddr:            listenAddr,
+			NoDiscovery:           true,
+			MaxPeers:              25,
+			PrivateKey:            nodekey,
+			//DialHistoryExpiration: time.Millisecond,
 		},
 		NoUSB: true,
 	}
@@ -224,7 +230,8 @@ func maliciousTest(t *testing.T, test *testCase, validators map[string]*testNode
 }
 
 func sendTransactions(t *testing.T, test *testCase, peers map[string]*testNode, txPerPeer int, errorOnTx bool, names []string) {
-	const blocksToWait = 15
+	// extend the blockToWait to get pending TX be mined.
+	const blocksToWait = 60
 
 	txs := make(map[uint64]int) // blockNumber to count
 	txsMu := &sync.Mutex{}

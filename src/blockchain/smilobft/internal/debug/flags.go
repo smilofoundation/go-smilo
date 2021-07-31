@@ -115,17 +115,6 @@ func init() {
 func Setup(ctx *cli.Context, logdir string) error {
 	// logging
 	log.PrintOrigins(ctx.GlobalBool(debugFlag.Name))
-	if logdir != "" {
-		rfh, err := log.RotatingFileHandler(
-			logdir,
-			262144,
-			log.JSONFormatOrderedEx(false, true),
-		)
-		if err != nil {
-			return err
-		}
-		glogger.SetHandler(log.MultiHandler(ostream, rfh))
-	}
 	glogger.Verbosity(log.Lvl(ctx.GlobalInt(verbosityFlag.Name)))
 	glogger.Vmodule(ctx.GlobalString(vmoduleFlag.Name))
 	glogger.BacktraceAt(ctx.GlobalString(backtraceAtFlag.Name))

@@ -39,6 +39,8 @@ const (
 // aws.Config parameter to add your extra config.
 //
 // Example:
+//     mySession := session.Must(session.NewSession())
+//
 //     // Create a MarketplaceCommerceAnalytics client from just a session.
 //     svc := marketplacecommerceanalytics.New(mySession)
 //
@@ -49,11 +51,11 @@ func New(p client.ConfigProvider, cfgs ...*aws.Config) *MarketplaceCommerceAnaly
 	if c.SigningNameDerived || len(c.SigningName) == 0 {
 		c.SigningName = "marketplacecommerceanalytics"
 	}
-	return newClient(*c.Config, c.Handlers, c.Endpoint, c.SigningRegion, c.SigningName)
+	return newClient(*c.Config, c.Handlers, c.PartitionID, c.Endpoint, c.SigningRegion, c.SigningName)
 }
 
 // newClient creates, initializes and returns a new service client instance.
-func newClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegion, signingName string) *MarketplaceCommerceAnalytics {
+func newClient(cfg aws.Config, handlers request.Handlers, partitionID, endpoint, signingRegion, signingName string) *MarketplaceCommerceAnalytics {
 	svc := &MarketplaceCommerceAnalytics{
 		Client: client.New(
 			cfg,
@@ -62,6 +64,7 @@ func newClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegio
 				ServiceID:     ServiceID,
 				SigningName:   signingName,
 				SigningRegion: signingRegion,
+				PartitionID:   partitionID,
 				Endpoint:      endpoint,
 				APIVersion:    "2015-07-01",
 				JSONVersion:   "1.1",

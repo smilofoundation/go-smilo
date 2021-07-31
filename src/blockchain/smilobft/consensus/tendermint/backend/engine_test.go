@@ -26,8 +26,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"go-smilo/src/blockchain/smilobft/consensus"
 	"go-smilo/src/blockchain/smilobft/consensus/tendermint/events"
 	"go-smilo/src/blockchain/smilobft/core/types"
@@ -194,7 +192,7 @@ func TestVerifyHeader(t *testing.T) {
 	}
 	header = block.Header()
 	copy(header.Nonce[:], hexutil.MustDecode("0x111111111111"))
-	header.Number = big.NewInt(int64(engine.config.Epoch))
+	//header.Number = big.NewInt(int64(engine.config.Epoch))
 	err = engine.VerifyHeader(chain, header, false)
 	if err != errInvalidNonce {
 		t.Errorf("error mismatch: have %v, want %v", err, errInvalidNonce)
@@ -225,8 +223,8 @@ func TestVerifySeal(t *testing.T) {
 	}
 
 	// unauthorized users but still can get correct signer address
-	privateKey, _ := crypto.GenerateKey()
-	engine.SetPrivateKey(privateKey)
+	//privateKey, _ := crypto.GenerateKey()
+	//engine.SetPrivateKey(privateKey)
 	err = engine.VerifySeal(chain, block.Header())
 	if err != nil {
 		t.Errorf("error mismatch: have %v, want nil", err)

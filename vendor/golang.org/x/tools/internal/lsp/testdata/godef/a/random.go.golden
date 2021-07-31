@@ -1,5 +1,6 @@
 -- PosSum-definition --
 godef/a/random.go:16:15-18: defined here as func (*Pos).Sum() int
+
 -- PosSum-definition-json --
 {
 	"span": {
@@ -21,8 +22,8 @@ godef/a/random.go:16:15-18: defined here as func (*Pos).Sum() int
 -- PosSum-hover --
 func (*Pos).Sum() int
 -- PosX-definition --
-godef/a/random.go:13:2-3: defined here as @mark(PosX, "x"),mark(PosY, "y")
-field x int
+godef/a/random.go:13:2-3: defined here as field x int
+
 -- PosX-definition-json --
 {
 	"span": {
@@ -38,7 +39,7 @@ field x int
 			"offset": 188
 		}
 	},
-	"description": "@mark(PosX, \"x\"),mark(PosY, \"y\")\nfield x int"
+	"description": "field x int"
 }
 
 -- PosX-hover --
@@ -46,6 +47,7 @@ field x int
 field x int
 -- RandomParamY-definition --
 godef/a/random.go:8:14-15: defined here as var y int
+
 -- RandomParamY-definition-json --
 {
 	"span": {

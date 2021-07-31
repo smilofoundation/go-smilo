@@ -24,12 +24,10 @@ import (
 	"crypto/ecdsa"
 	crand "crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"sync"
 	"time"
 
@@ -47,6 +45,10 @@ var (
 	ErrLocked  = accounts.NewAuthNeededError("password or unlock")
 	ErrNoMatch = errors.New("no key for given address or file")
 	ErrDecrypt = errors.New("could not decrypt key with given password")
+
+	// ErrAccountAlreadyExists is returned if an account attempted to import is
+	// already present in the keystore.
+	ErrAccountAlreadyExists = errors.New("account alreaady exists")
 )
 
 // KeyStoreType is the reflect type of a keystore backend.
@@ -70,7 +72,8 @@ type KeyStore struct {
 	updateScope event.SubscriptionScope // Subscription scope tracking current live listeners
 	updating    bool                    // Whether the event notification loop is running
 
-	mu sync.RWMutex
+	mu       sync.RWMutex
+	importMu sync.Mutex // Import Mutex locks the import to prevent two insertions from racing
 }
 
 type unlocked struct {
@@ -104,12 +107,6 @@ func (ks *KeyStore) init(keydir string) {
 	ks.unlocked = make(map[common.Address]*unlocked)
 	ks.cache, ks.changes = newAccountCache(keydir)
 
-	// TODO: In order for this finalizer to work, there must be no references
-	// to ks. addressCache doesn't keep a reference but unlocked keys do,
-	// so the finalizer will not trigger until all timed unlocks have expired.
-	runtime.SetFinalizer(ks, func(m *KeyStore) {
-		m.cache.close()
-	})
 	// Create the initial list of wallets from the cache
 	accs := ks.cache.accounts()
 	ks.wallets = make([]accounts.Wallet, len(accs))
@@ -317,6 +314,7 @@ func (ks *KeyStore) SignTxWithPassphrase(a accounts.Account, passphrase string, 
 	}
 	defer zeroKey(key.PrivateKey)
 
+	//TODO: is this correct ?
 	if tx.IsPrivate() {
 		return types.SignTx(tx, types.QuorumPrivateTxSigner{}, key.PrivateKey)
 	}
@@ -456,14 +454,27 @@ func (ks *KeyStore) Import(keyJSON []byte, passphrase, newPassphrase string) (ac
 	if err != nil {
 		return accounts.Account{}, err
 	}
+	ks.importMu.Lock()
+	defer ks.importMu.Unlock()
+
+	if ks.cache.hasAddress(key.Address) {
+		return accounts.Account{
+			Address: key.Address,
+		}, ErrAccountAlreadyExists
+	}
 	return ks.importKey(key, newPassphrase)
 }
 
 // ImportECDSA stores the given key into the key directory, encrypting it with the passphrase.
 func (ks *KeyStore) ImportECDSA(priv *ecdsa.PrivateKey, passphrase string) (accounts.Account, error) {
+	ks.importMu.Lock()
+	defer ks.importMu.Unlock()
+
 	key := newKeyFromECDSA(priv)
 	if ks.cache.hasAddress(key.Address) {
-		return accounts.Account{}, fmt.Errorf("account already exists")
+		return accounts.Account{
+			Address: key.Address,
+		}, ErrAccountAlreadyExists
 	}
 	return ks.importKey(key, passphrase)
 }

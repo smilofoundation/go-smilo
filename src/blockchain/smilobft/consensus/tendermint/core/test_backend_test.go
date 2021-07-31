@@ -9,8 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/committee"
-	"go-smilo/src/blockchain/smilobft/consensus/tendermint/config"
 )
 
 type addressKeyMap map[common.Address]*ecdsa.PrivateKey
@@ -31,16 +29,16 @@ func generateCommittee(n int) (types.Committee, addressKeyMap) {
 	return vals, keymap
 }
 
-func newTestCommitteeSet(n int) committee.Set {
+func newTestCommitteeSet(n int) committee {
 
 	validators, _ := generateCommittee(n)
-	set, _ := committee.NewSet(validators, config.RoundRobin, validators[0].Address)
+	set, _ := newRoundRobinSet(validators, validators[0].Address)
 	return set
 }
 
-func newTestCommitteeSetWithKeys(n int) (committee.Set, addressKeyMap) {
+func newTestCommitteeSetWithKeys(n int) (committee, addressKeyMap) {
 	validators, keyMap := generateCommittee(n)
-	set, _ := committee.NewSet(validators, config.RoundRobin, validators[0].Address)
+	set, _ := newRoundRobinSet(validators, validators[0].Address)
 	return set, keyMap
 }
 

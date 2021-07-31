@@ -57,10 +57,7 @@ func (c *TranscribeService) CreateVocabularyRequest(input *CreateVocabularyInput
 // CreateVocabulary API operation for Amazon Transcribe Service.
 //
 // Creates a new custom vocabulary that you can use to change the way Amazon
-// Transcribe handles transcription of an audio file. Note that vocabularies
-// for en-AU, en-UK, and fr-CA languages that are in preview are not available.
-// In the console, the vocabulary section will be greyed-out and SDK will return
-// error message.
+// Transcribe handles transcription of an audio file.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -72,7 +69,7 @@ func (c *TranscribeService) CreateVocabularyRequest(input *CreateVocabularyInput
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -85,9 +82,9 @@ func (c *TranscribeService) CreateVocabularyRequest(input *CreateVocabularyInput
 //   again.
 //
 //   * ErrCodeConflictException "ConflictException"
-//   When you are using the StartTranscriptionJob operation, the JobName field
-//   is a duplicate of a previously entered job name. Resend your request with
-//   a different name.
+//   When you are using the CreateVocabulary operation, the JobName field is a
+//   duplicate of a previously entered job name. Resend your request with a different
+//   name.
 //
 //   When you are using the UpdateVocabulary operation, there are two jobs running
 //   at the same time. Resend the second request later.
@@ -153,14 +150,13 @@ func (c *TranscribeService) DeleteTranscriptionJobRequest(input *DeleteTranscrip
 
 	output = &DeleteTranscriptionJobOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(jsonrpc.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // DeleteTranscriptionJob API operation for Amazon Transcribe Service.
 //
-// Deletes a previously submitted transcription job as well as any other generated
+// Deletes a previously submitted transcription job along with any other generated
 // results such as the transcription, models, and so on.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -177,7 +173,7 @@ func (c *TranscribeService) DeleteTranscriptionJobRequest(input *DeleteTranscrip
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -246,8 +242,7 @@ func (c *TranscribeService) DeleteVocabularyRequest(input *DeleteVocabularyInput
 
 	output = &DeleteVocabularyOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(jsonrpc.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -273,7 +268,7 @@ func (c *TranscribeService) DeleteVocabularyRequest(input *DeleteVocabularyInput
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -362,7 +357,7 @@ func (c *TranscribeService) GetTranscriptionJobRequest(input *GetTranscriptionJo
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -444,9 +439,7 @@ func (c *TranscribeService) GetVocabularyRequest(input *GetVocabularyInput) (req
 
 // GetVocabulary API operation for Amazon Transcribe Service.
 //
-// Gets information about a vocabulary. Note that vocabularies for en-AU, en-UK,
-// and fr-CA languages that are in preview are not available. In the console,
-// the vocabulary section will be greyed-out and SDK will return error message.
+// Gets information about a vocabulary.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -470,7 +463,7 @@ func (c *TranscribeService) GetVocabularyRequest(input *GetVocabularyInput) (req
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -558,7 +551,7 @@ func (c *TranscribeService) ListTranscriptionJobsRequest(input *ListTranscriptio
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -603,7 +596,7 @@ func (c *TranscribeService) ListTranscriptionJobsWithContext(ctx aws.Context, in
 //    // Example iterating over at most 3 pages of a ListTranscriptionJobs operation.
 //    pageNum := 0
 //    err := client.ListTranscriptionJobsPages(params,
-//        func(page *ListTranscriptionJobsOutput, lastPage bool) bool {
+//        func(page *transcribeservice.ListTranscriptionJobsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -635,10 +628,12 @@ func (c *TranscribeService) ListTranscriptionJobsPagesWithContext(ctx aws.Contex
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListTranscriptionJobsOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListTranscriptionJobsOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -705,7 +700,7 @@ func (c *TranscribeService) ListVocabulariesRequest(input *ListVocabulariesInput
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -750,7 +745,7 @@ func (c *TranscribeService) ListVocabulariesWithContext(ctx aws.Context, input *
 //    // Example iterating over at most 3 pages of a ListVocabularies operation.
 //    pageNum := 0
 //    err := client.ListVocabulariesPages(params,
-//        func(page *ListVocabulariesOutput, lastPage bool) bool {
+//        func(page *transcribeservice.ListVocabulariesOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -782,10 +777,12 @@ func (c *TranscribeService) ListVocabulariesPagesWithContext(ctx aws.Context, in
 		},
 	}
 
-	cont := true
-	for p.Next() && cont {
-		cont = fn(p.Page().(*ListVocabulariesOutput), !p.HasNextPage())
+	for p.Next() {
+		if !fn(p.Page().(*ListVocabulariesOutput), !p.HasNextPage()) {
+			break
+		}
 	}
+
 	return p.Err()
 }
 
@@ -833,9 +830,7 @@ func (c *TranscribeService) StartTranscriptionJobRequest(input *StartTranscripti
 
 // StartTranscriptionJob API operation for Amazon Transcribe Service.
 //
-// Starts an asynchronous job to transcribe speech to text. Note that en-AU,
-// en-UK, and fr-CA languages are in preview and are only available to whitelisted
-// customers.
+// Starts an asynchronous job to transcribe speech to text.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -847,7 +842,7 @@ func (c *TranscribeService) StartTranscriptionJobRequest(input *StartTranscripti
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -860,9 +855,9 @@ func (c *TranscribeService) StartTranscriptionJobRequest(input *StartTranscripti
 //   again.
 //
 //   * ErrCodeConflictException "ConflictException"
-//   When you are using the StartTranscriptionJob operation, the JobName field
-//   is a duplicate of a previously entered job name. Resend your request with
-//   a different name.
+//   When you are using the CreateVocabulary operation, the JobName field is a
+//   duplicate of a previously entered job name. Resend your request with a different
+//   name.
 //
 //   When you are using the UpdateVocabulary operation, there are two jobs running
 //   at the same time. Resend the second request later.
@@ -935,9 +930,7 @@ func (c *TranscribeService) UpdateVocabularyRequest(input *UpdateVocabularyInput
 //
 // Updates an existing vocabulary with new values. The UpdateVocabulary operation
 // overwrites all of the existing information with the values that you provide
-// in the request. Note that vocabularies for en-AU, en-UK, and fr-CA languages
-// that are in preview are not available. In the console, the vocabulary section
-// will be greyed-out and SDK will return error message.
+// in the request.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -949,7 +942,7 @@ func (c *TranscribeService) UpdateVocabularyRequest(input *UpdateVocabularyInput
 // Returned Error Codes:
 //   * ErrCodeBadRequestException "BadRequestException"
 //   Your request didn't pass one or more validation tests. For example, if the
-//   transcription you're trying to delete doesn't exist of if it is in a non-terminal
+//   transcription you're trying to delete doesn't exist or if it is in a non-terminal
 //   state (for example, it's "in progress"). See the exception Message field
 //   for more information.
 //
@@ -966,9 +959,9 @@ func (c *TranscribeService) UpdateVocabularyRequest(input *UpdateVocabularyInput
 //   again.
 //
 //   * ErrCodeConflictException "ConflictException"
-//   When you are using the StartTranscriptionJob operation, the JobName field
-//   is a duplicate of a previously entered job name. Resend your request with
-//   a different name.
+//   When you are using the CreateVocabulary operation, the JobName field is a
+//   duplicate of a previously entered job name. Resend your request with a different
+//   name.
 //
 //   When you are using the UpdateVocabulary operation, there are two jobs running
 //   at the same time. Resend the second request later.
@@ -1004,9 +997,23 @@ type CreateVocabularyInput struct {
 	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
 
 	// An array of strings that contains the vocabulary entries.
+	Phrases []*string `type:"list"`
+
+	// The S3 location of the text file that contains the definition of the custom
+	// vocabulary. The URI must be in the same region as the API endpoint that you
+	// are calling. The general form is
 	//
-	// Phrases is a required field
-	Phrases []*string `type:"list" required:"true"`
+	// https://s3.<aws-region>.amazonaws.com/<bucket-name>/<keyprefix>/<objectkey>
+	//
+	// For example:
+	//
+	// https://s3.us-east-1.amazonaws.com/examplebucket/vocab.txt
+	//
+	// For more information about S3 object names, see Object Keys (http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-keys)
+	// in the Amazon S3 Developer Guide.
+	//
+	// For more information about custom vocabularies, see Custom Vocabularies (http://docs.aws.amazon.com/transcribe/latest/dg/how-it-works.html#how-vocabulary).
+	VocabularyFileUri *string `min:"1" type:"string"`
 
 	// The name of the vocabulary. The name must be unique within an AWS account.
 	// The name is case-sensitive.
@@ -1031,8 +1038,8 @@ func (s *CreateVocabularyInput) Validate() error {
 	if s.LanguageCode == nil {
 		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
 	}
-	if s.Phrases == nil {
-		invalidParams.Add(request.NewErrParamRequired("Phrases"))
+	if s.VocabularyFileUri != nil && len(*s.VocabularyFileUri) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VocabularyFileUri", 1))
 	}
 	if s.VocabularyName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VocabularyName"))
@@ -1056,6 +1063,12 @@ func (s *CreateVocabularyInput) SetLanguageCode(v string) *CreateVocabularyInput
 // SetPhrases sets the Phrases field's value.
 func (s *CreateVocabularyInput) SetPhrases(v []*string) *CreateVocabularyInput {
 	s.Phrases = v
+	return s
+}
+
+// SetVocabularyFileUri sets the VocabularyFileUri field's value.
+func (s *CreateVocabularyInput) SetVocabularyFileUri(v string) *CreateVocabularyInput {
+	s.VocabularyFileUri = &v
 	return s
 }
 
@@ -1427,6 +1440,9 @@ type ListTranscriptionJobsInput struct {
 	NextToken *string `type:"string"`
 
 	// When specified, returns only transcription jobs with the specified status.
+	// Jobs are ordered by creation date, with the newest jobs returned first. If
+	// you don’t specify a status, Amazon Transcribe returns all transcription
+	// jobs ordered by creation date.
 	Status *string `type:"string" enum:"TranscriptionJobStatus"`
 }
 
@@ -1650,13 +1666,13 @@ type Media struct {
 	// The S3 location of the input media file. The URI must be in the same region
 	// as the API endpoint that you are calling. The general form is:
 	//
-	// https://<aws-region>.amazonaws.com/<bucket-name>/<keyprefix>/<objectkey>
+	// https://s3.<aws-region>.amazonaws.com/<bucket-name>/<keyprefix>/<objectkey>
 	//
 	// For example:
 	//
-	// https://s3-us-east-1.amazonaws.com/examplebucket/example.mp4
+	// https://s3.us-east-1.amazonaws.com/examplebucket/example.mp4
 	//
-	// https://s3-us-east-1.amazonaws.com/examplebucket/mediadocs/example.mp4
+	// https://s3.us-east-1.amazonaws.com/examplebucket/mediadocs/example.mp4
 	//
 	// For more information about S3 object names, see Object Keys (http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-keys)
 	// in the Amazon S3 Developer Guide.
@@ -1708,11 +1724,21 @@ type Settings struct {
 	// request. If you set both, your request returns a BadRequestException.
 	ChannelIdentification *bool `type:"boolean"`
 
+	// The number of alternative transcriptions that the service should return.
+	// If you specify the MaxAlternatives field, you must set the ShowAlternatives
+	// field to true.
+	MaxAlternatives *int64 `min:"2" type:"integer"`
+
 	// The maximum number of speakers to identify in the input audio. If there are
 	// more speakers in the audio than this number, multiple speakers will be identified
 	// as a single speaker. If you specify the MaxSpeakerLabels field, you must
 	// set the ShowSpeakerLabels field to true.
 	MaxSpeakerLabels *int64 `min:"2" type:"integer"`
+
+	// Determines whether the transcription contains alternative transcriptions.
+	// If you set the ShowAlternatives field to true, you must also set the maximum
+	// number of alternatives to return in the MaxAlternatives field.
+	ShowAlternatives *bool `type:"boolean"`
 
 	// Determines whether the transcription job uses speaker recognition to identify
 	// different speakers in the input audio. Speaker recognition labels individual
@@ -1740,6 +1766,9 @@ func (s Settings) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *Settings) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "Settings"}
+	if s.MaxAlternatives != nil && *s.MaxAlternatives < 2 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxAlternatives", 2))
+	}
 	if s.MaxSpeakerLabels != nil && *s.MaxSpeakerLabels < 2 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxSpeakerLabels", 2))
 	}
@@ -1759,9 +1788,21 @@ func (s *Settings) SetChannelIdentification(v bool) *Settings {
 	return s
 }
 
+// SetMaxAlternatives sets the MaxAlternatives field's value.
+func (s *Settings) SetMaxAlternatives(v int64) *Settings {
+	s.MaxAlternatives = &v
+	return s
+}
+
 // SetMaxSpeakerLabels sets the MaxSpeakerLabels field's value.
 func (s *Settings) SetMaxSpeakerLabels(v int64) *Settings {
 	s.MaxSpeakerLabels = &v
+	return s
+}
+
+// SetShowAlternatives sets the ShowAlternatives field's value.
+func (s *Settings) SetShowAlternatives(v bool) *Settings {
+	s.ShowAlternatives = &v
 	return s
 }
 
@@ -1791,11 +1832,14 @@ type StartTranscriptionJobInput struct {
 	Media *Media `type:"structure" required:"true"`
 
 	// The format of the input media file.
-	//
-	// MediaFormat is a required field
-	MediaFormat *string `type:"string" required:"true" enum:"MediaFormat"`
+	MediaFormat *string `type:"string" enum:"MediaFormat"`
 
 	// The sample rate, in Hertz, of the audio track in the input media file.
+	//
+	// If you do not specify the media sample rate, Amazon Transcribe determines
+	// the sample rate. If you specify the sample rate, it must match the sample
+	// rate detected by Amazon Transcribe. In most cases, you should leave the MediaSampleRateHertz
+	// field blank and let Amazon Transcribe determine the sample rate.
 	MediaSampleRateHertz *int64 `min:"8000" type:"integer"`
 
 	// The location where the transcription is stored.
@@ -1805,18 +1849,50 @@ type StartTranscriptionJobInput struct {
 	// the operation returns this location in the TranscriptFileUri field. The S3
 	// bucket must have permissions that allow Amazon Transcribe to put files in
 	// the bucket. For more information, see Permissions Required for IAM User Roles
-	// (https://docs.aws.amazon.com/transcribe/latest/dg/access-control-managing-permissions.html#auth-role-iam-user).
+	// (https://docs.aws.amazon.com/transcribe/latest/dg/security_iam_id-based-policy-examples.html#auth-role-iam-user).
+	//
+	// You can specify an AWS Key Management Service (KMS) key to encrypt the output
+	// of your transcription using the OutputEncryptionKMSKeyId parameter. If you
+	// don't specify a KMS key, Amazon Transcribe uses the default Amazon S3 key
+	// for server-side encryption of transcripts that are placed in your S3 bucket.
 	//
 	// If you don't set the OutputBucketName, Amazon Transcribe generates a pre-signed
 	// URL, a shareable URL that provides secure access to your transcription, and
 	// returns it in the TranscriptFileUri field. Use this URL to download the transcription.
 	OutputBucketName *string `type:"string"`
 
+	// The Amazon Resource Name (ARN) of the AWS Key Management Service (KMS) key
+	// used to encrypt the output of the transcription job. The user calling the
+	// StartTranscriptionJob operation must have permission to use the specified
+	// KMS key.
+	//
+	// You can use either of the following to identify a KMS key in the current
+	// account:
+	//
+	//    * KMS Key ID: "1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * KMS Key Alias: "alias/ExampleAlias"
+	//
+	// You can use either of the following to identify a KMS key in the current
+	// account or another account:
+	//
+	//    * Amazon Resource Name (ARN) of a KMS Key: "arn:aws:kms:region:account
+	//    ID:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+	//
+	//    * ARN of a KMS Key Alias: "arn:aws:kms:region:account ID:alias/ExampleAlias"
+	//
+	// If you don't specify an encryption key, the output of the transcription job
+	// is encrypted with the default Amazon S3 key (SSE-S3).
+	//
+	// If you specify a KMS key to encrypt your output, you must also specify an
+	// output location in the OutputBucketName parameter.
+	OutputEncryptionKMSKeyId *string `min:"1" type:"string"`
+
 	// A Settings object that provides optional settings for a transcription job.
 	Settings *Settings `type:"structure"`
 
-	// The name of the job. You can't use the strings "." or ".." in the job name.
-	// The name must be unique within an AWS account.
+	// The name of the job. Note that you can't use the strings "." or ".." by themselves
+	// as the job name. The name must also be unique within an AWS account.
 	//
 	// TranscriptionJobName is a required field
 	TranscriptionJobName *string `min:"1" type:"string" required:"true"`
@@ -1841,11 +1917,11 @@ func (s *StartTranscriptionJobInput) Validate() error {
 	if s.Media == nil {
 		invalidParams.Add(request.NewErrParamRequired("Media"))
 	}
-	if s.MediaFormat == nil {
-		invalidParams.Add(request.NewErrParamRequired("MediaFormat"))
-	}
 	if s.MediaSampleRateHertz != nil && *s.MediaSampleRateHertz < 8000 {
 		invalidParams.Add(request.NewErrParamMinValue("MediaSampleRateHertz", 8000))
+	}
+	if s.OutputEncryptionKMSKeyId != nil && len(*s.OutputEncryptionKMSKeyId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("OutputEncryptionKMSKeyId", 1))
 	}
 	if s.TranscriptionJobName == nil {
 		invalidParams.Add(request.NewErrParamRequired("TranscriptionJobName"))
@@ -1897,6 +1973,12 @@ func (s *StartTranscriptionJobInput) SetMediaSampleRateHertz(v int64) *StartTran
 // SetOutputBucketName sets the OutputBucketName field's value.
 func (s *StartTranscriptionJobInput) SetOutputBucketName(v string) *StartTranscriptionJobInput {
 	s.OutputBucketName = &v
+	return s
+}
+
+// SetOutputEncryptionKMSKeyId sets the OutputEncryptionKMSKeyId field's value.
+func (s *StartTranscriptionJobInput) SetOutputEncryptionKMSKeyId(v string) *StartTranscriptionJobInput {
+	s.OutputEncryptionKMSKeyId = &v
 	return s
 }
 
@@ -1965,8 +2047,7 @@ func (s *Transcript) SetTranscriptFileUri(v string) *Transcript {
 }
 
 // Describes an asynchronous transcription job that was created with the StartTranscriptionJob
-// operation. Note that en-AU, en-UK, and fr-CA languages are in preview and
-// are only available to whitelisted customers.
+// operation.
 type TranscriptionJob struct {
 	_ struct{} `type:"structure"`
 
@@ -1978,6 +2059,36 @@ type TranscriptionJob struct {
 
 	// If the TranscriptionJobStatus field is FAILED, this field contains information
 	// about why the job failed.
+	//
+	// The FailureReason field can contain one of the following values:
+	//
+	//    * Unsupported media format - The media format specified in the MediaFormat
+	//    field of the request isn't valid. See the description of the MediaFormat
+	//    field for a list of valid values.
+	//
+	//    * The media format provided does not match the detected media format -
+	//    The media format of the audio file doesn't match the format specified
+	//    in the MediaFormat field in the request. Check the media format of your
+	//    media file and make sure that the two values match.
+	//
+	//    * Invalid sample rate for audio file - The sample rate specified in the
+	//    MediaSampleRateHertz of the request isn't valid. The sample rate must
+	//    be between 8000 and 48000 Hertz.
+	//
+	//    * The sample rate provided does not match the detected sample rate - The
+	//    sample rate in the audio file doesn't match the sample rate specified
+	//    in the MediaSampleRateHertz field in the request. Check the sample rate
+	//    of your media file and make sure that the two values match.
+	//
+	//    * Invalid file size: file size too large - The size of your audio file
+	//    is larger than Amazon Transcribe can process. For more information, see
+	//    Limits (https://docs.aws.amazon.com/transcribe/latest/dg/limits-guidelines.html#limits)
+	//    in the Amazon Transcribe Developer Guide.
+	//
+	//    * Invalid number of channels: number of channels too large - Your audio
+	//    contains more channels than Amazon Transcribe is configured to process.
+	//    To request additional channels, see Amazon Transcribe Limits (https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits-amazon-transcribe)
+	//    in the Amazon Web Services General Reference.
 	FailureReason *string `type:"string"`
 
 	// The language code for the input speech.
@@ -2084,9 +2195,7 @@ func (s *TranscriptionJob) SetTranscriptionJobStatus(v string) *TranscriptionJob
 	return s
 }
 
-// Provides a summary of information about a transcription job. Note that en-AU,
-// en-UK, and fr-CA languages are in preview and are only available to whitelisted
-// customers.
+// Provides a summary of information about a transcription job.
 type TranscriptionJobSummary struct {
 	_ struct{} `type:"structure"`
 
@@ -2182,9 +2291,23 @@ type UpdateVocabularyInput struct {
 	LanguageCode *string `type:"string" required:"true" enum:"LanguageCode"`
 
 	// An array of strings containing the vocabulary entries.
+	Phrases []*string `type:"list"`
+
+	// The S3 location of the text file that contains the definition of the custom
+	// vocabulary. The URI must be in the same region as the API endpoint that you
+	// are calling. The general form is
 	//
-	// Phrases is a required field
-	Phrases []*string `type:"list" required:"true"`
+	// https://s3.<aws-region>.amazonaws.com/<bucket-name>/<keyprefix>/<objectkey>
+	//
+	// For example:
+	//
+	// https://s3.us-east-1.amazonaws.com/examplebucket/vocab.txt
+	//
+	// For more information about S3 object names, see Object Keys (http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-keys)
+	// in the Amazon S3 Developer Guide.
+	//
+	// For more information about custom vocabularies, see Custom Vocabularies (http://docs.aws.amazon.com/transcribe/latest/dg/how-it-works.html#how-vocabulary).
+	VocabularyFileUri *string `min:"1" type:"string"`
 
 	// The name of the vocabulary to update. The name is case-sensitive.
 	//
@@ -2208,8 +2331,8 @@ func (s *UpdateVocabularyInput) Validate() error {
 	if s.LanguageCode == nil {
 		invalidParams.Add(request.NewErrParamRequired("LanguageCode"))
 	}
-	if s.Phrases == nil {
-		invalidParams.Add(request.NewErrParamRequired("Phrases"))
+	if s.VocabularyFileUri != nil && len(*s.VocabularyFileUri) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VocabularyFileUri", 1))
 	}
 	if s.VocabularyName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VocabularyName"))
@@ -2233,6 +2356,12 @@ func (s *UpdateVocabularyInput) SetLanguageCode(v string) *UpdateVocabularyInput
 // SetPhrases sets the Phrases field's value.
 func (s *UpdateVocabularyInput) SetPhrases(v []*string) *UpdateVocabularyInput {
 	s.Phrases = v
+	return s
+}
+
+// SetVocabularyFileUri sets the VocabularyFileUri field's value.
+func (s *UpdateVocabularyInput) SetVocabularyFileUri(v string) *UpdateVocabularyInput {
+	s.VocabularyFileUri = &v
 	return s
 }
 
@@ -2293,10 +2422,7 @@ func (s *UpdateVocabularyOutput) SetVocabularyState(v string) *UpdateVocabularyO
 	return s
 }
 
-// Provides information about a custom vocabulary. Note that vocabularies for
-// en-AU, en-UK, and fr-CA languages that are in preview are not available.
-// In the console, the vocabulary section will be greyed-out and SDK will return
-// error message.
+// Provides information about a custom vocabulary.
 type VocabularyInfo struct {
 	_ struct{} `type:"structure"`
 
@@ -2361,8 +2487,86 @@ const (
 	// LanguageCodeFrCa is a LanguageCode enum value
 	LanguageCodeFrCa = "fr-CA"
 
-	// LanguageCodeEnUk is a LanguageCode enum value
-	LanguageCodeEnUk = "en-UK"
+	// LanguageCodeEnGb is a LanguageCode enum value
+	LanguageCodeEnGb = "en-GB"
+
+	// LanguageCodeDeDe is a LanguageCode enum value
+	LanguageCodeDeDe = "de-DE"
+
+	// LanguageCodePtBr is a LanguageCode enum value
+	LanguageCodePtBr = "pt-BR"
+
+	// LanguageCodeFrFr is a LanguageCode enum value
+	LanguageCodeFrFr = "fr-FR"
+
+	// LanguageCodeItIt is a LanguageCode enum value
+	LanguageCodeItIt = "it-IT"
+
+	// LanguageCodeKoKr is a LanguageCode enum value
+	LanguageCodeKoKr = "ko-KR"
+
+	// LanguageCodeEsEs is a LanguageCode enum value
+	LanguageCodeEsEs = "es-ES"
+
+	// LanguageCodeEnIn is a LanguageCode enum value
+	LanguageCodeEnIn = "en-IN"
+
+	// LanguageCodeHiIn is a LanguageCode enum value
+	LanguageCodeHiIn = "hi-IN"
+
+	// LanguageCodeArSa is a LanguageCode enum value
+	LanguageCodeArSa = "ar-SA"
+
+	// LanguageCodeRuRu is a LanguageCode enum value
+	LanguageCodeRuRu = "ru-RU"
+
+	// LanguageCodeZhCn is a LanguageCode enum value
+	LanguageCodeZhCn = "zh-CN"
+
+	// LanguageCodeNlNl is a LanguageCode enum value
+	LanguageCodeNlNl = "nl-NL"
+
+	// LanguageCodeIdId is a LanguageCode enum value
+	LanguageCodeIdId = "id-ID"
+
+	// LanguageCodeTaIn is a LanguageCode enum value
+	LanguageCodeTaIn = "ta-IN"
+
+	// LanguageCodeFaIr is a LanguageCode enum value
+	LanguageCodeFaIr = "fa-IR"
+
+	// LanguageCodeEnIe is a LanguageCode enum value
+	LanguageCodeEnIe = "en-IE"
+
+	// LanguageCodeEnAb is a LanguageCode enum value
+	LanguageCodeEnAb = "en-AB"
+
+	// LanguageCodeEnWl is a LanguageCode enum value
+	LanguageCodeEnWl = "en-WL"
+
+	// LanguageCodePtPt is a LanguageCode enum value
+	LanguageCodePtPt = "pt-PT"
+
+	// LanguageCodeTeIn is a LanguageCode enum value
+	LanguageCodeTeIn = "te-IN"
+
+	// LanguageCodeTrTr is a LanguageCode enum value
+	LanguageCodeTrTr = "tr-TR"
+
+	// LanguageCodeDeCh is a LanguageCode enum value
+	LanguageCodeDeCh = "de-CH"
+
+	// LanguageCodeHeIl is a LanguageCode enum value
+	LanguageCodeHeIl = "he-IL"
+
+	// LanguageCodeMsMy is a LanguageCode enum value
+	LanguageCodeMsMy = "ms-MY"
+
+	// LanguageCodeJaJp is a LanguageCode enum value
+	LanguageCodeJaJp = "ja-JP"
+
+	// LanguageCodeArAe is a LanguageCode enum value
+	LanguageCodeArAe = "ar-AE"
 )
 
 const (

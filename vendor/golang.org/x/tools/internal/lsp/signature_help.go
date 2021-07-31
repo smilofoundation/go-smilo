@@ -10,34 +10,41 @@ import (
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
 	"golang.org/x/tools/internal/span"
-	"golang.org/x/tools/internal/telemetry/log"
-	"golang.org/x/tools/internal/telemetry/tag"
 )
 
-func (s *Server) signatureHelp(ctx context.Context, params *protocol.SignatureHelpParams) (*protocol.SignatureHelp, error) {
+func (s *Server) signatureHelp(ctx context.Context, params *protocol.TextDocumentPositionParams) (*protocol.SignatureHelp, error) {
 	uri := span.NewURI(params.TextDocument.URI)
 	view := s.session.ViewOf(uri)
-	f, err := view.GetFile(ctx, uri)
+	f, m, err := getGoFile(ctx, view, uri)
 	if err != nil {
 		return nil, err
 	}
-	info, err := source.SignatureHelp(ctx, view, f, params.Position)
+	spn, err := m.PointSpan(params.Position)
 	if err != nil {
-		log.Print(ctx, "no signature help", tag.Of("At", params.Position), tag.Of("Failure", err))
-		return nil, nil
+		return nil, err
+	}
+	rng, err := spn.Range(m.Converter)
+	if err != nil {
+		return nil, err
+	}
+	info, err := source.SignatureHelp(ctx, f, rng.Start)
+	if err != nil {
+		s.session.Logger().Infof(ctx, "no signature help for %s:%v:%v : %s", uri, int(params.Position.Line), int(params.Position.Character), err)
 	}
 	return toProtocolSignatureHelp(info), nil
 }
 
 func toProtocolSignatureHelp(info *source.SignatureInformation) *protocol.SignatureHelp {
+	if info == nil {
+		return &protocol.SignatureHelp{}
+	}
 	return &protocol.SignatureHelp{
 		ActiveParameter: float64(info.ActiveParameter),
 		ActiveSignature: 0, // there is only ever one possible signature
 		Signatures: []protocol.SignatureInformation{
 			{
-				Label:         info.Label,
-				Documentation: info.Documentation,
-				Parameters:    toProtocolParameterInformation(info.Parameters),
+				Label:      info.Label,
+				Parameters: toProtocolParameterInformation(info.Parameters),
 			},
 		},
 	}

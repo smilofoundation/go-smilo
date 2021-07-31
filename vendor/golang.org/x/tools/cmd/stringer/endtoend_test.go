@@ -19,8 +19,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"golang.org/x/tools/internal/testenv"
 )
 
 // This file contains a test that compiles and runs each program in testdata
@@ -153,8 +151,6 @@ func TestConstValueChange(t *testing.T) {
 // buildStringer creates a temporary directory and installs stringer there.
 func buildStringer(t *testing.T) (dir string, stringer string) {
 	t.Helper()
-	testenv.NeedsTool(t, "go")
-
 	dir, err := ioutil.TempDir("", "stringer")
 	if err != nil {
 		t.Fatal(err)
